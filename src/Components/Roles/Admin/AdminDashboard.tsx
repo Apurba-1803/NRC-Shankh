@@ -554,6 +554,10 @@ const AdminDashboard: React.FC = () => {
     const efficiency =
       totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
+      const filteredMachineStats = Object.fromEntries(
+  Object.entries(machineStats).filter(([key]) => key !== 'Paper Store')
+);
+
     return {
       jobPlans,
       totalJobs: totalJobs + completedJobsCount, // Total = job plans + completed jobs
@@ -565,7 +569,7 @@ const AdminDashboard: React.FC = () => {
       activeUsers: uniqueUsers.size,
       efficiency,
       stepCompletionStats: stepStats,
-      machineUtilization: machineStats,
+      machineUtilization: filteredMachineStats,
       timeSeriesData,
       completedJobsData: completedJobsData, // Use the actual completed jobs data
     };
@@ -623,7 +627,7 @@ const AdminDashboard: React.FC = () => {
   if (!filteredData) {
     return <div>No data available</div>;
   }
-  console.log("machine utilization", filteredData)
+  console.log("machine utilization", filteredData.machineUtilization)
 
 
   return (
@@ -780,25 +784,27 @@ const AdminDashboard: React.FC = () => {
 
         {/* Step Completion Status */}
         <BarChartComponent
-          data={Object.entries(filteredData.stepCompletionStats).map(
-            ([step, stats]) => ({
-              step,
-              completed: stats.completed,
-              inProgress: stats.inProgress,
-              planned: stats.planned,
-            })
-          )}
-          dataKeys={[
-            { key: "completed", color: colors.success, name: "Completed" },
-            { key: "inProgress", color: colors.warning, name: "In Progress" },
-            { key: "planned", color: colors.gray, name: "Planned" },
-          ]}
-          xAxisKey="step"
-          title="Step Completion Status"
-          height={300}
-          maxDataPoints={500}
-          stacked={true}
-        />
+  data={Object.entries(filteredData.stepCompletionStats)
+    .filter(([step]) => !(step === "Paper Store" && filteredData.stepCompletionStats["PaperStore"]))
+    .map(([step, stats]) => ({
+      step,
+      completed: stats.completed,
+      inProgress: stats.inProgress,
+      planned: stats.planned,
+    }))
+  }
+  dataKeys={[
+    { key: "completed", color: colors.success, name: "Completed" },
+    { key: "inProgress", color: colors.warning, name: "In Progress" },
+    { key: "planned", color: colors.gray, name: "Planned" },
+  ]}
+  xAxisKey="step"
+  title="Step Completion Status"
+  height={300}
+  maxDataPoints={500}
+  stacked={true}
+/>
+
       </div>
       {/* <DateFilterComponent
         dateFilter={dateFilter}
@@ -974,63 +980,211 @@ const AdminDashboard: React.FC = () => {
       />
 
       {/* Job Demand Distribution Pie Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <PieChartComponent
-          data={[
-            {
-              name: "Low Demand",
-              value: filteredData.jobPlans.filter(
-                (jp) => jp.jobDemand === "low"
-              ).length,
-              color: colors.success,
-            },
-            {
-              name: "Medium Demand",
-              value: filteredData.jobPlans.filter(
-                (jp) => jp.jobDemand === "medium"
-              ).length,
-              color: colors.warning,
-            },
-            {
-              name: "High Demand",
-              value: filteredData.jobPlans.filter(
-                (jp) => jp.jobDemand === "high"
-              ).length,
-              color: colors.danger,
-            },
-          ]}
-          title="Job Demand Distribution"
-          height={300}
-          maxDataPoints={50}
-          showPercentage={true}
-          showValues={true}
-        />
-
-        <PieChartComponent
-          data={[
-            {
-              name: "Completed",
-              value: filteredData.completedJobs,
-              color: colors.success,
-            },
-            {
-              name: "In Progress",
-              value: filteredData.inProgressJobs,
-              color: colors.warning,
-            },
-            {
-              name: "Planned",
-              value: filteredData.plannedJobs,
-              color: colors.gray,
-            },
-          ]}
-          title="Job Status Distribution"
-          height={300}
-          maxDataPoints={50}
-          showPercentage={true}
-          showValues={true}
-        />
+      {/* Quality Check and Customer Insights Section */}
+<div className="flex flex-col lg:flex-row gap-8 mb-8">
+  {/* Quality Check Cards */}
+   <div className="flex-1">
+    <div className="bg-white rounded-lg shadow-md p-6 mb-6 h-full">
+      <h3 className="text-lg font-semibold text-gray-800 mb-4">
+        Quality Control Overview
+      </h3>
+      
+      {/* Quality Stats Cards */}
+     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="text-2xl mr-3">✅</div>
+            <div>
+              <p className="text-sm font-medium text-green-700">Accepted</p>
+              <p className="text-xl font-bold text-green-800">230</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="text-2xl mr-3">❌</div>
+            <div>
+              <p className="text-sm font-medium text-red-700">Rejected</p>
+              <p className="text-xl font-bold text-red-800">20</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="text-2xl mr-3">📊</div>
+            <div>
+              <p className="text-sm font-medium text-blue-700">Success Rate</p>
+              <p className="text-xl font-bold text-blue-800">92%</p>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Rejection Reasons */}
+      <div>
+        <h4 className="text-md font-semibold text-gray-700 mb-3">
+          Rejection Reasons
+        </h4>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+            <span className="text-sm text-gray-700">Damaged Packaging</span>
+            <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full font-medium">8</span>
+          </div>
+          <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+            <span className="text-sm text-gray-700">Print Smudges</span>
+            <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full font-medium">5</span>
+          </div>
+          <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+            <span className="text-sm text-gray-700">Wrong Dimensions</span>
+            <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full font-medium">7</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* Customer Insights */}
+ <div className="flex-1">
+    <div className="bg-white rounded-lg shadow-md p-6 mb-6 h-full">
+      <h3 className="text-lg font-semibold text-gray-800 mb-4">
+        Customer Insights
+      </h3>
+      
+      {/* Customer Metrics */}
+      <div className="space-y-4 mb-6">
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="text-2xl mr-3">🔄</div>
+            <div>
+              <p className="text-sm font-medium text-purple-700">Retention Rate</p>
+              <p className="text-xl font-bold text-purple-800">85%</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="text-2xl mr-3">👥</div>
+            <div>
+              <p className="text-sm font-medium text-indigo-700">New Customers</p>
+              <p className="text-xl font-bold text-indigo-800">23</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Customer Segments */}
+      <div>
+        <h4 className="text-md font-semibold text-gray-700 mb-3">
+          Top Customer Segments
+        </h4>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-700">🍭 Sweets Shops</span>
+            <div className="flex items-center">
+              <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                <div className="bg-blue-500 h-2 rounded-full" style={{width: '40%'}}></div>
+              </div>
+              <span className="text-xs text-gray-600 font-medium">40%</span>
+            </div>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-700">👕 Clothing Retailers</span>
+            <div className="flex items-center">
+              <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                <div className="bg-green-500 h-2 rounded-full" style={{width: '35%'}}></div>
+              </div>
+              <span className="text-xs text-gray-600 font-medium">35%</span>
+            </div>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-700">📱 Electronics Stores</span>
+            <div className="flex items-center">
+              <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                <div className="bg-yellow-500 h-2 rounded-full" style={{width: '15%'}}></div>
+              </div>
+              <span className="text-xs text-gray-600 font-medium">15%</span>
+            </div>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-700">🪑 Furniture Shops</span>
+            <div className="flex items-center">
+              <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                <div className="bg-purple-500 h-2 rounded-full" style={{width: '10%'}}></div>
+              </div>
+              <span className="text-xs text-gray-600 font-medium">10%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{/* Job Demand Distribution Pie Chart */}
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+  <PieChartComponent
+    data={[
+      {
+        name: "Low Demand",
+        value: filteredData.jobPlans.filter(
+          (jp) => jp.jobDemand === "low"
+        ).length,
+        color: colors.success,
+      },
+      {
+        name: "Medium Demand", 
+        value: filteredData.jobPlans.filter(
+          (jp) => jp.jobDemand === "medium"
+        ).length,
+        color: colors.warning,
+      },
+      {
+        name: "High Demand",
+        value: filteredData.jobPlans.filter(
+          (jp) => jp.jobDemand === "high"
+        ).length,
+        color: colors.danger,
+      },
+    ]}
+    title="Job Demand Distribution"
+    height={300}
+    maxDataPoints={50}
+    showPercentage={true}
+    showValues={true}
+  />
+
+  <PieChartComponent
+    data={[
+      {
+        name: "Completed",
+        value: filteredData.completedJobs,
+        color: colors.success,
+      },
+      {
+        name: "In Progress",
+        value: filteredData.inProgressJobs,
+        color: colors.warning,
+      },
+      {
+        name: "Planned",
+        value: filteredData.plannedJobs,
+        color: colors.gray,
+      },
+    ]}
+    title="Job Status Distribution"
+    height={300}
+    maxDataPoints={50}
+    showPercentage={true}
+    showValues={true}
+  />
+</div>
+
     </div>
   );
 };

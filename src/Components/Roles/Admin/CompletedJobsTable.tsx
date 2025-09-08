@@ -284,7 +284,7 @@ console.log("sorted data", sortedData)
             <div className="bg-white p-4 rounded-lg border border-gray-200">
               <div className="flex items-center space-x-2">
                 <BuildingOfficeIcon className="h-5 w-5 text-blue-600" />
-                <span className="text-sm font-medium text-gray-600">Total Jobs</span>
+                <span className="text-sm font-medium text-gray-600">Total Job Cards</span>
               </div>
               <p className="text-2xl font-bold text-blue-600">{aggregations.totalJobs}</p>
             </div>
@@ -312,11 +312,11 @@ console.log("sorted data", sortedData)
 
           {/* Top Performers */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
+            {/* <div className="bg-white p-4 rounded-lg border border-gray-200">
   <div className="flex items-center justify-between mb-2">
     <h4 className="font-semibold text-gray-800">Top Revenue Unit</h4>
     
-    {/* Dropdown filter */}
+   
     <select
       value={selectedUnit}
       onChange={(e) => setSelectedUnit(e.target.value)}
@@ -329,9 +329,9 @@ console.log("sorted data", sortedData)
       <option value="DG">DG</option>
       <option value="NR">NR</option>
     </select>
-  </div>
+  </div> */}
 
-  {(() => {
+  {/* {(() => {
     // If filter applied, show only that unit
     let unitEntries = Object.entries(aggregations.unitRevenue);
 
@@ -350,7 +350,7 @@ console.log("sorted data", sortedData)
       <p className="text-gray-500">No data</p>
     );
   })()}
-</div>
+</div> */}
 
             <div className="bg-white p-4 rounded-lg border border-gray-200">
               <h4 className="font-semibold text-gray-800 mb-2">Top Customer</h4>
@@ -369,7 +369,7 @@ console.log("sorted data", sortedData)
                 );
               })()}
             </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <div className="bg-white p-4 rounded-lg border border-gray-200 ">
               <h4 className="font-semibold text-gray-800 mb-2">Best Day</h4>
               {(() => {
                 const bestDay = Object.entries(aggregations.dailyRevenue)

@@ -35,7 +35,7 @@ const StatisticsGrid: React.FC<StatisticsGridProps> = ({
 }) => {
   const stats = [
     {
-      title: 'Total Jobs',
+      title: 'Total Job Cards',
       value: totalJobs,
       icon: TrendingUp,
       iconColor: 'text-[#00AEEF]',
@@ -45,7 +45,7 @@ const StatisticsGrid: React.FC<StatisticsGridProps> = ({
       isClickable: !!onTotalJobsClick
     },
     {
-      title: 'Completed Jobs',
+      title: 'Completed Job Cards',
       value: completedJobs,
       icon: CheckCircle,
       iconColor: 'text-[#10B981]',
@@ -65,7 +65,7 @@ const StatisticsGrid: React.FC<StatisticsGridProps> = ({
       isClickable: !!onInProgressJobsClick
     },
     {
-      title: 'Planned Jobs',
+      title: 'Planned Job Cards',
       value: plannedJobs,
       icon: Clock,
       iconColor: 'text-[#6B7280]',

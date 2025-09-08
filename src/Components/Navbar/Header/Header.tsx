@@ -72,12 +72,14 @@ const sidebarConfig: {
 const allTabSets: { [key: string]: { label: string; value: string }[] } = {
   admin: [
     { label: 'Dashboard', value: 'dashboard' },
-    { label: 'Planner', value: 'planner' },
-    { label: 'Production Head', value: 'production' },
-    { label: 'Dispatch Head', value: 'dispatch' },
-    { label: 'QC Manager', value: 'qc' },
-    { label: 'Printing', value: 'printing' },
-    { label: 'Edit Working Details', value: 'edit-working-details' },
+    { label: 'Planning Department', value: 'planner' },
+    { label: 'Printing Department', value: 'printing' },
+    { label: 'Production Units', value: 'production' },
+     { label: 'Quality Management', value: 'qc' },
+    { label: 'Dispatch Details', value: 'dispatch' },
+   
+    
+    // { label: 'Edit Working Details', value: 'edit-working-details' },
     // { label: 'Notifications', value: 'notifications' },
     // ...add any others you had
   ],
@@ -116,9 +118,40 @@ const Header: React.FC<HeaderProps> = ({ tabValue, setTabValue, onLogout, role }
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showCreateId, setShowCreateId] = useState(false);
-  // const [showNotifications, setShowNotifications] = useState(false);
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [activeManageRole, setActiveManageRole] = useState<string | null>(null);
+
+  // 🔥 NEW: Enhanced tab change handler using Approach 1
+ const handleTabChange = (val: string) => {
+  const currentPath = window.location.pathname;
+  const isOnNestedRoute = currentPath !== '/dashboard' && currentPath.startsWith('/dashboard/');
+  
+  console.log('Tab change requested:', val);
+  console.log('Current path:', currentPath);
+  console.log('Is nested route:', isOnNestedRoute);
+  
+  if (isOnNestedRoute) {
+    // If on nested route, navigate back to dashboard first
+    console.log('Navigating back to dashboard...');
+    navigate('/dashboard');
+    
+    // Use a longer timeout to ensure navigation completes
+    setTimeout(() => {
+      console.log('Setting tab value to:', val);
+      setTabValue(val);
+    }, 100); // Increased timeout for more reliable navigation
+  } else {
+    // Normal tab switching within dashboard
+    console.log('Setting tab directly:', val);
+    setTabValue(val);
+    
+    // Always ensure we're on dashboard route for tab-based navigation
+    if (currentPath !== '/dashboard') {
+      navigate("/dashboard");
+    }
+  }
+};
+
 
   return (
     <header className="sticky top-0 z-50 bg-[#fafafa] w-full shadow-sm">
@@ -128,47 +161,23 @@ const Header: React.FC<HeaderProps> = ({ tabValue, setTabValue, onLogout, role }
 
         {/* Desktop Tabs */}
         <TabProvider value={tabValue}>
-          <div className="hidden sm:flex flex-1 justify-center">
-            <TabList value={tabValue} onChange={setTabValue}>
-  {tabItems.map((tab: { label: string; value: string }) => (
-    <Tab
-      key={tab.value}
-      label={tab.label}
-      value={tab.value}
-      selected={tabValue === tab.value} // highlight active tab
-      onChange={(val) => {
-        setTabValue(val);
+  <div className="hidden sm:flex flex-1 justify-center">
+    <TabList 
+      value={tabValue} 
+      onChange={handleTabChange} // 🔥 Change this from setTabValue to handleTabChange
+    >
+      {tabItems.map((tab: { label: string; value: string }) => (
+        <Tab
+          key={tab.value}
+          label={tab.label}
+          value={tab.value}
+          selected={tabValue === tab.value}
+        />
+      ))}
+    </TabList>
+  </div>
+</TabProvider>
 
-        // 👇 sync tab with route
-        switch (val) {
-          case "dashboard":
-            navigate("/dashboard");
-            break;
-          case "jobs":
-            navigate("/dashboard/jobs");
-            break;
-          case "job-assigned":
-            navigate("/dashboard/job-assigned");
-            break;
-          case "start-job":
-            navigate("/dashboard/start-job");
-            break;
-          case "dispatch":
-            navigate("/dashboard/dispatch");
-            break;
-          case "production":
-            navigate("/dashboard/production");
-            break;
-          default:
-            navigate(`/dashboard/${val}`);
-        }
-      }}
-    />
-  ))}
-</TabList>
-
-          </div>
-        </TabProvider>
 
         {/* Desktop User Icon */}
         <div className="hidden sm:flex items-center">
@@ -200,11 +209,14 @@ const Header: React.FC<HeaderProps> = ({ tabValue, setTabValue, onLogout, role }
           <TabProvider value={tabValue}>
             <TabList
               value={tabValue}
-              onChange={value => { setTabValue(value); setMenuOpen(false); }}
+              onChange={value => { 
+                handleTabChange(value); // 🔥 Use the new handler
+                setMenuOpen(false); 
+              }}
               direction="vertical"
             >
               {tabItems.map((tab: { label: string; value: string }) => (
-                <Tab key={tab.value} label={tab.label} value={tab.value} onChange={setTabValue} />
+                <Tab key={tab.value} label={tab.label} value={tab.value} onChange={handleTabChange} />
               ))}
             </TabList>
           </TabProvider>
@@ -232,28 +244,25 @@ const Header: React.FC<HeaderProps> = ({ tabValue, setTabValue, onLogout, role }
           if (normalizedRole === 'admin') {
             switch (option) {
               case "Dashboard":
-                setTabValue("dashboard");
+                handleTabChange("dashboard"); // 🔥 Use new handler
                 break;
               case "Planner":
-                setTabValue("planner");
+                handleTabChange("planner"); // 🔥 Use new handler
                 break;
               case "Production Head":
-                setTabValue("production");
+                handleTabChange("production"); // 🔥 Use new handler
                 break;
               case "Dispatch Head":
               case "Dispatch Executive":
-                setTabValue("dispatch");
+                handleTabChange("dispatch"); // 🔥 Use new handler
                 break;
               case "QC Manager":
-                setTabValue("qc");
+                handleTabChange("qc"); // 🔥 Use new handler
                 break;
               case "Printing":
               case "Printing Manager":
-                setTabValue("printing");
+                handleTabChange("printing"); // 🔥 Use new handler
                 break;
-              // case "Notifications":
-              //   setShowNotifications(true);
-              //   break;
               case "Create new ID":
                 setShowCreateId(true);
                 break;
@@ -267,29 +276,29 @@ const Header: React.FC<HeaderProps> = ({ tabValue, setTabValue, onLogout, role }
                 navigate('/dashboard/test-edit-machine');
                 break;
               case "Edit Working Details":
-                setTabValue("edit-working-details");
+                handleTabChange("edit-working-details"); // 🔥 Use new handler
                 break;
             }
             setSidebarOpen(false);
             setMenuOpen(false);
           } else if (normalizedRole === 'printing_manager' || normalizedRole === 'production_head' || normalizedRole === 'dispatch_executive') {
             const found = sidebarConfig[normalizedRole].options.find(o => o.label === option);
-            if (found) setTabValue(found.tab);
+            if (found) handleTabChange(found.tab); // 🔥 Use new handler
             setSidebarOpen(false);
             setMenuOpen(false);
           } else if (normalizedRole === 'planner') {
             if (option === "Edit Machine") {
               navigate('/dashboard/edit-machine');
             } else if (option === "Create New Job") {
-              setTabValue("create new job");
+              handleTabChange("create new job"); // 🔥 Use new handler
             } else if (option === "Start New Job") {
-              setTabValue("start new job");
+              handleTabChange("start new job"); // 🔥 Use new handler
             } else if (option === "Jobs") {
-              setTabValue("jobs");
+              handleTabChange("jobs"); // 🔥 Use new handler
             } else if (option === "Job Assigned") {
-              setTabValue("job assigned");
+              handleTabChange("job assigned"); // 🔥 Use new handler
             } else if (option === "Dashboard") {
-              setTabValue("dashboard");
+              handleTabChange("dashboard"); // 🔥 Use new handler
             }
             setSidebarOpen(false);
             setMenuOpen(false);
@@ -302,6 +311,7 @@ const Header: React.FC<HeaderProps> = ({ tabValue, setTabValue, onLogout, role }
         }}
       />
 
+      {/* Rest of your existing modals/components remain the same */}
       {showCreateId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-transparent bg-opacity-40">
           <div className="relative">
@@ -316,10 +326,6 @@ const Header: React.FC<HeaderProps> = ({ tabValue, setTabValue, onLogout, role }
           </div>
         </div>
       )}
-
-      {/* {showNotifications && (
-        <Notifications onClose={() => setShowNotifications(false)} />
-      )} */}
 
       {activeManageRole && (
         <ManageComponent
@@ -338,5 +344,6 @@ const Header: React.FC<HeaderProps> = ({ tabValue, setTabValue, onLogout, role }
     </header>
   );
 };
+
 
 export default Header;

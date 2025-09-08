@@ -211,7 +211,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Jobs</p>
+              <p className="text-sm font-medium text-gray-600">Total Job Cards</p>
               <p className="text-3xl font-bold text-blue-600">{data.summary.totalJobs}</p>
             </div>
             <div className="bg-blue-100 p-3 rounded-xl">
@@ -287,19 +287,43 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
 
         {/* Bar Chart - Completion Comparison */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Completion Status Comparison</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData.comparisonData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip formatter={(value, name) => [value, name]} />
-                <Bar dataKey="completed" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+  <h3 className="text-lg font-semibold text-gray-900 mb-4">Task Completion Progress</h3>
+  <div className="space-y-6">
+    {chartData.comparisonData.map((item, index) => {
+      const completionRate = (item.completed / item.total) * 100;
+      return (
+        <div key={index} className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="font-medium text-gray-900">{item.name}</span>
+            <span className="text-sm text-gray-600">
+              {item.completed}/{item.total} ({Math.round(completionRate)}%)
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-3">
+            <div 
+              className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-300"
+              style={{ width: `${completionRate}%` }}
+            ></div>
           </div>
         </div>
+      );
+    })}
+  </div>
+  
+  {/* Overall summary */}
+  <div className="mt-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-lg p-4">
+    <div className="text-center">
+      <div className="text-2xl font-bold text-gray-900">
+        {Math.round(
+          (chartData.comparisonData.reduce((sum, item) => sum + item.completed, 0) /
+           chartData.comparisonData.reduce((sum, item) => sum + item.total, 0)) * 100
+        )}%
+      </div>
+      <div className="text-sm text-gray-600">Overall Completion Rate</div>
+    </div>
+  </div>
+</div>
+
       </div>
 
       {/* Filters */}
@@ -348,7 +372,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
       {/* Jobs Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Job Details</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Job Card Details</h3>
           <p className="text-sm text-gray-600">Showing {processedJobs.length} of {data.allJobs.length} total jobs (filtered by most recent)</p>
         </div>
         

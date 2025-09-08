@@ -72,7 +72,7 @@ const JobAssigned: React.FC = () => {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8  min-h-screen">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">Assigned Job Plans</h1>
+      <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">Assigned Job Cards</h1>
 
       {loading && <LoadingSpinner size="lg" text="Loading job plans..." />}
 

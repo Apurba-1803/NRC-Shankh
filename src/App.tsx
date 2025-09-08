@@ -84,7 +84,7 @@ function AppContent() {
         element={
           isAuthenticated ?
             <Navigate to="/dashboard" replace /> :
-            <Login setIsAuthenticated={setIsAuthenticated} setUserRole={setUserRole} />
+            <Login setIsAuthenticated={setIsAuthenticated} setUserRole={setUserRole} setTabValue={setTabValue} />
         }
       />
       <Route

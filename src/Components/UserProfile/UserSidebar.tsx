@@ -25,7 +25,7 @@ const sidebarConfig: Record<string, { displayName: string; options: string[] }> 
       //'Production Head',
       //'Dispatch Executive',
       //'QC Manager',
-      'Edit Machine', // ADDED: Edit Machine option for Admin
+      // 'Edit Machine', // ADDED: Edit Machine option for Admin
       //'Test Edit Machine', // TEMPORARY: Test option for debugging
       'Edit Working Details',
     ],
@@ -44,7 +44,7 @@ const sidebarConfig: Record<string, { displayName: string; options: string[] }> 
   },
   planner: {
     displayName: 'Planner',
-    options: ['Dashboard', 'Start New Job', 'Create New Job', /* 'Notifications' */, 'Jobs', 'Job Assigned', 'Edit Machine'], // ADDED: Create New Job option for Planner
+    options: ['Dashboard', 'Start New Job', 'Create New Job', , 'Jobs', 'Job Assigned', 'Edit Machine'], // ADDED: Create New Job option for Planner
   },
 };
 

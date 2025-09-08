@@ -119,7 +119,7 @@ const handleViewDetails = (jobPlan: JobPlan) => {
   return (
     <div className={`bg-white rounded-lg shadow-md p-6 ${className}`}>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 sm:mb-0">Job Plans Overview</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4 sm:mb-0">Job Cards Overview</h3>
         
         {/* Search and Filters */}
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
@@ -253,14 +253,14 @@ const handleViewDetails = (jobPlan: JobPlan) => {
       </button>
 
       {/* Header */}
-      <h2 className="text-xl font-semibold mb-4">Job Plan Details</h2>
+      <h2 className="text-xl font-semibold mb-4">Job Card Details</h2>
 
       {/* Basic Info */}
       {/* Basic Info */}
 <div className="grid grid-cols-2 gap-4 mb-6">
   {[
-    { label: "Job No", value: selectedJobPlan.nrcJobNo, color: "blue" },
-    { label: "Job Plan ID", value: selectedJobPlan.jobPlanId, color: "green" },
+    { label: "Job Card No", value: selectedJobPlan.nrcJobNo, color: "blue" },
+    { label: "Job Card ID", value: selectedJobPlan.jobPlanId, color: "green" },
     { label: "Demand", value: selectedJobPlan.jobDemand, color: "purple" },
     { label: "Created", value: new Date(selectedJobPlan.createdAt).toLocaleString(), color: "orange" },
   ].map((item, i) => (
@@ -308,7 +308,7 @@ const handleViewDetails = (jobPlan: JobPlan) => {
           {step.status.charAt(0).toUpperCase() + step.status.slice(1).replace('-', ' ')}
         </span>
       </td>
-      <td className="px-6 py-4 text-sm text-gray-700">{step.machineDetails?.[0]?.machine?.description || '-'}</td>
+      <td className="px-6 py-4 text-sm text-gray-700">{step.machineDetails?.[0]?.machineType || '-'}</td>
       <td className="px-6 py-4 text-sm text-gray-700">{step.machineDetails?.[0]?.machine?.capacity || '-'}</td>
       <td className="px-6 py-4 text-sm text-gray-600">{formatDate(step.startDate)}</td>
       <td className="px-6 py-4 text-sm text-gray-600">{formatDate(step.endDate)}</td>

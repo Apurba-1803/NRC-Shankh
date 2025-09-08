@@ -20,19 +20,17 @@ interface LoginFormData {
 interface LoginProps {
   setIsAuthenticated: (value: boolean) => void;
   setUserRole: (role: string | null) => void;
+  setTabValue: (tab: string) => void; // Add this
 }
 
-/**
- * Login Component
- */
-export default function Login({ setIsAuthenticated, setUserRole }: LoginProps) {
+export default function Login({ setIsAuthenticated, setUserRole, setTabValue }: LoginProps) {
   const navigate = useNavigate();
 
   // ---------------------- State Declarations ---------------------- //
   const [formData, setFormData] = useState<LoginFormData>({
     id: "",
     password: "",
-    role: "planner", // Changed default to 'planner' for easier testing of the new feature
+    role: "planner",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,19 +39,11 @@ export default function Login({ setIsAuthenticated, setUserRole }: LoginProps) {
 
   // ---------------------- Handlers ---------------------- //
 
-  /**
-   * Handle input changes
-   * @param e - Input change event
-   */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  /**
-   * Handle form submission
-   * @param e - Form event
-   */
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -69,7 +59,7 @@ export default function Login({ setIsAuthenticated, setUserRole }: LoginProps) {
       // API endpoint
       const API_ENDPOINT = "https://nrprod.nrcontainers.com/api/auth/login";
 
-      // Make POST request to backend with the expected payload format
+      // 🔥 Make the API call - this was missing!
       const response = await axios.post(API_ENDPOINT, { id, password });
 
       // If login successful
@@ -80,13 +70,11 @@ export default function Login({ setIsAuthenticated, setUserRole }: LoginProps) {
         console.log('Login response:', response.data);
 
         // Store the access token in localStorage
-        // IMPORTANT: Using 'acessToken' as per your backend response.
-        localStorage.setItem("accessToken", response.data.acessToken); // Changed to acessToken
+        localStorage.setItem("accessToken", response.data.acessToken);
 
         // Store user data in localStorage for persistence
         localStorage.setItem("userData", JSON.stringify(response.data.data));
 
-        // Get user data from response
         const userData = response.data.data;
 
         // Set authentication state and user role
@@ -94,17 +82,22 @@ export default function Login({ setIsAuthenticated, setUserRole }: LoginProps) {
 
         // Handle roles array from backend response
         if (userData.roles && userData.roles.length > 0) {
-          setUserRole(userData.roles[0]); // Get first role from array
-          console.log('User role set to:', userData.roles[0]);
+          const userRole = userData.roles[0];
+          setUserRole(userRole);
+          
+          // 🔥 Initialize default tab based on role
+          setTabValue('dashboard'); // Always start with dashboard tab
+          
+          console.log('User role set to:', userRole);
+          console.log('Tab value initialized to: dashboard');
         } else {
           console.error('No roles found in user data:', userData);
           setUserRole(null);
+          setTabValue('dashboard'); // Default fallback
         }
 
-        // Clear form
-        setFormData({ id: "", password: "", role: "planner" }); // Reset role to planner for consistency
-
-        // Navigate to dashboard
+        // Clear form and navigate
+        setFormData({ id: "", password: "", role: "planner" });
         navigate('/dashboard');
       } else {
         setSubmitStatus("error");
@@ -118,6 +111,9 @@ export default function Login({ setIsAuthenticated, setUserRole }: LoginProps) {
       setIsSubmitting(false);
     }
   };
+
+
+
 
   // ---------------------- JSX ---------------------- //
 

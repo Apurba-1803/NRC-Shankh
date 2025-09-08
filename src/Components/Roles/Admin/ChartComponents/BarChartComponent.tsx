@@ -10,9 +10,7 @@ import {
   Decimation,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import DateFilterComponent, {
-  type DateFilterType,
-} from "../FilterComponents/DateFilterComponent";
+
 
 ChartJS.register(
   CategoryScale,

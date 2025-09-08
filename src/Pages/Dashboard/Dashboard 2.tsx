@@ -85,52 +85,30 @@ const Dashboard: React.FC<DashboardProps> = ({ tabValue, role }) => {
     <div className="px-4 sm:px-8 py-8 bg-[#f7f7f7] min-h-screen">
       <Suspense fallback={<div>Loading...</div>}>
         {/* Admin Role Tabs */}
-        // Add this before your existing tab rendering
-{!tabValue && role === 'admin' && (
-  <AdminDashboard />
-)}
-{!tabValue && role === 'planner' && (
-  <PlannerDashboardContainer />
-)}
+         {!role && <div>Loading user data...</div>}
 
-        {role === 'admin' && tabValue === 'dashboard' && (
-          <AdminDashboard />
-        )}
-        {role === 'admin' && tabValue === 'planner' && (
-          <PlannerDashboardContainer />
-        )}
-        {role === 'admin' && tabValue === 'production' && (
-          <ProductionHeadDashboard />
-        )}
-        {role === 'admin' && tabValue === 'dispatch' && (
-          <DispatchOverview />
-        )}
-        {role === 'admin' && tabValue === 'qc' && (
-          <QCDashboard />
-        )}
-        {role === 'admin' && tabValue === 'printing' && (
-          <PrintingDashboard />
-        )}
-        {role === 'admin' && tabValue === 'edit-working-details' && (
-          <EditWorkingDetails />
-        )}
+       {role === 'admin' && (
+        <>
+          {(!tabValue || tabValue === 'dashboard') && <AdminDashboard />}
+          {tabValue === 'planner' && <PlannerDashboardContainer />}
+          {tabValue === 'production' && <ProductionHeadDashboard />}
+          {tabValue === 'dispatch' && <DispatchOverview />}
+          {tabValue === 'qc' && <QCDashboard />}
+          {tabValue === 'printing' && <PrintingDashboard />}
+          {tabValue === 'edit-working-details' && <EditWorkingDetails />}
+        </>
+      )}
 
         {/* Planner role specific components */}
-        {role === 'planner' && tabValue === 'dashboard' && (
-          <PlannerDashboardContainer />
-        )}
-        {role === 'planner' && tabValue === 'start new job' && (
-          <StartNewJob />
-        )}
-        {role === 'planner' && tabValue === 'notifications' && (
-          <PlannerNotifications />
-        )}
-        {role === 'planner' && tabValue === 'jobs' && (
-          <PlannerJobs />
-        )}
-        {role === 'planner' && tabValue === 'job assigned' && (
-          <JobAssigned />
-        )}
+       {role === 'planner' && (
+        <>
+          {(!tabValue || tabValue === 'dashboard') && <PlannerDashboardContainer />}
+          {tabValue === 'start new job' && <StartNewJob />}
+          {tabValue === 'notifications' && <PlannerNotifications />}
+          {tabValue === 'jobs' && <PlannerJobs />}
+          {tabValue === 'job assigned' && <JobAssigned />}
+        </>
+      )}
 
 
         {/* Printing Manager jobs tab - RESTORED ORIGINAL CONTENT */}
