@@ -9,5 +9,5 @@ export default defineConfig({
     host: true, 
     port: 5173,
    } ,
-   base : process.env.VITE_BASE_PATH || "/NRC-Shankh"
+   base : process.env.VITE_BASE_PATH || "/"
 })
