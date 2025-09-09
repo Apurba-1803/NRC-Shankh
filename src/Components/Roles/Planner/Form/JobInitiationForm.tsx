@@ -340,11 +340,15 @@ const [jobOptions, setJobOptions] = useState<Job[]>([]);
     setError(null);
     if (!job) return;
 
+    console.log('🔍 DEBUG - job object:', job);
+    console.log('🔍 DEBUG - job.nrcJobNo:', job.nrcJobNo);
+    console.log('🔍 DEBUG - poDetails received:', poDetails)
+
     try {
       const accessToken = localStorage.getItem('accessToken');
       if (!accessToken) throw new Error('Authentication token not found.');
 
-      const payloadWithJobNo = { ...poDetails, nrcJobNo: job.nrcJobNo };
+      const payloadWithJobNo = { ...poDetails, jobNrcJobNo: job.nrcJobNo };
 
       const response = await fetch('https://nrprod.nrcontainers.com/api/purchase-orders/create', {
         method: 'POST',

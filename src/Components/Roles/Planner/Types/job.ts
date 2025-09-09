@@ -30,7 +30,7 @@ export interface Machine {
 }
 
 export interface PoDetailsPayload {
-  nrcJobNo: string;
+  jobNrcJobNo: string;
   boardSize: string;
   customer: string;
   deliveryDate: string;

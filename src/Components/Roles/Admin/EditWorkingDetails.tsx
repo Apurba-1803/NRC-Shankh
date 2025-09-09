@@ -344,11 +344,11 @@ const EditWorkingDetails: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Edit Working Details</h1>
         
         {/* Debug Info */}
-        <div className="mb-4 p-4 bg-blue-100 rounded-lg">
+        {/* <div className="mb-4 p-4 bg-blue-100 rounded-lg">
           <p className="text-sm text-blue-800">
             Debug: Loading: {loading.toString()}, Error: {error || 'none'}, Jobs: {jobs.length}, Filtered: {filteredJobs.length}
           </p>
-        </div>
+        </div> */}
         
         {/* Stopped Jobs Section */}
         <div className="mb-8">

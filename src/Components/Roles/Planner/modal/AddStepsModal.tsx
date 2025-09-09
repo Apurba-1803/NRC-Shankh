@@ -9,7 +9,7 @@ interface AddStepsModalProps {
 }
 
 const allStepsOptions: { stepName: string; description: string }[] = [
-  { stepName: 'Paper Store', description: 'Responsible : Store Manager, Inventory Officer' },
+  { stepName: 'PaperStore', description: 'Responsible : Store Manager, Inventory Officer' },
   { stepName: 'Printing', description: 'Responsible : Print Operator, Print Supervisor, Quality Inspector' },
   { stepName: 'Corrugation', description: 'Responsible : Corrugation Operator, Line Supervisor' },
   { stepName: 'Flute Lamination', description: 'Responsible : Lamination Operator, Machine Operator' },

@@ -12,6 +12,7 @@ import JobPlansTable from "./DataTable/JobPlansTable";
 import { useNavigate } from "react-router-dom";
 import CompletedJobsTable from "./CompletedJobsTable";
 import LoadingSpinner from "../../common/LoadingSpinner";
+import MachineUtilizationDashboard from "./MachineUtilization";
 
 // Types based on the API response structure
 interface JobPlanStep {
@@ -269,311 +270,358 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Fetch data from API with date filtering
-  const fetchDashboardData = async (
-    filterType?: DateFilterType,
-    customRange?: { start: string; end: string }
-  ) => {
-    try {
-      setLoading(true);
-      const accessToken = localStorage.getItem("accessToken");
-      if (!accessToken) throw new Error("Authentication token not found.");
-
-      // Build query parameters for date filtering
-      const queryParams = new URLSearchParams();
-      if (filterType && filterType !== "custom") {
-        queryParams.append("filter", filterType);
-      } else if (customRange) {
-        queryParams.append("startDate", customRange.start);
-        queryParams.append("endDate", customRange.end);
-      }
-
-      // Fetch filtered job planning data
-      const jobPlanningUrl = `https://nrprod.nrcontainers.com/api/job-planning/?${queryParams.toString()}`;
-      const jobPlanningResponse = await fetch(jobPlanningUrl, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-
-      if (!jobPlanningResponse.ok) {
-        throw new Error(
-          `Failed to fetch job planning data: ${jobPlanningResponse.status}`
-        );
-      }
-
-      const jobPlanningResult = await jobPlanningResponse.json();
-
-      // Fetch filtered completed jobs data
-      const completedJobsUrl = `https://nrprod.nrcontainers.com/api/completed-jobs?${queryParams.toString()}`;
-      const completedJobsResponse = await fetch(completedJobsUrl, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-
-      let completedJobsData: CompletedJob[] = [];
-      if (completedJobsResponse.ok) {
-        const completedJobsResult = await completedJobsResponse.json();
-        if (
-          completedJobsResult.success &&
-          Array.isArray(completedJobsResult.data)
-        ) {
-          completedJobsData = completedJobsResult.data;
-        }
-      }
-
-      if (jobPlanningResult.success && Array.isArray(jobPlanningResult.data)) {
-        const jobPlans = jobPlanningResult.data;
-
-        // Fetch step details for each job plan
-        const jobPlansWithDetails = await Promise.all(
-          jobPlans.map(async (jobPlan: JobPlan) => {
-            const stepsWithDetails = await Promise.all(
-              jobPlan.steps.map(async (step: JobPlanStep) => {
-                let stepDetails = null;
-                if (step.status === "start" || step.status === "stop") {
-                  stepDetails = await fetchStepDetails(
-                    step.stepName,
-                    jobPlan.nrcJobNo,
-                    accessToken
-                  );
-                }
-
-                return {
-                  ...step,
-                  stepDetails,
-                };
-              })
-            );
-
-            return {
-              ...jobPlan,
-              steps: stepsWithDetails,
-            };
-          })
-        );
-
-        // Process the data to create dashboard statistics
-        const processedData = processJobPlanData(
-          jobPlansWithDetails,
-          completedJobsData
-        );
-
-        setData(processedData);
-      } else {
-        throw new Error("Invalid API response format");
-      }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch dashboard data"
-      );
-      console.error("Dashboard data fetch error:", err);
-    } finally {
-      setLoading(false);
+  // Add this new function to fetch machine data
+// Add this function at the top level
+const fetchMachineUtilization = async (): Promise<Record<string, { total: number; available: number; inUse: number }>> => {
+  try {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      throw new Error('Authentication token not found.');
     }
-  };
 
-  // Process job plan data to create dashboard statistics
-  const processJobPlanData = (
-    jobPlans: JobPlan[],
-    completedJobsData: CompletedJob[]
-  ): AdminDashboardData => {
-    // Count completed jobs from the completed jobs API
-    const completedJobsCount = completedJobsData.length;
-
-    // Count jobs from job planning API (these are in progress or planned)
-    const totalJobs = jobPlans.length;
-    let inProgressJobs = 0;
-    let plannedJobs = 0;
-    let totalSteps = 0;
-    let completedSteps = 0;
-    const uniqueUsers = new Set<string>();
-
-    const stepStats: {
-      [key: string]: { completed: number; inProgress: number; planned: number };
-    } = {};
-    const machineStats: {
-      [key: string]: { total: number; available: number; inUse: number };
-    } = {};
-    const timeSeriesData: Array<{
-      date: string;
-      jobsStarted: number;
-      jobsCompleted: number;
-      totalSteps: number;
-      completedSteps: number;
-    }> = [];
-
-    // Initialize step statistics
-    const stepNames = [
-      "PaperStore",
-      "PrintingDetails",
-      "Corrugation",
-      "FluteLaminateBoardConversion",
-      "Punching",
-      "SideFlapPasting",
-      "QualityDept",
-      "DispatchProcess",
-    ];
-    stepNames.forEach((step) => {
-      stepStats[step] = { completed: 0, inProgress: 0, planned: 0 };
+    const response = await fetch('https://nrprod.nrcontainers.com/api/machines?', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
     });
 
-    // Process each job plan
-    jobPlans.forEach((jobPlan) => {
-      let jobCompleted = true;
-      let jobInProgress = false;
-      const totalStepsInJob = jobPlan.steps.length;
-      let completedStepsInJob = 0;
+    if (!response.ok) {
+      throw new Error(`Failed to fetch machines: ${response.status}`);
+    }
 
-      totalSteps += totalStepsInJob;
+    const data = await response.json();
+    if (!data.success || !Array.isArray(data.data)) {
+      throw new Error('Invalid API response format');
+    }
 
-      jobPlan.steps.forEach((step) => {
-        // SAFETY CHECK: Ensure stepStats exists for this step name
-        if (!stepStats[step.stepName]) {
-          // If step name doesn't exist in predefined list, create it dynamically
-          stepStats[step.stepName] = {
-            completed: 0,
-            inProgress: 0,
-            planned: 0,
-          };
-        }
-
-        // Determine step completion based on step details and status
-        if (step.stepDetails && step.stepDetails.status === "accept") {
-          // Step is completed if details show 'accept' status
-          stepStats[step.stepName].completed++;
-          completedStepsInJob++;
-          completedSteps++;
-        } else if (
-          step.status === "start" ||
-          (step.stepDetails && step.stepDetails.status === "in_progress")
-        ) {
-          // Step is in progress
-          stepStats[step.stepName].inProgress++;
-          jobInProgress = true;
-          jobCompleted = false;
-        } else {
-          // Step is planned
-          stepStats[step.stepName].planned++;
-          jobCompleted = false;
-        }
-
-        // Track unique users
-        if (step.user) {
-          uniqueUsers.add(step.user);
-        }
-
-        // Process machine details - ADD SAFETY CHECK
-        if (step.machineDetails && Array.isArray(step.machineDetails)) {
-          step.machineDetails.forEach((machine) => {
-            if (machine.machineType !== "Not assigned") {
-              const machineKey = machine.machineType;
-              if (!machineStats[machineKey]) {
-                machineStats[machineKey] = { total: 0, available: 0, inUse: 0 };
-              }
-              machineStats[machineKey].total++;
-
-              if (machine.machine?.status === "available") {
-                machineStats[machineKey].available++;
-              } else {
-                machineStats[machineKey].inUse++;
-              }
-            }
-          });
-        }
-      });
-
-      // Determine job status
-      if (jobCompleted) {
-        // This job is completed, but we're not counting it here since it comes from completed jobs API
-        // The completed jobs count comes from completedJobsData
-      } else if (jobInProgress) {
-        inProgressJobs++;
-      } else {
-        plannedJobs++;
+    // Process machines by type
+    const machineStats: Record<string, { total: number; available: number; inUse: number }> = {};
+    
+    data.data.forEach((machine: any) => {
+      // Skip inactive machines
+      if (!machine.isActive) return;
+      
+      const machineType = machine.machineType;
+      
+      // Initialize if not exists
+      if (!machineStats[machineType]) {
+        machineStats[machineType] = { total: 0, available: 0, inUse: 0 };
       }
+      
+      // Count totals
+      machineStats[machineType].total++;
+      
+      // Count by status
+      switch (machine.status.toLowerCase()) {
+        case 'available':
+          machineStats[machineType].available++;
+          break;
+        case 'busy':
+        case 'in_use':
+        case 'occupied':
+          machineStats[machineType].inUse++;
+          break;
+        default:
+          // For other statuses (maintenance, etc.), don't count as available or in use
+          break;
+      }
+    });
 
-      // Add to time series data
-      const jobDate = new Date(jobPlan.createdAt).toISOString().split("T")[0];
-      const existingDateIndex = timeSeriesData.findIndex(
-        (item) => item.date === jobDate
+    return machineStats;
+  } catch (error) {
+    console.error('Error fetching machine utilization:', error);
+    return {};
+  }
+};
+
+// Updated fetchDashboardData - make it async and await processJobPlanData
+const fetchDashboardData = async (
+  filterType?: DateFilterType,
+  customRange?: { start: string; end: string }
+) => {
+  try {
+    setLoading(true);
+    const accessToken = localStorage.getItem("accessToken");
+    if (!accessToken) throw new Error("Authentication token not found.");
+
+    // Build query parameters for date filtering
+    const queryParams = new URLSearchParams();
+    if (filterType && filterType !== "custom") {
+      queryParams.append("filter", filterType);
+    } else if (customRange) {
+      queryParams.append("startDate", customRange.start);
+      queryParams.append("endDate", customRange.end);
+    }
+
+    // Fetch filtered job planning data
+    const jobPlanningUrl = `https://nrprod.nrcontainers.com/api/job-planning/?${queryParams.toString()}`;
+    const jobPlanningResponse = await fetch(jobPlanningUrl, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!jobPlanningResponse.ok) {
+      throw new Error(
+        `Failed to fetch job planning data: ${jobPlanningResponse.status}`
+      );
+    }
+
+    const jobPlanningResult = await jobPlanningResponse.json();
+
+    // Fetch filtered completed jobs data
+    const completedJobsUrl = `https://nrprod.nrcontainers.com/api/completed-jobs?${queryParams.toString()}`;
+    const completedJobsResponse = await fetch(completedJobsUrl, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    let completedJobsData: CompletedJob[] = [];
+    if (completedJobsResponse.ok) {
+      const completedJobsResult = await completedJobsResponse.json();
+      if (
+        completedJobsResult.success &&
+        Array.isArray(completedJobsResult.data)
+      ) {
+        completedJobsData = completedJobsResult.data;
+      }
+    }
+
+    if (jobPlanningResult.success && Array.isArray(jobPlanningResult.data)) {
+      const jobPlans = jobPlanningResult.data;
+
+      // Fetch step details for each job plan
+      const jobPlansWithDetails = await Promise.all(
+        jobPlans.map(async (jobPlan: JobPlan) => {
+          const stepsWithDetails = await Promise.all(
+            jobPlan.steps.map(async (step: JobPlanStep) => {
+              let stepDetails = null;
+              if (step.status === "start" || step.status === "stop") {
+                stepDetails = await fetchStepDetails(
+                  step.stepName,
+                  jobPlan.nrcJobNo,
+                  accessToken
+                );
+              }
+
+              return {
+                ...step,
+                stepDetails,
+              };
+            })
+          );
+
+          return {
+            ...jobPlan,
+            steps: stepsWithDetails,
+          };
+        })
       );
 
-      if (existingDateIndex >= 0) {
-        timeSeriesData[existingDateIndex].totalSteps += totalStepsInJob;
-        timeSeriesData[existingDateIndex].completedSteps += completedStepsInJob;
-        if (jobInProgress) timeSeriesData[existingDateIndex].jobsStarted++;
-        // Note: completed jobs are counted separately from completed jobs API
+      // Process the data to create dashboard statistics - AWAIT this call
+      const processedData = await processJobPlanData(
+        jobPlansWithDetails,
+        completedJobsData
+      );
+
+      setData(processedData);
+    } else {
+      throw new Error("Invalid API response format");
+    }
+  } catch (err) {
+    setError(
+      err instanceof Error ? err.message : "Failed to fetch dashboard data"
+    );
+    console.error("Dashboard data fetch error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Updated processJobPlanData - fetch machines once, not in loop
+const processJobPlanData = async (
+  jobPlans: JobPlan[],
+  completedJobsData: CompletedJob[]
+): Promise<AdminDashboardData> => {
+  // Count completed jobs from the completed jobs API
+  const completedJobsCount = completedJobsData.length;
+
+  // Fetch machine data once at the beginning
+  const machineStats = await fetchMachineUtilization();
+
+  // Count jobs from job planning API (these are in progress or planned)
+  const totalJobs = jobPlans.length;
+  let inProgressJobs = 0;
+  let plannedJobs = 0;
+  let totalSteps = 0;
+  let completedSteps = 0;
+  const uniqueUsers = new Set<string>();
+
+  const stepStats: {
+    [key: string]: { completed: number; inProgress: number; planned: number };
+  } = {};
+  
+  const timeSeriesData: Array<{
+    date: string;
+    jobsStarted: number;
+    jobsCompleted: number;
+    totalSteps: number;
+    completedSteps: number;
+  }> = [];
+
+  // Initialize step statistics
+  const stepNames = [
+    "PaperStore",
+    "PrintingDetails",
+    "Corrugation",
+    "FluteLaminateBoardConversion",
+    "Punching",
+    "SideFlapPasting",
+    "QualityDept",
+    "DispatchProcess",
+  ];
+  stepNames.forEach((step) => {
+    stepStats[step] = { completed: 0, inProgress: 0, planned: 0 };
+  });
+
+  // Process each job plan
+  jobPlans.forEach((jobPlan) => {
+    let jobCompleted = true;
+    let jobInProgress = false;
+    const totalStepsInJob = jobPlan.steps.length;
+    let completedStepsInJob = 0;
+
+    totalSteps += totalStepsInJob;
+
+    jobPlan.steps.forEach((step) => {
+      // SAFETY CHECK: Ensure stepStats exists for this step name
+      if (!stepStats[step.stepName]) {
+        // If step name doesn't exist in predefined list, create it dynamically
+        stepStats[step.stepName] = {
+          completed: 0,
+          inProgress: 0,
+          planned: 0,
+        };
+      }
+
+      // Determine step completion based on step details and status
+      if (step.stepDetails && step.stepDetails.status === "accept") {
+        // Step is completed if details show 'accept' status
+        stepStats[step.stepName].completed++;
+        completedStepsInJob++;
+        completedSteps++;
+      } else if (
+        step.status === "start" ||
+        (step.stepDetails && step.stepDetails.status === "in_progress")
+      ) {
+        // Step is in progress
+        stepStats[step.stepName].inProgress++;
+        jobInProgress = true;
+        jobCompleted = false;
       } else {
-        timeSeriesData.push({
-          date: jobDate,
-          jobsStarted: jobInProgress ? 1 : 0,
-          jobsCompleted: 0, // Will be updated with completed jobs data
-          totalSteps: totalStepsInJob,
-          completedSteps: completedStepsInJob,
-        });
+        // Step is planned
+        stepStats[step.stepName].planned++;
+        jobCompleted = false;
+      }
+
+      // Track unique users
+      if (step.user) {
+        uniqueUsers.add(step.user);
       }
     });
 
-    console.log("completed jobs", completedJobsData)
+    // Determine job status
+    if (jobCompleted) {
+      // This job is completed, but we're not counting it here since it comes from completed jobs API
+      // The completed jobs count comes from completedJobsData
+    } else if (jobInProgress) {
+      inProgressJobs++;
+    } else {
+      plannedJobs++;
+    }
 
-    // Process completed jobs data for time series
-    completedJobsData.forEach((completedJob) => {
-  // Check if purchaseOrderDetails and poDate exist
-  const poDate = completedJob.purchaseOrderDetails?.poDate;
-  
-  if (poDate) {
-    const completedDate = new Date(poDate)
-      .toISOString()
-      .split("T")[0];
+    // Add to time series data
+    const jobDate = new Date(jobPlan.createdAt).toISOString().split("T")[0];
     const existingDateIndex = timeSeriesData.findIndex(
-      (item) => item.date === completedDate
+      (item) => item.date === jobDate
     );
 
     if (existingDateIndex >= 0) {
-      timeSeriesData[existingDateIndex].jobsCompleted++;
+      timeSeriesData[existingDateIndex].totalSteps += totalStepsInJob;
+      timeSeriesData[existingDateIndex].completedSteps += completedStepsInJob;
+      if (jobInProgress) timeSeriesData[existingDateIndex].jobsStarted++;
+      // Note: completed jobs are counted separately from completed jobs API
     } else {
       timeSeriesData.push({
-        date: completedDate,
-        jobsStarted: 0,
-        jobsCompleted: 1,
-        totalSteps: 0,
-        completedSteps: 0,
+        date: jobDate,
+        jobsStarted: jobInProgress ? 1 : 0,
+        jobsCompleted: 0, // Will be updated with completed jobs data
+        totalSteps: totalStepsInJob,
+        completedSteps: completedStepsInJob,
       });
     }
-  } else {
-    // Optional: Handle jobs without purchase order details
-    console.warn(`Job ${completedJob.id} has no purchase order date, skipping...`);
-  }
-});
+  });
 
+  console.log("completed jobs", completedJobsData);
 
-    // Sort time series data by date
-    timeSeriesData.sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
+  // Process completed jobs data for time series
+  completedJobsData.forEach((completedJob) => {
+    // Check if purchaseOrderDetails and poDate exist
+    const poDate = completedJob.purchaseOrderDetails?.poDate;
 
-    // Calculate efficiency
-    const efficiency =
-      totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+    if (poDate) {
+      const completedDate = new Date(poDate)
+        .toISOString()
+        .split("T")[0];
+      const existingDateIndex = timeSeriesData.findIndex(
+        (item) => item.date === completedDate
+      );
 
-      const filteredMachineStats = Object.fromEntries(
-  Object.entries(machineStats).filter(([key]) => key !== 'Paper Store')
-);
+      if (existingDateIndex >= 0) {
+        timeSeriesData[existingDateIndex].jobsCompleted++;
+      } else {
+        timeSeriesData.push({
+          date: completedDate,
+          jobsStarted: 0,
+          jobsCompleted: 1,
+          totalSteps: 0,
+          completedSteps: 0,
+        });
+      }
+    } else {
+      // Optional: Handle jobs without purchase order details
+      console.warn(`Job ${completedJob.id} has no purchase order date, skipping...`);
+    }
+  });
 
-    return {
-      jobPlans,
-      totalJobs: totalJobs + completedJobsCount, // Total = job plans + completed jobs
-      completedJobs: completedJobsCount, // From completed jobs API
-      inProgressJobs,
-      plannedJobs,
-      totalSteps,
-      completedSteps,
-      activeUsers: uniqueUsers.size,
-      efficiency,
-      stepCompletionStats: stepStats,
-      machineUtilization: filteredMachineStats,
-      timeSeriesData,
-      completedJobsData: completedJobsData, // Use the actual completed jobs data
-    };
+  // Sort time series data by date
+  timeSeriesData.sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  // Calculate efficiency
+  const efficiency =
+    totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+
+  const filteredMachineStats = Object.fromEntries(
+    Object.entries(machineStats).filter(([key]) => 
+      key !== 'Paper Store' && key !== 'Not Assigned'
+    )
+  );
+
+  return {
+    jobPlans,
+    totalJobs: totalJobs + completedJobsCount, // Total = job plans + completed jobs
+    completedJobs: completedJobsCount, // From completed jobs API
+    inProgressJobs,
+    plannedJobs,
+    totalSteps,
+    completedSteps,
+    activeUsers: uniqueUsers.size,
+    efficiency,
+    stepCompletionStats: stepStats,
+    machineUtilization: filteredMachineStats,
+    timeSeriesData,
+    completedJobsData: completedJobsData, // Use the actual completed jobs data
   };
+};
 
   
 
@@ -814,7 +862,7 @@ const AdminDashboard: React.FC = () => {
         className="mb-4"
       /> */}
       {/* Machine Utilization */}
-      <BarChartComponent
+      {/* <BarChartComponent
   data={Object.entries(filteredData.machineUtilization).map(
     ([machine, stats]) => ({
       machine,
@@ -833,6 +881,11 @@ const AdminDashboard: React.FC = () => {
   maxDataPoints={300}
   className="mb-8"
   showDateFilter={true}
+/> */}
+
+<MachineUtilizationDashboard
+  machineData={filteredData.machineUtilization}
+  className="mb-8"
 />
 
 

@@ -11,6 +11,8 @@ interface PODetailsFormProps {
 }
 
 const PODetailsForm: React.FC<PODetailsFormProps> = ({ job, onSave, onClose, onNext, isReadOnly }) => {
+
+ 
   const toDateInput = (isoDateString: string | null | undefined) => {
     if (!isoDateString) return '';
     try {
@@ -99,7 +101,7 @@ const PODetailsForm: React.FC<PODetailsFormProps> = ({ job, onSave, onClose, onN
       
       // Create the full payload with all required backend fields
       const payload: PoDetailsPayload = {
-        nrcJobNo: job.nrcJobNo,
+        jobNrcJobNo: job.nrcJobNo,
         boardSize: job.boxDimensions || '',
         customer: job.customerName || '',
         deliveryDate: toISOString(poData.deliveryDate) as string,
