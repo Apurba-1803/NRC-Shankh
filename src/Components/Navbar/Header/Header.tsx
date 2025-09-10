@@ -275,9 +275,9 @@ const Header: React.FC<HeaderProps> = ({ tabValue, setTabValue, onLogout, role }
               case "Test Edit Machine":
                 navigate('/dashboard/test-edit-machine');
                 break;
-              case "Edit Working Details":
-                handleTabChange("edit-working-details"); // 🔥 Use new handler
-                break;
+              // case "Edit Working Details":
+              //   handleTabChange("edit-working-details"); // 🔥 Use new handler
+              //   break;
             }
             setSidebarOpen(false);
             setMenuOpen(false);

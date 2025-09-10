@@ -99,47 +99,47 @@ const processedData = useMemo(() => {
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-lg ${className}`}>
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Machine Utilization Dashboard</h2>
-            <p className="text-gray-600">Real-time machine availability and usage statistics</p>
-          </div>
+  <div className={`bg-white rounded-lg shadow-lg overflow-hidden ${className}`}>
+  {/* Header */}
+  <div className="p-4 sm:p-6 border-b border-gray-200">
+    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 space-y-4 sm:space-y-0">
+      <div>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Machine Utilization Dashboard</h2>
+        <p className="text-gray-600 text-sm sm:text-base">Real-time machine availability and usage statistics</p>
+      </div>
           
           {/* View Controls */}
-          <div className="flex gap-2">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as any)}
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-0"
+        >
+          <option value="utilization">Sort by Utilization</option>
+          <option value="total">Sort by Total</option>
+          <option value="name">Sort by Name</option>
+        </select>
+        
+        <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+          {(['grid', 'bar', 'pie'] as const).map(type => (
+            <button
+              key={type}
+              onClick={() => setViewType(type)}
+              className={`px-3 py-2 text-sm font-medium flex-1 sm:flex-none ${
+                viewType === type 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
             >
-              <option value="utilization">Sort by Utilization</option>
-              <option value="total">Sort by Total</option>
-              <option value="name">Sort by Name</option>
-            </select>
-            
-            <div className="flex border border-gray-300 rounded-lg overflow-hidden">
-              {(['grid', 'bar', 'pie'] as const).map(type => (
-                <button
-                  key={type}
-                  onClick={() => setViewType(type)}
-                  className={`px-3 py-2 text-sm font-medium ${
-                    viewType === type 
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
+              {type.charAt(0).toUpperCase() + type.slice(1)}
+            </button>
+          ))}
         </div>
+      </div>
+    </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 md:gap-4">
           <div className="bg-blue-50 p-4 rounded-lg">
             <div className="text-2xl font-bold text-blue-600">{summaryStats.totalMachines}</div>
             <div className="text-sm text-blue-800">Total Machines</div>
@@ -166,7 +166,7 @@ const processedData = useMemo(() => {
       {/* Content based on view type */}
       <div className="p-6">
         {viewType === 'grid' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {processedData.map((machine) => (
               <div key={machine.originalMachine} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start mb-3">
