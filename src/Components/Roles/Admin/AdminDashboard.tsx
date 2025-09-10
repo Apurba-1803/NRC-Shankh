@@ -334,6 +334,70 @@ const fetchMachineUtilization = async (): Promise<Record<string, { total: number
   }
 };
 
+const mergeStepCompletionStats = (stepStats: {
+  [key: string]: { completed: number; inProgress: number; planned: number };
+}) => {
+  // Define mapping for duplicate steps
+  const stepMappings = {
+    'Printing': ['Printing', 'PrintingDetails'],
+    'Flute Lamination': ['Flute Lamination', 'FluteLaminateBoardConversion'],
+    'Quality Control': ['Quality Control', 'QualityDept'],
+    'Flap Pasting': ['Flap Pasting', 'SideFlapPasting'],
+    'Paper Store': ['Paper Store', 'PaperStore'],
+    'Dispatch': ['Dispatch', 'DispatchProcess']
+  };
+
+  const mergedStats: {
+    [key: string]: { completed: number; inProgress: number; planned: number };
+  } = {};
+
+  const processedKeys = new Set<string>();
+
+  // Process each step in the original stats
+  Object.keys(stepStats).forEach(stepName => {
+    if (processedKeys.has(stepName)) return;
+
+    // Find if this step belongs to any mapping group
+    let masterKey = stepName;
+    let foundGroup = false;
+
+    for (const [master, variants] of Object.entries(stepMappings)) {
+      if (variants.includes(stepName)) {
+        masterKey = master;
+        foundGroup = true;
+        break;
+      }
+    }
+
+    // Initialize the master key if not exists
+    if (!mergedStats[masterKey]) {
+      mergedStats[masterKey] = { completed: 0, inProgress: 0, planned: 0 };
+    }
+
+    if (foundGroup) {
+      // Aggregate all variants of this step
+      const variants = stepMappings[masterKey as keyof typeof stepMappings];
+      variants.forEach(variant => {
+        if (stepStats[variant]) {
+          mergedStats[masterKey].completed += stepStats[variant].completed;
+          mergedStats[masterKey].inProgress += stepStats[variant].inProgress;
+          mergedStats[masterKey].planned += stepStats[variant].planned;
+          processedKeys.add(variant);
+        }
+      });
+    } else {
+      // Single step, just copy the data
+      mergedStats[masterKey].completed += stepStats[stepName].completed;
+      mergedStats[masterKey].inProgress += stepStats[stepName].inProgress;
+      mergedStats[masterKey].planned += stepStats[stepName].planned;
+      processedKeys.add(stepName);
+    }
+  });
+
+  return mergedStats;
+};
+
+
 // Updated fetchDashboardData - make it async and await processJobPlanData
 const fetchDashboardData = async (
   filterType?: DateFilterType,
@@ -600,11 +664,13 @@ const processJobPlanData = async (
   const efficiency =
     totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
-  const filteredMachineStats = Object.fromEntries(
-    Object.entries(machineStats).filter(([key]) => 
-      key !== 'Paper Store' && key !== 'Not Assigned'
-    )
-  );
+  // const filteredMachineStats = Object.fromEntries(
+  //   Object.entries(machineStats).filter(([key]) => 
+  //     key !== 'PaperStore' && key !== 'Not Assigned'
+  //   )
+  // );
+
+   const mergedStepStats = mergeStepCompletionStats(stepStats);
 
   return {
     jobPlans,
@@ -616,8 +682,8 @@ const processJobPlanData = async (
     completedSteps,
     activeUsers: uniqueUsers.size,
     efficiency,
-    stepCompletionStats: stepStats,
-    machineUtilization: filteredMachineStats,
+    stepCompletionStats: mergedStepStats,
+    machineUtilization: machineStats,
     timeSeriesData,
     completedJobsData: completedJobsData, // Use the actual completed jobs data
   };
@@ -675,7 +741,7 @@ const processJobPlanData = async (
   if (!filteredData) {
     return <div>No data available</div>;
   }
-  console.log("machine utilization", filteredData.machineUtilization)
+  console.log("step completion", filteredData.machineUtilization)
 
 
   return (
@@ -941,88 +1007,88 @@ const processJobPlanData = async (
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Detailed Step Information
         </h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {Object.entries(filteredData.stepCompletionStats)
-            .filter(([stepName]) => stepName !== "Paper Store") // ignore unwanted key
-            .map(([stepName, stats]) => {
-              const stepJobs = filteredData.jobPlans.filter((jobPlan) =>
-                jobPlan.steps.some(
-                  (step) => step.stepName === stepName && step.stepDetails
-                )
-              );
+       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  {Object.entries(filteredData.stepCompletionStats)
+    .map(([stepName, stats]) => {
+      const stepJobs = filteredData.jobPlans.filter((jobPlan) =>
+        jobPlan.steps.some(
+          (step) => step.stepName === stepName && step.stepDetails
+        )
+      );
 
-              return (
-                <div
-                  key={stepName}
-                  className="border border-gray-200 rounded-lg p-4"
-                >
-                  <h4 className="font-semibold text-gray-700 mb-3">
-                    {stepName}
-                  </h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Completed:</span>
-                      <span className="font-medium text-green-600">
-                        {stats.completed}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">
-                        In Progress:
-                      </span>
-                      <span className="font-medium text-yellow-600">
-                        {stats.inProgress}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Planned:</span>
-                      <span className="font-medium text-gray-600">
-                        {stats.planned}
-                      </span>
-                    </div>
-                    {stepJobs.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <p className="text-xs text-gray-500 mb-2">
-                          Recent Jobs with Details:
-                        </p>
-                        <div className="space-y-1">
-                          {stepJobs.slice(0, 3).map((jobPlan) => {
-                            const step = jobPlan.steps.find(
-                              (s) => s.stepName === stepName
-                            );
-                            const details = step?.stepDetails;
+      return (
+        <div
+          key={stepName}
+          className="border border-gray-200 rounded-lg p-4"
+        >
+          <h4 className="font-semibold text-gray-700 mb-3">
+            {stepName}
+          </h4>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Completed:</span>
+              <span className="font-medium text-green-600">
+                {stats.completed}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">
+                In Progress:
+              </span>
+              <span className="font-medium text-yellow-600">
+                {stats.inProgress}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Planned:</span>
+              <span className="font-medium text-gray-600">
+                {stats.planned}
+              </span>
+            </div>
+            {stepJobs.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <p className="text-xs text-gray-500 mb-2">
+                  Recent Jobs with Details:
+                </p>
+                <div className="space-y-1">
+                  {stepJobs.slice(0, 3).map((jobPlan) => {
+                    const step = jobPlan.steps.find(
+                      (s) => s.stepName === stepName
+                    );
+                    const details = step?.stepDetails;
 
-                            if (!details) return null;
+                    if (!details) return null;
 
-                            return (
-                              <div
-                                key={jobPlan.jobPlanId}
-                                className="text-xs bg-gray-50 p-2 rounded"
-                              >
-                                <div className="font-medium text-gray-700">
-                                  {jobPlan.nrcJobNo}
-                                </div>
-                                <div className="text-gray-500">
-                                  {details.quantity &&
-                                    `Qty: ${details.quantity}`}
-                                  {details.operatorName &&
-                                    ` | Operator: ${details.operatorName}`}
-                                  {details.date &&
-                                    ` | Date: ${new Date(
-                                      details.date
-                                    ).toLocaleDateString()}`}
-                                </div>
-                              </div>
-                            );
-                          })}
+                    return (
+                      <div
+                        key={jobPlan.jobPlanId}
+                        className="text-xs bg-gray-50 p-2 rounded"
+                      >
+                        <div className="font-medium text-gray-700">
+                          {jobPlan.nrcJobNo}
+                        </div>
+                        <div className="text-gray-500">
+                          {details.quantity &&
+                            `Qty: ${details.quantity}`}
+                          {details.operatorName &&
+                            ` | Operator: ${details.operatorName}`}
+                          {details.date &&
+                            ` | Date: ${new Date(
+                              details.date
+                            ).toLocaleDateString()}`}
                         </div>
                       </div>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </div>
+            )}
+          </div>
         </div>
+      );
+    })}
+</div>
+
       </div>
 
       {/* Job Plans Table */}
