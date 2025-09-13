@@ -3,7 +3,7 @@ import {
   ChevronUpIcon, 
   ChevronDownIcon, 
   MagnifyingGlassIcon,
-  FunnelIcon,
+  // FunnelIcon,
   CurrencyRupeeIcon,
   CalendarIcon,
   BuildingOfficeIcon,
@@ -90,8 +90,8 @@ const CompletedJobsTable: React.FC<CompletedJobsTableProps> = ({
     unit: ''
   });
 
-  const [showAggregations, setShowAggregations] = useState(true);
-  const [selectedUnit, setSelectedUnit] = useState<string>("MK");
+  // const [showAggregations, setShowAggregations] = useState(true);
+  // const [selectedUnit, setSelectedUnit] = useState<string>("MK");
 
 
   // Process and transform the data
@@ -258,18 +258,18 @@ console.log("sorted data", sortedData)
               <p className="text-blue-100">Daily Production & Revenue Tracking</p>
             </div>
           </div>
-          <button
+          {/* <button
             onClick={() => setShowAggregations(!showAggregations)}
             className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
           >
             <FunnelIcon className="h-4 w-4" />
             <span>{showAggregations ? 'Hide' : 'Show'} Analytics</span>
-          </button>
+          </button> */}
         </div>
       </div>
 
       {/* Aggregations Section */}
-      {showAggregations && (
+      {/* {showAggregations && (
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div className="bg-white p-4 rounded-lg border border-gray-200">
@@ -306,12 +306,12 @@ console.log("sorted data", sortedData)
                 {Object.keys(aggregations.dailyRevenue).length}
               </p>
             </div>
-          </div>
+          </div> */}
 
           
 
           {/* Top Performers */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4"> */}
             {/* <div className="bg-white p-4 rounded-lg border border-gray-200">
   <div className="flex items-center justify-between mb-2">
     <h4 className="font-semibold text-gray-800">Top Revenue Unit</h4>
@@ -352,7 +352,7 @@ console.log("sorted data", sortedData)
   })()}
 </div> */}
 
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
+            {/* <div className="bg-white p-4 rounded-lg border border-gray-200">
               <h4 className="font-semibold text-gray-800 mb-2">Top Customer</h4>
               {(() => {
                 const topCustomer = Object.entries(aggregations.customerRevenue)
@@ -386,7 +386,7 @@ console.log("sorted data", sortedData)
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Filters */}
       <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
@@ -431,7 +431,7 @@ console.log("sorted data", sortedData)
             <tr>
               {[
                 { key: 'date', label: 'Date' },
-                { key: 'nrcJobNo', label: 'NRC Job No' },
+                // { key: 'nrcJobNo', label: 'NRC Job No' },
                 { key: 'customerName', label: 'Customer Name' },
                 { key: 'unit', label: 'Unit' },
                 // { key: 'preRate', label: 'Pre Rate' },
@@ -478,9 +478,9 @@ console.log("sorted data", sortedData)
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                     {row.date}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 font-mono">
+                  {/* <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 font-mono">
                     {row.nrcJobNo}
-                  </td>
+                  </td> */}
                   <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate" title={row.customerName}>
                     {row.customerName}
                   </td>

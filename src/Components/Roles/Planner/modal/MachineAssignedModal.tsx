@@ -8,7 +8,7 @@ interface MachineAssignedModalProps {
   onClose: () => void;
 }
 
-const MachineAssignedModal: React.FC<MachineAssignedModalProps> = ({ currentMachine, onSelect, onClose }) => {
+const MachineAssignedModal: React.FC<MachineAssignedModalProps> = ({  onSelect, onClose }) => {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +68,7 @@ const MachineAssignedModal: React.FC<MachineAssignedModalProps> = ({ currentMach
 
   const handleSave = () => {
     const machinesToSave = Object.entries(selectedMachines)
-      .map(([group, machineId]) => machines.find((m) => m.id === machineId))
+      .map(([ machineId]) => machines.find((m) => m.id === machineId))
       .filter(Boolean) as Machine[];
     onSelect(machinesToSave); // pass array of selected machines
   };

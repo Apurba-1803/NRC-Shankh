@@ -58,12 +58,20 @@ interface StepDetailsModalProps {
 
 const StepDetailsModal: React.FC<StepDetailsModalProps> = ({
   job,
-  stepDetails,
+  // stepDetails,
   onClose,
   onUpdateStatus,
   onEditMachine,
   onViewDetails
 }) => {
+
+  const formatStepName = (stepName: string): string => {
+    return stepName
+      .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space before capital letters
+      .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2') // Handle consecutive capitals
+      .trim();
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'start': return 'bg-green-100 text-green-800';
@@ -84,10 +92,10 @@ const StepDetailsModal: React.FC<StepDetailsModalProps> = ({
     });
   };
 
-  const getStepIcon = (stepName: string) => {
-    // Return appropriate icon based on step name
-    return <WrenchScrewdriverIcon className="h-5 w-5" />;
-  };
+  // const getStepIcon = (stepName: string) => {
+  //   // Return appropriate icon based on step name
+  //   return <WrenchScrewdriverIcon className="h-5 w-5" />;
+  // };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-transparent backdrop-blur-md bg-opacity-50">
@@ -135,7 +143,9 @@ const StepDetailsModal: React.FC<StepDetailsModalProps> = ({
                       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                         <span className="text-blue-600 font-semibold text-sm">{step.stepNo}</span>
                       </div>
-                      <h5 className="text-lg font-semibold text-gray-900">{step.stepName}</h5>
+                     <h5 className="text-lg font-semibold text-gray-900">
+                        {formatStepName(step.stepName)}
+                      </h5>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(step.status)}`}>
                       {step.status.toUpperCase()}

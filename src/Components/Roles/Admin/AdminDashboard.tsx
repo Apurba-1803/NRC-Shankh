@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Calendar } from "lucide-react";
 import DateFilterComponent, {
   type DateFilterType,
@@ -7,7 +7,7 @@ import StatisticsGrid from "./StatisticsCards/StatisticsGrid";
 import LineChartComponent from "./ChartComponents/LineChartComponent";
 import BarChartComponent from "./ChartComponents/BarChartComponent";
 import PieChartComponent from "./ChartComponents/PieChartComponent";
-import AdvancedDataChart from "./ChartComponents/AdvancedDataChart";
+// import AdvancedDataChart from "./ChartComponents/AdvancedDataChart";
 import JobPlansTable from "./DataTable/JobPlansTable";
 import { useNavigate } from "react-router-dom";
 import CompletedJobsTable from "./CompletedJobsTable";
@@ -101,19 +101,17 @@ interface AdminDashboardData {
   activeUsers: number;
   efficiency: number;
   stepCompletionStats: {
-    [key: string]: {
-      completed: number;
-      inProgress: number;
+    [key: string]: { 
+      completed: number; 
+      inProgress: number; 
       planned: number;
+      // Add the actual data arrays
+      completedData: JobPlan[];
+      inProgressData: JobPlan[];
+      plannedData: JobPlan[];
     };
   };
-  machineUtilization: {
-    [key: string]: {
-      total: number;
-      available: number;
-      inUse: number;
-    };
-  };
+  machineUtilization: MachineUtilizationData;
   timeSeriesData: Array<{
     date: string;
     jobsStarted: number;
@@ -122,6 +120,28 @@ interface AdminDashboardData {
     completedSteps: number;
   }>;
   completedJobsData: CompletedJob[];
+ 
+}
+
+interface MachineDetails {
+  id: string;
+  machineCode: string;
+  machineType: string;
+  description: string;
+  status: string;
+  capacity: number;
+  unit: string;
+  jobs: Array<{
+    id: number;
+    nrcJobNo: string;
+    customerName: string;
+    status: string;
+  }>;
+}
+
+interface MachineUtilizationData {
+  machineStats: Record<string, { total: number; available: number; inUse: number }>;
+  machineDetails: MachineDetails[];
 }
 
 const AdminDashboard: React.FC = () => {
@@ -129,7 +149,7 @@ const AdminDashboard: React.FC = () => {
   const [data, setData] = useState<AdminDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dateFilter, setDateFilter] = useState<DateFilterType>("month");
+  const [dateFilter, setDateFilter] = useState<DateFilterType>("today");
   const [customDateRange, setCustomDateRange] = useState<{
     start: string;
     end: string;
@@ -272,7 +292,7 @@ const AdminDashboard: React.FC = () => {
 
   // Add this new function to fetch machine data
 // Add this function at the top level
-const fetchMachineUtilization = async (): Promise<Record<string, { total: number; available: number; inUse: number }>> => {
+const fetchMachineUtilization = async (): Promise<MachineUtilizationData> => {
   try {
     const accessToken = localStorage.getItem('accessToken');
     if (!accessToken) {
@@ -294,8 +314,11 @@ const fetchMachineUtilization = async (): Promise<Record<string, { total: number
       throw new Error('Invalid API response format');
     }
 
-    // Process machines by type
+    // Process machines by type for stats
     const machineStats: Record<string, { total: number; available: number; inUse: number }> = {};
+    
+    // Store individual machine details
+    const machineDetails: MachineDetails[] = [];
     
     data.data.forEach((machine: any) => {
       // Skip inactive machines
@@ -303,7 +326,19 @@ const fetchMachineUtilization = async (): Promise<Record<string, { total: number
       
       const machineType = machine.machineType;
       
-      // Initialize if not exists
+      // Add to individual machine details
+      machineDetails.push({
+        id: machine.id,
+        machineCode: machine.machineCode,
+        machineType: machine.machineType,
+        description: machine.description,
+        status: machine.status,
+        capacity: machine.capacity,
+        unit: machine.unit,
+        jobs: machine.jobs || []
+      });
+      
+      // Initialize stats if not exists
       if (!machineStats[machineType]) {
         machineStats[machineType] = { total: 0, available: 0, inUse: 0 };
       }
@@ -327,15 +362,28 @@ const fetchMachineUtilization = async (): Promise<Record<string, { total: number
       }
     });
 
-    return machineStats;
+    return {
+      machineStats,
+      machineDetails
+    };
   } catch (error) {
     console.error('Error fetching machine utilization:', error);
-    return {};
+    return {
+      machineStats: {},
+      machineDetails: []
+    };
   }
 };
 
 const mergeStepCompletionStats = (stepStats: {
-  [key: string]: { completed: number; inProgress: number; planned: number };
+  [key: string]: { 
+    completed: number; 
+    inProgress: number; 
+    planned: number;
+    completedData: JobPlan[];
+    inProgressData: JobPlan[];
+    plannedData: JobPlan[];
+  };
 }) => {
   // Define mapping for duplicate steps
   const stepMappings = {
@@ -348,7 +396,14 @@ const mergeStepCompletionStats = (stepStats: {
   };
 
   const mergedStats: {
-    [key: string]: { completed: number; inProgress: number; planned: number };
+    [key: string]: { 
+      completed: number; 
+      inProgress: number; 
+      planned: number;
+      completedData: JobPlan[];
+      inProgressData: JobPlan[];
+      plannedData: JobPlan[];
+    };
   } = {};
 
   const processedKeys = new Set<string>();
@@ -371,7 +426,14 @@ const mergeStepCompletionStats = (stepStats: {
 
     // Initialize the master key if not exists
     if (!mergedStats[masterKey]) {
-      mergedStats[masterKey] = { completed: 0, inProgress: 0, planned: 0 };
+      mergedStats[masterKey] = { 
+        completed: 0, 
+        inProgress: 0, 
+        planned: 0,
+        completedData: [],
+        inProgressData: [],
+        plannedData: []
+      };
     }
 
     if (foundGroup) {
@@ -382,6 +444,12 @@ const mergeStepCompletionStats = (stepStats: {
           mergedStats[masterKey].completed += stepStats[variant].completed;
           mergedStats[masterKey].inProgress += stepStats[variant].inProgress;
           mergedStats[masterKey].planned += stepStats[variant].planned;
+          
+          // Merge the data arrays
+          mergedStats[masterKey].completedData.push(...stepStats[variant].completedData);
+          mergedStats[masterKey].inProgressData.push(...stepStats[variant].inProgressData);
+          mergedStats[masterKey].plannedData.push(...stepStats[variant].plannedData);
+          
           processedKeys.add(variant);
         }
       });
@@ -390,12 +458,19 @@ const mergeStepCompletionStats = (stepStats: {
       mergedStats[masterKey].completed += stepStats[stepName].completed;
       mergedStats[masterKey].inProgress += stepStats[stepName].inProgress;
       mergedStats[masterKey].planned += stepStats[stepName].planned;
+      
+      // Copy the data arrays
+      mergedStats[masterKey].completedData.push(...stepStats[stepName].completedData);
+      mergedStats[masterKey].inProgressData.push(...stepStats[stepName].inProgressData);
+      mergedStats[masterKey].plannedData.push(...stepStats[stepName].plannedData);
+      
       processedKeys.add(stepName);
     }
   });
 
   return mergedStats;
 };
+
 
 
 // Updated fetchDashboardData - make it async and await processJobPlanData
@@ -519,7 +594,14 @@ const processJobPlanData = async (
   const uniqueUsers = new Set<string>();
 
   const stepStats: {
-    [key: string]: { completed: number; inProgress: number; planned: number };
+    [key: string]: { 
+      completed: number; 
+      inProgress: number; 
+      planned: number;
+      completedData: JobPlan[];
+      inProgressData: JobPlan[];
+      plannedData: JobPlan[];
+    };
   } = {};
   
   const timeSeriesData: Array<{
@@ -541,8 +623,16 @@ const processJobPlanData = async (
     "QualityDept",
     "DispatchProcess",
   ];
+  
   stepNames.forEach((step) => {
-    stepStats[step] = { completed: 0, inProgress: 0, planned: 0 };
+    stepStats[step] = { 
+      completed: 0, 
+      inProgress: 0, 
+      planned: 0,
+      completedData: [],
+      inProgressData: [],
+      plannedData: []
+    };
   });
 
   // Process each job plan
@@ -557,18 +647,21 @@ const processJobPlanData = async (
     jobPlan.steps.forEach((step) => {
       // SAFETY CHECK: Ensure stepStats exists for this step name
       if (!stepStats[step.stepName]) {
-        // If step name doesn't exist in predefined list, create it dynamically
         stepStats[step.stepName] = {
           completed: 0,
           inProgress: 0,
           planned: 0,
+          completedData: [],
+          inProgressData: [],
+          plannedData: []
         };
       }
 
       // Determine step completion based on step details and status
       if (step.stepDetails && step.stepDetails.status === "accept") {
-        // Step is completed if details show 'accept' status
+        // Step is completed
         stepStats[step.stepName].completed++;
+        stepStats[step.stepName].completedData.push(jobPlan);
         completedStepsInJob++;
         completedSteps++;
       } else if (
@@ -577,11 +670,13 @@ const processJobPlanData = async (
       ) {
         // Step is in progress
         stepStats[step.stepName].inProgress++;
+        stepStats[step.stepName].inProgressData.push(jobPlan);
         jobInProgress = true;
         jobCompleted = false;
       } else {
         // Step is planned
         stepStats[step.stepName].planned++;
+        stepStats[step.stepName].plannedData.push(jobPlan);
         jobCompleted = false;
       }
 
@@ -594,7 +689,6 @@ const processJobPlanData = async (
     // Determine job status
     if (jobCompleted) {
       // This job is completed, but we're not counting it here since it comes from completed jobs API
-      // The completed jobs count comes from completedJobsData
     } else if (jobInProgress) {
       inProgressJobs++;
     } else {
@@ -611,12 +705,11 @@ const processJobPlanData = async (
       timeSeriesData[existingDateIndex].totalSteps += totalStepsInJob;
       timeSeriesData[existingDateIndex].completedSteps += completedStepsInJob;
       if (jobInProgress) timeSeriesData[existingDateIndex].jobsStarted++;
-      // Note: completed jobs are counted separately from completed jobs API
     } else {
       timeSeriesData.push({
         date: jobDate,
         jobsStarted: jobInProgress ? 1 : 0,
-        jobsCompleted: 0, // Will be updated with completed jobs data
+        jobsCompleted: 0,
         totalSteps: totalStepsInJob,
         completedSteps: completedStepsInJob,
       });
@@ -627,13 +720,10 @@ const processJobPlanData = async (
 
   // Process completed jobs data for time series
   completedJobsData.forEach((completedJob) => {
-    // Check if purchaseOrderDetails and poDate exist
     const poDate = completedJob.purchaseOrderDetails?.poDate;
 
     if (poDate) {
-      const completedDate = new Date(poDate)
-        .toISOString()
-        .split("T")[0];
+      const completedDate = new Date(poDate).toISOString().split("T")[0];
       const existingDateIndex = timeSeriesData.findIndex(
         (item) => item.date === completedDate
       );
@@ -650,7 +740,6 @@ const processJobPlanData = async (
         });
       }
     } else {
-      // Optional: Handle jobs without purchase order details
       console.warn(`Job ${completedJob.id} has no purchase order date, skipping...`);
     }
   });
@@ -664,18 +753,12 @@ const processJobPlanData = async (
   const efficiency =
     totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
-  // const filteredMachineStats = Object.fromEntries(
-  //   Object.entries(machineStats).filter(([key]) => 
-  //     key !== 'PaperStore' && key !== 'Not Assigned'
-  //   )
-  // );
-
-   const mergedStepStats = mergeStepCompletionStats(stepStats);
+  const mergedStepStats = mergeStepCompletionStats(stepStats);
 
   return {
     jobPlans,
-    totalJobs: totalJobs + completedJobsCount, // Total = job plans + completed jobs
-    completedJobs: completedJobsCount, // From completed jobs API
+    totalJobs: totalJobs + completedJobsCount,
+    completedJobs: completedJobsCount,
     inProgressJobs,
     plannedJobs,
     totalSteps,
@@ -685,7 +768,7 @@ const processJobPlanData = async (
     stepCompletionStats: mergedStepStats,
     machineUtilization: machineStats,
     timeSeriesData,
-    completedJobsData: completedJobsData, // Use the actual completed jobs data
+    completedJobsData: completedJobsData,
   };
 };
 
@@ -742,6 +825,7 @@ const processJobPlanData = async (
     return <div>No data available</div>;
   }
   console.log("step completion", filteredData.machineUtilization)
+
 
 
   return (
@@ -917,6 +1001,7 @@ const processJobPlanData = async (
   height={300}
   maxDataPoints={500}
   stacked={true}
+  stepCompletionStats={filteredData.stepCompletionStats} // Add this line
 />
 
       </div>
@@ -1003,7 +1088,7 @@ const processJobPlanData = async (
       {/* {console.log(filteredData.stepCompletionStats)} */}
 
       {/* Detailed Step Information */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+      {/* <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Detailed Step Information
         </h3>
@@ -1089,7 +1174,7 @@ const processJobPlanData = async (
     })}
 </div>
 
-      </div>
+      </div> */}
 
       {/* Job Plans Table */}
       <JobPlansTable

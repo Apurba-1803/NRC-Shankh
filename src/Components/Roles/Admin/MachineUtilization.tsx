@@ -1,61 +1,131 @@
 import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 
-interface MachineStats {
-  total: number;
-  available: number;
-  inUse: number;
+// interface MachineStats {
+//   total: number;
+//   available: number;
+//   inUse: number;
+// }
+
+interface MachineDetails {
+  id: string;
+  machineCode: string;
+  machineType: string;
+  description: string;
+  status: string;
+  capacity: number;
+  unit: string;
+  jobs: Array<{
+    id: number;
+    nrcJobNo: string;
+    customerName: string;
+    status: string;
+  }>;
 }
 
 interface MachineUtilizationDashboardProps {
-  machineData: Record<string, MachineStats>;
+  machineData: {
+    machineStats: Record<string, { total: number; available: number; inUse: number }>;
+    machineDetails: MachineDetails[];
+  };
   className?: string;
 }
-
 const MachineUtilizationDashboard: React.FC<MachineUtilizationDashboardProps> = ({ 
   machineData, 
   className = "" 
 }) => {
   const [viewType, setViewType] = useState<'bar' | 'grid' | 'pie'>('grid');
   const [sortBy, setSortBy] = useState<'name' | 'utilization' | 'total'>('utilization');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
 
   // Process and sort data
   // Process and sort data
-const processedData = useMemo(() => {
-  return Object.entries(machineData)
-    .map(([originalMachine, stats]) => ({
-      originalMachine, // ← Keep original for unique key
-      machine: originalMachine.replace(/Machine$/, '').trim(), // Clean name for display
-      ...stats,
-      utilizationRate: stats.total > 0 ? Math.round((stats.inUse / stats.total) * 100) : 0,
-      availabilityRate: stats.total > 0 ? Math.round((stats.available / stats.total) * 100) : 0,
-      category: getMachineCategory(originalMachine)
-    }))
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'name':
-          return a.machine.localeCompare(b.machine);
-        case 'utilization':
-          return b.utilizationRate - a.utilizationRate;
-        case 'total':
-          return b.total - a.total;
-        default:
-          return b.utilizationRate - a.utilizationRate;
+ const processedData = useMemo(() => {
+    return Object.entries(machineData.machineStats)
+      .map(([machineType, stats]) => ({
+        originalMachine: machineType,
+        machine: machineType.replace(/Machine$/, '').trim(),
+        ...stats,
+        utilizationRate: stats.total > 0 ? Math.round((stats.inUse / stats.total) * 100) : 0,
+        availabilityRate: stats.total > 0 ? Math.round((stats.available / stats.total) * 100) : 0,
+        category: getMachineCategory(machineType)
+      }))
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'name':
+            return a.machine.localeCompare(b.machine);
+          case 'utilization':
+            return b.utilizationRate - a.utilizationRate;
+          case 'total':
+            return b.total - a.total;
+          default:
+            return b.utilizationRate - a.utilizationRate;
+        }
+      });
+  }, [machineData.machineStats, sortBy]);
+
+
+// Group machines by category
+const categorizedMachines = useMemo(() => {
+    const grouped = machineData.machineDetails.reduce((acc, machine) => {
+      const category = getMachineCategory(machine.machineType);
+      if (!acc[category]) {
+        acc[category] = [];
       }
-    });
-}, [machineData, sortBy]);
+      
+      // Calculate utilization for individual machine
+      const utilizationRate = machine.capacity > 0 ? 
+        Math.round((machine.jobs?.length || 0) / machine.capacity * 100) : 0;
+      
+      acc[category].push({
+        ...machine,
+        category,
+        utilizationRate,
+        // Map status to our standard format
+        available: machine.status.toLowerCase() === 'available' ? 1 : 0,
+        inUse: ['busy', 'in_use', 'occupied'].includes(machine.status.toLowerCase()) ? 1 : 0,
+        total: 1
+      });
+      
+      return acc;
+    }, {} as Record<string, any[]>);
+    
+    return grouped;
+  }, [machineData.machineDetails]);
 
+// Calculate category stats
+const categoryStats = useMemo(() => {
+  return Object.entries(categorizedMachines).map(([category, machines]) => {
+    const totalMachines = machines.length;
+    const totalCapacity = machines.reduce((sum, m) => sum + m.total, 0);
+    const totalInUse = machines.reduce((sum, m) => sum + m.inUse, 0);
+    const totalAvailable = machines.reduce((sum, m) => sum + m.available, 0);
+    const avgUtilization = totalCapacity > 0 ? Math.round((totalInUse / totalCapacity) * 100) : 0;
 
-  // Categorize machines for better organization
-  function getMachineCategory(machineName: string): string {
-    const name = machineName.toLowerCase();
-    if (name.includes('printing') || name.includes('heidelberg') || name.includes('lithrone')) return 'Printing';
-    if (name.includes('corrugation')) return 'Corrugation';
-    if (name.includes('flap') || name.includes('pasting')) return 'Pasting';
-    if (name.includes('flute') || name.includes('laminator')) return 'Lamination';
-    if (name.includes('punching') || name.includes('pinning')) return 'Punching';
-    return 'Other';
-  }
+    return {
+      category,
+      totalMachines,
+      totalCapacity,
+      totalInUse,
+      totalAvailable,
+      avgUtilization,
+      machines
+    };
+  }).sort((a, b) => a.category.localeCompare(b.category));
+}, [categorizedMachines]);
+
+// Update getMachineCategory to ensure 6 categories
+function getMachineCategory(machineName: string): string {
+  const name = machineName.toLowerCase();
+  if (name.includes('printing') || name.includes('heidelberg') || name.includes('lithrone')) return 'Printing';
+  if (name.includes('corrugation')) return 'Corrugation';
+  if (name.includes('flap') || name.includes('pasting')) return 'Pasting';
+  if (name.includes('flute') || name.includes('laminator')) return 'Lamination';
+  if (name.includes('punching') || name.includes('pinning')) return 'Punching';
+  if (name.includes('quality') || name.includes('dispatch') || name.includes('paper')) return 'Processing';
+  return 'Other';
+}
 
   // Get status color based on utilization rate
   function getStatusColor(utilizationRate: number): string {
@@ -65,6 +135,18 @@ const processedData = useMemo(() => {
     return '#6b7280'; // No utilization - Gray
   }
 
+  function getCategoryColor(category: string): string {
+  const colors = {
+    'Printing': '#3B82F6',      // Blue
+    'Corrugation': '#10B981',   // Green
+    'Pasting': '#F59E0B',       // Orange
+    'Lamination': '#8B5CF6',    // Purple
+    'Punching': '#EF4444',      // Red
+    'Processing': '#6B7280',    // Gray
+    'Other': '#374151'          // Dark Gray
+  };
+  return colors[category as keyof typeof colors] || colors.Other;
+}
   // Calculate summary stats
   const summaryStats = useMemo(() => {
     const totalMachines = processedData.reduce((sum, item) => sum + item.total, 0);
@@ -82,7 +164,7 @@ const processedData = useMemo(() => {
   }, [processedData]);
 
   // Custom tooltip for charts
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
@@ -98,6 +180,7 @@ const processedData = useMemo(() => {
     return null;
   };
 
+  console.log("categorized machine", categorizedMachines)
   return (
   <div className={`bg-white rounded-lg shadow-lg overflow-hidden ${className}`}>
   {/* Header */}
@@ -139,82 +222,153 @@ const processedData = useMemo(() => {
     </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 md:gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">{summaryStats.totalMachines}</div>
-            <div className="text-sm text-blue-800">Total Machines</div>
-          </div>
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="text-2xl font-bold text-green-600">{summaryStats.totalAvailable}</div>
-            <div className="text-sm text-green-800">Available</div>
-          </div>
-          <div className="bg-orange-50 p-4 rounded-lg">
-            <div className="text-2xl font-bold text-orange-600">{summaryStats.totalInUse}</div>
-            <div className="text-sm text-orange-800">In Use</div>
-          </div>
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <div className="text-2xl font-bold text-purple-600">{summaryStats.avgUtilization}%</div>
-            <div className="text-sm text-purple-800">Avg Utilization</div>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="text-2xl font-bold text-gray-600">{summaryStats.categories}</div>
-            <div className="text-sm text-gray-800">Categories</div>
-          </div>
-        </div>
+        <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 md:gap-4">
+  <div className="bg-blue-50 p-4 rounded-lg">
+    <div className="text-2xl font-bold text-blue-600">{summaryStats.totalMachines}</div>
+    <div className="text-sm text-blue-800">Total Machines</div>
+  </div>
+  <div className="bg-green-50 p-4 rounded-lg">
+    <div className="text-2xl font-bold text-green-600">{summaryStats.totalAvailable}</div>
+    <div className="text-sm text-green-800">Available</div>
+  </div>
+  <div className="bg-orange-50 p-4 rounded-lg">
+    <div className="text-2xl font-bold text-orange-600">{summaryStats.totalInUse}</div>
+    <div className="text-sm text-orange-800">In Use</div>
+  </div>
+  <div className="bg-red-50 p-4 rounded-lg">
+    <div className="text-2xl font-bold text-red-600">0</div>
+    <div className="text-sm text-red-800">Not in Use</div>
+  </div>
+  <div className="bg-purple-50 p-4 rounded-lg">
+    <div className="text-2xl font-bold text-purple-600">{summaryStats.avgUtilization}%</div>
+    <div className="text-sm text-purple-800">Avg Utilization</div>
+  </div>
+  <div className="bg-gray-50 p-4 rounded-lg">
+    <div className="text-2xl font-bold text-gray-600">{summaryStats.categories}</div>
+    <div className="text-sm text-gray-800">Categories</div>
+  </div>
+</div>
+
       </div>
 
       {/* Content based on view type */}
       <div className="p-6">
-        {viewType === 'grid' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-            {processedData.map((machine) => (
-              <div key={machine.originalMachine} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="font-semibold text-gray-900 text-sm">{machine.machine}</h3>
-                    <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded mt-1">
-                      {machine.category}
-                    </span>
-                  </div>
+       {viewType === 'grid' && (
+  <>
+    {!selectedCategory ? (
+      // Category Cards View - Show categories, not individual machines
+      <>
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Machine Categories</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            {categoryStats.map((categoryData) => (
+              <div
+                key={categoryData.category}
+                onClick={() => setSelectedCategory(categoryData.category)}
+                className="border-2 border-gray-200 rounded-lg p-4 hover:shadow-lg transition-all duration-200 cursor-pointer hover:border-blue-300"
+                style={{ borderColor: getCategoryColor(categoryData.category) + '40' }}
+              >
+                <div className="text-center">
                   <div 
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                    style={{ backgroundColor: getStatusColor(machine.utilizationRate) }}
+                    className="w-16 h-16 mx-auto rounded-full flex items-center justify-center text-white font-bold text-lg mb-3"
+                    style={{ backgroundColor: getCategoryColor(categoryData.category) }}
                   >
-                    {machine.utilizationRate}%
+                    {categoryData.totalMachines}
                   </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-600">Total</span>
-                    <span className="font-medium">{machine.total}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-green-600">Available</span>
-                    <span className="font-medium text-green-600">{machine.available}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-orange-600">In Use</span>
-                    <span className="font-medium text-orange-600">{machine.inUse}</span>
-                  </div>
-                </div>
-                
-                {/* Progress bar */}
-                <div className="mt-3">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="h-2 rounded-full transition-all duration-300"
-                      style={{ 
-                        width: `${machine.utilizationRate}%`,
-                        backgroundColor: getStatusColor(machine.utilizationRate)
-                      }}
-                    />
+                  <h3 className="font-semibold text-gray-900 text-sm mb-2">{categoryData.category}</h3>
+                  <div className="space-y-1 text-xs text-gray-600">
+                    <div>Total: {categoryData.totalCapacity}</div>
+                    <div className="text-green-600">Available: {categoryData.totalAvailable}</div>
+                    <div className="text-orange-600">In Use: {categoryData.totalInUse}</div>
+                    <div className="font-medium" style={{ color: getCategoryColor(categoryData.category) }}>
+                      {categoryData.avgUtilization}% Avg
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        )}
+        </div>
+      </>
+    ) : (
+      // Individual Machines in Selected Category - Show machines when category is selected
+      <>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className="flex items-center text-blue-600 hover:text-blue-800 font-medium mb-2"
+            >
+              ← Back to Categories
+            </button>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {selectedCategory} Machines ({categorizedMachines[selectedCategory]?.length || 0} total)
+            </h2>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+          {categorizedMachines[selectedCategory]?.map((machine, index) => (
+            <div key={`${machine.originalMachine}-${index}`} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-sm">
+                    {machine.machine || machine.originalMachine || machine.description}
+                  </h3>
+                  <span 
+                    className="inline-block px-2 py-1 text-white text-xs rounded mt-1"
+                    style={{ backgroundColor: getCategoryColor(machine.category) }}
+                  >
+                    {machine.category}
+                  </span>
+                </div>
+                <div 
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                  style={{ backgroundColor: getStatusColor(machine.utilizationRate) }}
+                >
+                  {machine.utilizationRate}%
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-600">Total</span>
+                  <span className="font-medium">{machine.total}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-green-600">Available</span>
+                  <span className="font-medium text-green-600">{machine.available}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-orange-600">In Use</span>
+                  <span className="font-medium text-orange-600">{machine.inUse}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-red-600">Not in Use</span>
+                  <span className="font-medium text-red-600">{machine.total - machine.available - machine.inUse}</span>
+                </div>
+              </div>
+              
+              {/* Progress bar */}
+              <div className="mt-3">
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="h-2 rounded-full transition-all duration-300"
+                    style={{ 
+                      width: `${machine.utilizationRate}%`,
+                      backgroundColor: getStatusColor(machine.utilizationRate)
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </>
+    )}
+  </>
+)}
+
 
         {viewType === 'bar' && (
           <div className="h-96">

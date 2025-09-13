@@ -100,10 +100,10 @@ const allTabSets: { [key: string]: { label: string; value: string }[] } = {
   ],
   planner: [
     { label: 'Dashboard', value: 'dashboard' },
-    { label: 'Start New Job', value: 'start new job' },
+    // { label: 'Start New Job', value: 'start new job' },
     { label: 'Create New Job', value: 'create new job' },
     // { label: 'Notifications', value: 'notifications' },
-    { label: 'Jobs', value: 'jobs' },
+    { label: 'Job Cards', value: 'jobs' },
     { label: 'Job Assigned', value: 'job assigned' }, // ADDED: New tab for Planner
   ],
   // ...other roles
@@ -152,13 +152,37 @@ const Header: React.FC<HeaderProps> = ({ tabValue, setTabValue, onLogout, role }
   }
 };
 
+const handleLogoClick = () => {
+  // Check if we're on a nested route
+  const isNestedRoute = location.pathname !== '/dashboard';
+  
+  // Navigate to dashboard based on role
+  if (role === 'admin') {
+    setTabValue('dashboard'); // This will show AdminDashboard
+    // If we're on a nested route, navigate back to the main dashboard
+    if (isNestedRoute) {
+      navigate('/dashboard');
+    }
+  } else if (role === 'planner') {
+    setTabValue('dashboard'); // This will show PlannerDashboardContainer  
+    // If we're on a nested route, navigate back to the main dashboard
+    if (isNestedRoute) {
+      navigate('/dashboard');
+    }
+  }
+};
 
   return (
     <header className="sticky top-0 z-50 bg-[#fafafa] w-full shadow-sm">
       <div className="flex items-center justify-between px-4 sm:px-8 py-2">
         {/* Logo */}
-        <img src={logo} alt="Logo" className="h-15 w-auto" />
-
+        <button 
+    onClick={handleLogoClick}
+    className="hover:opacity-80 transition-opacity focus:outline-none"
+    aria-label="Go to dashboard"
+  >
+    <img src={logo} alt="Logo" className="h-15 w-auto cursor-pointer" />
+  </button>
         {/* Desktop Tabs */}
         <TabProvider value={tabValue}>
   <div className="hidden sm:flex flex-1 justify-center">
@@ -275,9 +299,9 @@ const Header: React.FC<HeaderProps> = ({ tabValue, setTabValue, onLogout, role }
               case "Test Edit Machine":
                 navigate('/dashboard/test-edit-machine');
                 break;
-              // case "Edit Working Details":
-              //   handleTabChange("edit-working-details"); // 🔥 Use new handler
-              //   break;
+              case "Edit Working Details":
+                handleTabChange("edit-working-details"); // 🔥 Use new handler
+                break;
             }
             setSidebarOpen(false);
             setMenuOpen(false);

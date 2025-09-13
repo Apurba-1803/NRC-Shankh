@@ -47,65 +47,62 @@ const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
     { value: 'completed', label: 'COMPLETED', color: 'bg-purple-500' }
   ];
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
 
-    try {
-      // Prepare the updated step data
-      const updatedStep = {
-        ...step,
-        status: selectedStatus,
-        user: userId || null,
-        startDate: selectedStatus === 'start' ? new Date().toISOString() : 
-                  selectedStatus === 'planned' ? null : step.startDate,
-        endDate: selectedStatus === 'start' ? null : 
-                selectedStatus === 'planned' ? null : step.endDate
-      };
+  try {
+    // Prepare ONLY the step data for the step-specific endpoint
+    const stepUpdatePayload = {
+      status: selectedStatus,
+      user: userId || null,
+      startDate: selectedStatus === 'start' ? new Date().toISOString() : 
+                selectedStatus === 'planned' ? null : step.startDate,
+      endDate: selectedStatus === 'start' ? null : 
+              selectedStatus === 'planned' ? null : step.endDate
+    };
 
-      // Update the step in the job
-      const updatedSteps = job.steps.map(s => 
-        s.stepNo === step.stepNo ? updatedStep : s
-      );
+    console.log('🔍 Sending step update payload:', stepUpdatePayload);
 
-      const updatePayload = {
-        nrcJobNo: job.nrcJobNo,
-        jobDemand: job.jobDemand,
-        steps: updatedSteps
-      };
-
-      // Get access token from localStorage
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) {
-        throw new Error('Authentication token not found. Please log in again.');
-      }
-
-      // Make the API call
-      const response = await fetch(
-        `https://nrprod.nrcontainers.com/api/job-planning/${encodeURIComponent(job.nrcJobNo)}/steps/${step.stepNo}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updatePayload)
-        }
-      );
-
-      if (response.ok) {
-        onUpdate();
-        onClose();
-      } else {
-        throw new Error('Failed to update status');
-      }
-    } catch (error) {
-      console.error('Error updating status:', error);
-      alert('Failed to update status. Please try again.');
-    } finally {
-      setLoading(false);
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      throw new Error('Authentication token not found. Please log in again.');
     }
-  };
+
+    // Make the API call with ONLY step data
+    const response = await fetch(
+      `https://nrprod.nrcontainers.com/api/job-planning/${encodeURIComponent(job.nrcJobNo)}/steps/${step.stepNo}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(stepUpdatePayload) // Send only step data
+      }
+    );
+
+    console.log('🔍 Response status:', response.status);
+    console.log('🔍 Response ok:', response.ok);
+
+    if (response.ok) {
+      const responseData = await response.json();
+      console.log('✅ Update successful:', responseData);
+      onUpdate();
+      onClose();
+    } else {
+      const errorText = await response.text();
+      console.error('❌ Update failed:', errorText);
+      throw new Error(`Failed to update status: ${response.status}`);
+    }
+  } catch (error) {
+    console.error('Error updating status:', error);
+    alert('Failed to update status. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-transparent backdrop-blur-md bg-opacity-50">

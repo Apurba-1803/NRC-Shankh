@@ -27,7 +27,7 @@ const sidebarConfig: Record<string, { displayName: string; options: string[] }> 
       //'QC Manager',
       // 'Edit Machine', // ADDED: Edit Machine option for Admin
       //'Test Edit Machine', // TEMPORARY: Test option for debugging
-      // 'Edit Working Details',
+      'Edit Working Details',
     ],
   },
   printing_manager: {
@@ -44,7 +44,7 @@ const sidebarConfig: Record<string, { displayName: string; options: string[] }> 
   },
   planner: {
     displayName: 'Planner',
-    options: ['Dashboard', 'Start New Job', 'Create New Job', , 'Jobs', 'Job Assigned'], // ADDED: Create New Job option for Planner
+    options: ['Dashboard', 'Start New Job', 'Create New Job',  'Job cards', 'Job Assigned'], // ADDED: Create New Job option for Planner
   },
 };
 

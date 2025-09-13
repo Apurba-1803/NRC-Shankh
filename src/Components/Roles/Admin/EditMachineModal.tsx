@@ -127,67 +127,67 @@ const EditMachineModal: React.FC<EditMachineModalProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedMachine) {
-      alert('Please select a machine');
-      return;
-    }
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!selectedMachine) {
+    alert('Please select a machine');
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const selectedMachineData = machines.find(m => m.id === selectedMachine);
-      
-      // Prepare the updated step data
-      const updatedStep: JobStep = {
-        ...step,
-        machineDetails: [{
-          machineId: selectedMachineData?.id || '',
-          machineType: selectedMachineData?.machineType || '',
-          machineCode: selectedMachineData?.machineCode || '',
-          unit: selectedMachineData?.unit || ''
-        }]
-      };
+  try {
+    const selectedMachineData = machines.find(m => m.id === selectedMachine);
+    
+    // Prepare ONLY the step update payload - not the entire job
+    const stepUpdatePayload = {
+      machineDetails: [{
+        machineId: selectedMachineData?.id || '',
+        machineType: selectedMachineData?.machineType || '',
+        machineCode: selectedMachineData?.machineCode || '',
+        unit: selectedMachineData?.unit || ''
+      }]
+      // Only include other fields if the API expects them for step updates
+      // status: step.status, // Add if needed
+      // stepName: step.stepName, // Add if needed
+    };
 
-      // Update the step in the job
-      const updatedSteps = job.steps.map(s => 
-        s.stepNo === step.stepNo ? updatedStep : s
-      );
+    console.log('Sending step update payload:', stepUpdatePayload);
 
-      const updatePayload = {
-        nrcJobNo: job.nrcJobNo,
-        jobDemand: job.jobDemand,
-        steps: updatedSteps
-      };
-
-      // Make the API call
-      const accessToken = localStorage.getItem('accessToken');
-      const response = await fetch(
-        `https://nrprod.nrcontainers.com/api/job-planning/${encodeURIComponent(job.nrcJobNo)}/steps/${step.stepNo}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updatePayload)
-        }
-      );
-
-      if (response.ok) {
-        onUpdate();
-        onClose();
-      } else {
-        throw new Error('Failed to update machine assignment');
+    // Make the API call - send only step data
+    const accessToken = localStorage.getItem('accessToken');
+    const response = await fetch(
+      `https://nrprod.nrcontainers.com/api/job-planning/${encodeURIComponent(job.nrcJobNo)}/steps/${step.stepNo}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(stepUpdatePayload) // Send only step data
       }
-    } catch (error) {
-      console.error('Error updating machine assignment:', error);
-      alert('Failed to update machine assignment. Please try again.');
-    } finally {
-      setLoading(false);
+    );
+
+    console.log('API Response status:', response.status);
+    
+    if (response.ok) {
+      const responseData = await response.json();
+      console.log('API Response data:', responseData);
+      onUpdate();
+      onClose();
+    } else {
+      const errorData = await response.text();
+      console.error('API Error:', response.status, errorData);
+      throw new Error(`Failed to update machine assignment: ${response.status}`);
     }
-  };
+  } catch (error) {
+    console.error('Error updating machine assignment:', error);
+    alert('Failed to update machine assignment. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

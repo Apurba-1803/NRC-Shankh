@@ -338,82 +338,109 @@ const EditWorkingDetails: React.FC = () => {
     );
   }
 
+const refreshJobsAndSelected = async () => {
+  console.log('🔄 Refreshing jobs...');
+  await fetchJobs();
+  
+  // Use functional update to access latest jobs state
+  setJobs(currentJobs => {
+    if (selectedJob) {
+      const updatedJob = currentJobs.find(job => job.jobPlanId === selectedJob.jobPlanId);
+      if (updatedJob) {
+        console.log('✅ Updating selectedJob with fresh data');
+        setSelectedJob(updatedJob);
+      }
+    }
+    return currentJobs; // Return the same jobs array
+  });
+};
+
+
   return (
-    <div className="p-6  min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Edit Working Details</h1>
-        
-        {/* Debug Info */}
-        {/* <div className="mb-4 p-4 bg-blue-100 rounded-lg">
-          <p className="text-sm text-blue-800">
-            Debug: Loading: {loading.toString()}, Error: {error || 'none'}, Jobs: {jobs.length}, Filtered: {filteredJobs.length}
-          </p>
-        </div> */}
-        
-        {/* Stopped Jobs Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">Stopped Jobs</h2>
-            <span className="text-gray-600">{filteredJobs.length} Stopped Jobs</span>
+   <div className="p-3 sm:p-6 min-h-screen"> {/* Reduced mobile padding */}
+  <div className="max-w-7xl mx-auto">
+    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 sm:mb-8"> {/* Smaller mobile title */}
+      Edit Working Details
+    </h1>
+    
+    {/* Debug Info - Hidden on mobile for cleaner UI */}
+    {/* Mobile-first approach: keep essential content only */}
+    
+    {/* Stopped Jobs Section */}
+    <div className="mb-6 sm:mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Stopped Jobs</h2>
+        <span className="text-sm sm:text-base text-gray-600 self-start sm:self-auto">
+          {filteredJobs.length} Stopped Jobs
+        </span>
+      </div>
+
+      {/* Job Cards */}
+      <div className="space-y-3 sm:space-y-4"> {/* Reduced mobile spacing */}
+        {filteredJobs.length === 0 ? (
+          <div className="text-center py-6 sm:py-8">
+            <p className="text-gray-500 text-sm sm:text-base">No stopped or started jobs found</p>
+            {loading && <p className="text-xs sm:text-sm text-gray-400 mt-2">Loading...</p>}
+            {error && <p className="text-xs sm:text-sm text-red-500 mt-2">Error: {error}</p>}
           </div>
-
-          {/* Job Cards */}
-          <div className="space-y-4">
-            {filteredJobs.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-500">No stopped or started jobs found</p>
-                {loading && <p className="text-sm text-gray-400 mt-2">Loading...</p>}
-                {error && <p className="text-sm text-red-500 mt-2">Error: {error}</p>}
-              </div>
-            ) : (
-              filteredJobs.map((job) => {
-                const stoppedSteps = job.steps.filter(step => step.status === 'stop' || step.status === 'start');
-                
-                return (
-                  <div 
-                    key={job.jobPlanId}
-                    className="bg-white rounded-lg shadow-md p-6 cursor-pointer hover:shadow-lg transition-shadow"
-                    onClick={() => handleJobCardClick(job)}
-                  >
-                    {/* Job Header */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">
-                          {job.nrcJobNo.length > 25 ? `${job.nrcJobNo.substring(0, 25)}...` : job.nrcJobNo}
-                        </h3>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                          <span>Plan ID: {job.jobPlanId}</span>
-                          <div className="flex items-center">
-                            <ClockIcon className="h-4 w-4 mr-1" />
-                            Created: {formatDate(job.createdAt)}
-                          </div>
-                          <div className="flex items-center">
-                            <ArrowPathIcon className="h-4 w-4 mr-1" />
-                            Updated: {formatDate(job.updatedAt)}
-                          </div>
-                        </div>
+        ) : (
+          filteredJobs.map((job) => {
+            const stoppedSteps = job.steps.filter(step => step.status === 'stop' || step.status === 'start');
+            
+            return (
+              <div 
+                key={job.jobPlanId}
+                className="bg-white rounded-lg shadow-md p-4 sm:p-6 cursor-pointer hover:shadow-lg transition-shadow active:bg-gray-50" // Added active state for mobile
+                onClick={() => handleJobCardClick(job)}
+              >
+                {/* Job Header */}
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 space-y-3 sm:space-y-0">
+                  <div className="flex-1">
+                    {/* Mobile-optimized title with better truncation */}
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 break-words">
+                      {job.nrcJobNo.length > 20 ? `${job.nrcJobNo.substring(0, 20)}...` : job.nrcJobNo}
+                    </h3>
+                    
+                    {/* Mobile-stacked info with better spacing */}
+                    <div className="space-y-1 sm:space-y-0 sm:flex sm:items-center sm:space-x-4 text-xs sm:text-sm text-gray-600">
+                      <span className="block sm:inline">Plan ID: {job.jobPlanId}</span>
+                      <div className="flex items-center">
+                        <ClockIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                        <span className="text-xs sm:text-sm">Created: {formatDate(job.createdAt)}</span>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(job.jobDemand)}`}>
-                        {job.jobDemand ? `${job.jobDemand.charAt(0).toUpperCase() + job.jobDemand.slice(1)} Priority` : 'No Priority'}
-                      </span>
-                    </div>
-
-                    {/* Stopped Steps */}
-                    <div className="border-t pt-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-lg font-bold text-gray-900">
-                          Stopped Steps ({stoppedSteps.length})
-                        </h4>
-                        <ChevronDownIcon className="h-5 w-5 text-blue-600" />
+                      <div className="flex items-center">
+                        <ArrowPathIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                        <span className="text-xs sm:text-sm">Updated: {formatDate(job.updatedAt)}</span>
                       </div>
                     </div>
                   </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+                  
+                  {/* Priority badge - responsive sizing */}
+                  <div className="self-start sm:self-auto">
+                    <span className={`px-2 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-medium ${getPriorityColor(job.jobDemand)} whitespace-nowrap`}>
+                      {job.jobDemand ? `${job.jobDemand.charAt(0).toUpperCase() + job.jobDemand.slice(1)} Priority` : 'No Priority'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Stopped Steps */}
+                <div className="border-t pt-3 sm:pt-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-base sm:text-lg font-bold text-gray-900">
+                      Stopped Steps ({stoppedSteps.length})
+                    </h4>
+                    <ChevronDownIcon className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
+    </div>
+  </div>
+
+
 
       {/* Step Details Modal */}
       {showStepDetailsModal && selectedJob && (
@@ -428,14 +455,15 @@ const EditWorkingDetails: React.FC = () => {
       )}
 
       {/* Update Status Modal */}
-      {showUpdateStatusModal && selectedStep && (
-        <UpdateStatusModal
-          step={selectedStep}
-          job={selectedJob!}
-          onClose={() => setShowUpdateStatusModal(false)}
-          onUpdate={fetchJobs}
-        />
-      )}
+{showUpdateStatusModal && selectedStep && (
+  <UpdateStatusModal
+    step={selectedStep}
+    job={selectedJob!}
+    onClose={() => setShowUpdateStatusModal(false)}
+    onUpdate={refreshJobsAndSelected} // Use the new function
+  />
+)}
+
 
       {/* Edit Machine Modal */}
       {showEditMachineModal && selectedStep && (
@@ -443,7 +471,7 @@ const EditWorkingDetails: React.FC = () => {
           step={selectedStep as any} // Type cast to avoid type mismatch
           job={selectedJob as any} // Type cast to avoid type mismatch 
           onClose={() => setShowEditMachineModal(false)}
-          onUpdate={fetchJobs}
+          onUpdate={refreshJobsAndSelected}
         />
       )}
 

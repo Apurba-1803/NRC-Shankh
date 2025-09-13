@@ -10,6 +10,7 @@ import {
   Decimation,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
+import StepDetailsPopup from './StepDetailsPopup';
 
 
 ChartJS.register(
@@ -24,6 +25,40 @@ ChartJS.register(
 
 interface BarChartData {
   [key: string]: string | number;
+}
+
+interface JobPlanStep {
+  id: number;
+  stepNo: number;
+  stepName: string;
+  machineDetails: Array<{
+    unit: string | null;
+    machineId: string | number;
+    machineCode: string | null;
+    machineType: string;
+    machine?: {
+      id: string;
+      description: string;
+      status: string;
+      capacity: number;
+    };
+  }>;
+  status: "planned" | "start" | "stop";
+  startDate: string | null;
+  endDate: string | null;
+  user: string | null;
+  createdAt: string;
+  updatedAt: string;
+  stepDetails?: any; // Step-specific details from API endpoints
+}
+
+interface JobPlan {
+  jobPlanId: number;
+  nrcJobNo: string;
+  jobDemand: "low" | "medium" | "high";
+  createdAt: string;
+  updatedAt: string;
+  steps: JobPlanStep[];
 }
 
 interface BarChartComponentProps {
@@ -48,6 +83,17 @@ interface BarChartComponentProps {
   setDateFilter?: (val: string) => void;
   customDateRange?: { start: Date | null; end: Date | null };
   setCustomDateRange?: (range: { start: Date | null; end: Date | null }) => void;
+
+  stepCompletionStats?: {
+    [key: string]: {
+      completed: number;
+      inProgress: number;
+      planned: number;
+      completedData: JobPlan[];
+      inProgressData: JobPlan[];
+      plannedData: JobPlan[];
+    };
+  };
 }
 
 const BarChartComponent: React.FC<BarChartComponentProps> = ({
@@ -61,13 +107,31 @@ const BarChartComponent: React.FC<BarChartComponentProps> = ({
   stacked = false,
   className = '',
   maxDataPoints = 100,
-  showValues = false
+  showValues = false,
+  stepCompletionStats
 }) => {
   const [dateFilter, setDateFilter] = useState<string>("all");
   const [customDateRange, setCustomDateRange] = useState<{ start: Date | null, end: Date | null }>({
     start: null,
     end: null
   });
+
+   const [popupOpen, setPopupOpen] = useState(false);
+  const [selectedStep, setSelectedStep] = useState<string>('');
+
+  // Add click handler
+  const handleBarClick = (event: any, elements: any) => {
+    if (elements.length > 0 && stepCompletionStats) {
+      const elementIndex = elements[0].index;
+      const stepName = optimizedData[elementIndex][xAxisKey] as string;
+      
+      // Check if we have step data for this step
+      if (stepCompletionStats[stepName]) {
+        setSelectedStep(stepName);
+        setPopupOpen(true);
+      }
+    }
+  };
 
    const filteredData = useMemo(() => {
     if (dateFilter === "all") return data;
@@ -132,6 +196,7 @@ const BarChartComponent: React.FC<BarChartComponentProps> = ({
       mode: 'index' as const,
       intersect: false,
     },
+     onClick: handleBarClick,
     plugins: {
       legend: {
         display: showLegend,
@@ -180,6 +245,7 @@ const BarChartComponent: React.FC<BarChartComponentProps> = ({
           }
         }
       },
+     
       decimation: {
         enabled: true,
         algorithm: 'min-max' as const,
@@ -258,33 +324,40 @@ const BarChartComponent: React.FC<BarChartComponentProps> = ({
       duration: optimizedData.length > 200 ? 0 : 1000, // Disable animation for large datasets
     },
     responsiveAnimationDuration: 0,
-  }), [showGrid, showLegend, stacked, xAxisKey, optimizedData.length]);
+  }), [showGrid, showLegend, stacked, xAxisKey, optimizedData.length, stepCompletionStats]);
 
   return (
-    <div className={`bg-white rounded-lg shadow-lg p-6 border border-gray-100 ${className}`}>
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-bold text-gray-800">{title}</h3>
-        {/* {showDateFilter && dateFilter && setDateFilter && customDateRange && setCustomDateRange && (
-    <DateFilterComponent
-      dateFilter={dateFilter}
-      setDateFilter={setDateFilter}
-      customDateRange={customDateRange}
-      setCustomDateRange={setCustomDateRange}
-    />
-  )} */}
-      </div>
-      <div style={{ height: height }} className="relative">
-        <Bar data={chartData} options={options} />
-        {optimizedData.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-            <div className="text-center">
-              <div className="text-4xl mb-2">📊</div>
-              <div>No data available</div>
+    <>
+      <div className={`bg-white rounded-lg shadow-lg p-6 border border-gray-100 ${className}`}>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+          {stepCompletionStats && (
+            <p className="text-sm text-gray-500">Click on bars to view details</p>
+          )}
+        </div>
+        <div style={{ height: height }} className="relative">
+          <Bar data={chartData} options={options} />
+          {optimizedData.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+              <div className="text-center">
+                <div className="text-4xl mb-2">📊</div>
+                <div>No data available</div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Popup Modal */}
+      {stepCompletionStats && selectedStep && (
+        <StepDetailsPopup
+          isOpen={popupOpen}
+          onClose={() => setPopupOpen(false)}
+          stepName={selectedStep}
+          stepData={stepCompletionStats[selectedStep]}
+        />
+      )}
+    </>
   );
 };
 

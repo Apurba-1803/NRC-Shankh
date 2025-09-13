@@ -1,11 +1,12 @@
 // src/Components/Roles/Planner/JobPlanningDetailModal.tsx
 import React from 'react';
-import {type  JobPlan, type JobPlanStep } from '../Types/job.ts'; // Adjust path as needed
+import {type  JobPlan } from '../Types/job.ts'; // Adjust path as needed
 
 interface JobPlanningDetailModalProps {
   jobPlan: JobPlan;
   onClose: () => void;
 }
+
 
 const JobPlanningDetailModal: React.FC<JobPlanningDetailModalProps> = ({ jobPlan, onClose }) => {
   const formatDate = (dateString: string | null) => {
@@ -32,9 +33,17 @@ const JobPlanningDetailModal: React.FC<JobPlanningDetailModalProps> = ({ jobPlan
     </div>
   );
 
+    const formatStepName = (stepName: string): string => {
+    return stepName
+      .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space before capital letters
+      .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2') // Handle consecutive capitals
+      .trim();
+  };
+
   // Sort the steps by stepNo before rendering
   const sortedSteps = [...jobPlan.steps].sort((a, b) => a.stepNo - b.stepNo);
 
+  
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8 bg-transparent bg-opacity-30 backdrop-blur-sm min-h-screen">
       <div className="relative w-full max-w-2xl mx-2 sm:mx-auto bg-white rounded-2xl shadow-2xl p-0 flex flex-col items-center">
@@ -65,7 +74,7 @@ const JobPlanningDetailModal: React.FC<JobPlanningDetailModalProps> = ({ jobPlan
               {sortedSteps.map(step => ( // Use sortedSteps here
                 <div key={step.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
                   <div className="flex justify-between items-center mb-2">
-                    <h4 className="text-lg font-semibold text-gray-800">Step {step.stepNo}: {step.stepName}</h4>
+                    <h4 className="text-lg font-semibold text-gray-800">Step {step.stepNo}: {formatStepName(step.stepName)}</h4>
                     <span className={`px-3 py-1 text-xs font-semibold rounded-full capitalize
                       ${step.status === 'start' ? 'bg-green-100 text-green-800' :
                         step.status === 'stop' ? 'bg-red-100 text-red-800' :
@@ -73,14 +82,41 @@ const JobPlanningDetailModal: React.FC<JobPlanningDetailModalProps> = ({ jobPlan
                       {step.status}
                     </span>
                   </div>
+               
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-gray-700">
-                    <p><strong>Machine Details:</strong> {step.machineDetails && step.machineDetails.length > 0 ? step.machineDetails.join(', ') : 'N/A'}</p>
-                    <p><strong>User:</strong> {step.user || 'N/A'}</p>
-                    <p><strong>Start Date:</strong> {formatDate(step.startDate)}</p>
-                    <p><strong>End Date:</strong> {formatDate(step.endDate)}</p>
-                    <p><strong>Created:</strong> {formatDate(step.createdAt)}</p>
-                    <p><strong>Updated:</strong> {formatDate(step.updatedAt)}</p>
-                  </div>
+  {(() => {
+    console.log('Machine Details Array:', step.machineDetails);
+    return null;
+  })()}
+  
+  {/* Display machine details properly */}
+  <div className="sm:col-span-2">
+    <strong>Machine Details:</strong>
+    {step.machineDetails && step.machineDetails.length > 0 ? (
+      <div className="mt-2 space-y-2">
+        {step.machineDetails.map((machine, index) => (
+          <div key={machine.id || index} className="bg-gray-50 p-3 rounded-lg border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
+              <p><strong>Machine Code:</strong> {machine.machineCode}</p>
+              <p><strong>Machine Type:</strong> {machine.machineType}</p>
+              <p><strong>Unit:</strong> {machine.unit}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <span className="text-gray-500 ml-2">N/A</span>
+    )}
+  </div>
+  
+  <p><strong>User:</strong> {step.user || 'N/A'}</p>
+  <p><strong>Start Date:</strong> {formatDate(step.startDate)}</p>
+  <p><strong>End Date:</strong> {formatDate(step.endDate)}</p>
+  <p><strong>Created:</strong> {formatDate(step.createdAt)}</p>
+  <p><strong>Updated:</strong> {formatDate(step.updatedAt)}</p>
+</div>
+
+
                 </div>
               ))}
             </div>

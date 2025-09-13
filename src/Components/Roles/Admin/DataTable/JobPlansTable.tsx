@@ -42,7 +42,7 @@ interface JobPlansTableProps {
 
 const JobPlansTable: React.FC<JobPlansTableProps> = ({
   jobPlans,
-  onViewDetails,
+  // onViewDetails,
   className = ''
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -112,6 +112,13 @@ const handleViewDetails = (jobPlan: JobPlan) => {
   const formatDate = (dateString:string|null) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleString();
+  };
+
+    const formatStepName = (stepName: string): string => {
+    return stepName
+      .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space before capital letters
+      .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2') // Handle consecutive capitals
+      .trim();
   };
 
   {console.log("selected job", selectedJobPlan)}
@@ -299,10 +306,10 @@ const handleViewDetails = (jobPlan: JobPlan) => {
   </tr>
 </thead>
 <tbody className="divide-y divide-gray-200">
-  {selectedJobPlan.steps.map((step, index) => (
+  {selectedJobPlan.steps.map((step) => (
     <tr key={step.id} className="hover:bg-indigo-50 transition-colors">
       <td className="px-6 py-4 text-sm font-semibold text-gray-800">{step.stepNo}</td>
-      <td className="px-6 py-4 text-sm">{step.stepName}</td>
+      <td className="px-6 py-4 text-sm">{formatStepName(step.stepName)}</td>
       <td className="px-6 py-4">
         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusStyle(step.status)}`}>
           {step.status.charAt(0).toUpperCase() + step.status.slice(1).replace('-', ' ')}

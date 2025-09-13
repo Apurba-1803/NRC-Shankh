@@ -878,6 +878,7 @@ const [jobOptions, setJobOptions] = useState<Job[]>([]);
     setIsSidebarOpen(false);
   };
 
+  console.log("job options", jobOptions)
   // If in Add PO mode and no job is selected yet, show search interface
   if (isAddPOMode && !job) {
     return (
@@ -906,7 +907,7 @@ const [jobOptions, setJobOptions] = useState<Job[]>([]);
     {/* 🔽 Dropdown results */}
     {searchTerm && jobOptions.length > 0 && (
       <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-        {jobOptions.slice(0, 5).map((job) => (
+        {jobOptions.map((job) => (
           <li
             key={job.id}
             onClick={() => {

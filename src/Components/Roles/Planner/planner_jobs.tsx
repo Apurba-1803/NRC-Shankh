@@ -56,6 +56,7 @@ interface Job {
   preRate: number | null;
   length: number | null;
   width: number | null;
+  hasJobPlan: boolean;
   height: number | null;
   boxDimensions: string;
   diePunchCode: number | null;
@@ -114,77 +115,142 @@ const PlannerJobs: React.FC = () => {
   
   // State for job search
   const [searchedJob, setSearchedJob] = useState<Job | null>(null);
-  const [searchLoading, setSearchLoading] = useState(false);
+  // const [searchLoading, setSearchLoading] = useState(false);
   const [jobOptions, setJobOptions] = useState<Job[]>([]);
 const [typingTimeout, setTypingTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
 
   // Helper function to check job completion status
-  const checkJobCompletionStatus = (job: Job): 'artwork_pending' | 'po_pending' | 'more_info_pending' | 'completed' => {
-    // 1. Check Artwork Details
-    if (!job.artworkReceivedDate || !job.artworkApprovedDate || !job.shadeCardApprovalDate) {
-      return 'artwork_pending';
-    }
+const checkPOCompletionStatus = (po: any): 'artwork_pending' | 'po_pending' | 'more_info_pending' | 'completed' => {
+  // 1. Check Artwork Details (using PO fields)
+  console.log("po in check po completion function", po)
+  if (!po.shadeCardApprovalDate) {
+    return 'artwork_pending';
+  }
 
-    // 2. Check P.O. Details
-    if (!job.poNumber || !job.unit || !job.plant ||
-        job.totalPOQuantity === null || job.dispatchQuantity === null ||
-        job.pendingQuantity === null || job.noOfSheets === null ||
-        !job.poDate || !job.deliveryDate || !job.dispatchDate || !job.nrcDeliveryDate) {
-      return 'po_pending';
-    }
+  // 2. Check P.O. Details (using PO fields)
+  if (!po.poNumber || !po.unit || !po.plant ||
+      po.totalPOQuantity === null || po.dispatchQuantity === null ||
+      po.pendingQuantity === null || po.noOfSheets === null ||
+      !po.poDate || !po.deliveryDate || !po.dispatchDate || !po.nrcDeliveryDate) {
+    return 'po_pending';
+  }
 
-    // 3. Check More Information
-    if (!job.jobDemand || !job.machineId || !job.jobSteps || job.jobSteps.length === 0) {
-      return 'more_info_pending';
-    }
+  // 3. Check More Information (using merged job planning data)
+  if (!po.hasJobPlan || !po.jobDemand || !po.jobSteps || po.jobSteps.length === 0) {
+    return 'more_info_pending';
+  }
 
-    return 'completed'; // All forms are filled
-  };
+  // 4. Additional validation for medium/regular demand jobs
+  if (po.jobDemand === 'medium' && !po.machineId) {
+    return 'more_info_pending';
+  }
+
+  // Check if all job steps are completed
+  // const allStepsCompleted = po.jobSteps.every((step: any) => 
+  //   step.stepDetails && step.stepDetails.status === "accept"
+  // );
+
+  // if (!allStepsCompleted) {
+  //   return 'more_info_pending';
+  // }
+
+  return 'completed';
+};
+
+
+  // Function to merge purchase order data with job planning data
+const mergePOWithJobPlanning = (purchaseOrders: any[], jobPlannings: any[]) => {
+  return purchaseOrders.map(po => {
+    // Find matching job planning by nrcJobNo
+    const matchingJobPlan = jobPlannings.find(jp => 
+      jp.nrcJobNo === po.jobNrcJobNo || jp.nrcJobNo === po.nrcJobNo
+    );
+
+    // Merge the data
+    return {
+      ...po,
+      // Add job planning fields
+      jobDemand: matchingJobPlan?.jobDemand || null,
+      machineId: matchingJobPlan?.machineId || null,
+      jobSteps: matchingJobPlan?.steps || [],
+      jobPlanId: matchingJobPlan?.jobPlanId || null,
+      jobPlanCreatedAt: matchingJobPlan?.createdAt || null,
+      jobPlanUpdatedAt: matchingJobPlan?.updatedAt || null,
+      // Flag to indicate if job planning exists
+      hasJobPlan: !!matchingJobPlan
+    };
+  });
+};
+
 
   // Function to fetch all purchase orders
-  const fetchPurchaseOrders = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) {
-        setError('Authentication token not found. Please log in.');
-        setLoading(false);
-        return;
-      }
+ // Function to fetch all purchase orders with job planning data
+const fetchPurchaseOrders = async () => {
+  setLoading(true);
+  setError(null);
+  try {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      setError('Authentication token not found. Please log in.');
+      setLoading(false);
+      return;
+    }
 
-      const response = await fetch('https://nrprod.nrcontainers.com/api/purchase-orders', {
+    // Fetch both APIs simultaneously
+    const [poResponse, jobPlanResponse] = await Promise.all([
+      fetch('https://nrprod.nrcontainers.com/api/purchase-orders', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
-      });
+      }),
+      fetch('https://nrprod.nrcontainers.com/api/job-planning/', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
+    ]);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to fetch purchase orders: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      if (data.success && Array.isArray(data.data)) {
-        setPurchaseOrders(data.data);
-        setFilteredPOs(data.data);
-      } else {
-        setError('Unexpected API response format or data is not an array.');
-      }
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unknown error occurred.');
-      }
-      console.error('Fetch Purchase Orders Error:', err);
-    } finally {
-      setLoading(false);
+    // Check if both requests succeeded
+    if (!poResponse.ok) {
+      const errorData = await poResponse.json();
+      throw new Error(errorData.message || `Failed to fetch purchase orders: ${poResponse.status}`);
     }
-  };
+
+    if (!jobPlanResponse.ok) {
+      console.warn('Job planning fetch failed, continuing with PO data only');
+    }
+
+    // Parse responses
+    const poData = await poResponse.json();
+    const jobPlanData = jobPlanResponse.ok ? await jobPlanResponse.json() : { success: true, data: [] };
+
+    if (poData.success && Array.isArray(poData.data)) {
+      // Merge purchase orders with job planning data
+      const mergedData = mergePOWithJobPlanning(poData.data, jobPlanData.data || []);
+      
+      setPurchaseOrders(mergedData);
+      setFilteredPOs(mergedData);
+      console.log('✅ Merged PO and Job Planning data:', mergedData);
+    } else {
+      setError('Unexpected API response format or data is not an array.');
+    }
+  } catch (err) {
+    if (err instanceof Error) {
+      setError(err.message);
+    } else {
+      setError('An unknown error occurred.');
+    }
+    console.error('Fetch Purchase Orders Error:', err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // Function to search jobs by NRC Job Number
 //   const searchJob = async () => {
@@ -451,6 +517,7 @@ const handleBulkUpload = async () => {
   }
 };
 
+console.log("filtered pos", filteredPOs)
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
@@ -491,27 +558,28 @@ const handleBulkUpload = async () => {
     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
 
     {/* Dropdown */}
-    {searchTerm && jobOptions.length > 0 && (
-      <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-        {jobOptions.slice(0, 5).map((job) => (
-          <li
-            key={job.id}
-            onClick={() => {
-              setSearchTerm(job.nrcJobNo);
-              setSearchedJob(job);
-              const relatedPOs = purchaseOrders.filter(
-                (po) => po.jobNrcJobNo === job.nrcJobNo
-              );
-              setFilteredPOs(relatedPOs);
-              setJobOptions([]); // close dropdown
-            }}
-            className="px-3 py-2 cursor-pointer hover:bg-blue-100 text-sm"
-          >
-            {job.nrcJobNo}
-          </li>
-        ))}
-      </ul>
-    )}
+   {searchTerm && jobOptions.length > 0 && (
+  <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+    {jobOptions.map((job) => (
+      <li
+        key={job.id}
+        onClick={() => {
+          setSearchTerm(job.nrcJobNo);
+          setSearchedJob(job);
+          const relatedPOs = purchaseOrders.filter(
+            (po) => po.jobNrcJobNo === job.nrcJobNo
+          );
+          setFilteredPOs(relatedPOs);
+          setJobOptions([]); // close dropdown
+        }}
+        className="px-3 py-2 cursor-pointer hover:bg-blue-100 text-sm"
+      >
+        {job.nrcJobNo}
+      </li>
+    ))}
+  </ul>
+)}
+
   </div>
 </div>
 
@@ -541,7 +609,7 @@ const handleBulkUpload = async () => {
           </div>
           <div className="mt-3">
             <p className="text-xs sm:text-sm text-blue-600 font-medium">Completion Status</p>
-            <p className="text-xs sm:text-sm text-blue-800">{checkJobCompletionStatus(searchedJob).replace('_', ' ').toUpperCase()}</p>
+            <p className="text-xs sm:text-sm text-blue-800">{checkPOCompletionStatus(searchedJob).replace('_', ' ').toUpperCase()}</p>
           </div>
         </div>
       )}
@@ -577,75 +645,22 @@ const handleBulkUpload = async () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6">
               {filteredPOs.map(po => {
-                // Determine completion status based on the job if available
-                let completionStatus: 'artwork_pending' | 'po_pending' | 'more_info_pending' | 'completed' = 'po_pending';
-                
-                if (po.job) {
-                  // Create a mock job object to check completion status
-                  const mockJob: Job = {
-                    ...po.job,
-                    id: 0,
-                    styleItemSKU: po.job.styleItemSKU,
-                    customerName: po.job.customerName,
-                    fluteType: null,
-                    status: 'ACTIVE',
-                    latestRate: null,
-                    preRate: null,
-                    length: null,
-                    width: null,
-                    height: null,
-                    boxDimensions: '',
-                    diePunchCode: null,
-                    boardCategory: null,
-                    noOfColor: null,
-                    processColors: null,
-                    specialColor1: null,
-                    specialColor2: null,
-                    specialColor3: null,
-                    specialColor4: null,
-                    overPrintFinishing: null,
-                    topFaceGSM: null,
-                    flutingGSM: null,
-                    bottomLinerGSM: null,
-                    decalBoardX: null,
-                    lengthBoardY: null,
-                    boardSize: '',
-                    noUps: null,
-                    artworkReceivedDate: po.shadeCardApprovalDate,
-                    artworkApprovedDate: po.shadeCardApprovalDate,
-                    shadeCardApprovalDate: po.shadeCardApprovalDate,
-                    srNo: po.srNo,
-                    jobDemand: null,
-                    imageURL: null,
-                    createdAt: po.createdAt,
-                    updatedAt: po.updatedAt,
-                    userId: po.userId,
-                    machineId: null,
-                    poNumber: po.poNumber,
-                    unit: po.unit,
-                    plant: po.plant,
-                    totalPOQuantity: po.totalPOQuantity,
-                    dispatchQuantity: po.dispatchQuantity,
-                    pendingQuantity: po.pendingQuantity,
-                    noOfSheets: po.noOfSheets,
-                    poDate: po.poDate,
-                    deliveryDate: po.deliveryDate,
-                    dispatchDate: po.dispatchDate,
-                    nrcDeliveryDate: po.nrcDeliveryDate,
-                    jobSteps: []
-                  };
-                  completionStatus = checkJobCompletionStatus(mockJob);
-                }
+  // Use the actual merged data instead of creating a mock job
+  let completionStatus: 'artwork_pending' | 'po_pending' | 'more_info_pending' | 'completed' = 'po_pending';
+  
+  // Check completion status based on the actual PO and merged job planning data
+  completionStatus = checkPOCompletionStatus(po);
 
-                return (
-                  <POdetailCard
-                    key={po.id}
-                    po={po}
-                    onClick={handlePOClick}
-                    jobCompletionStatus={completionStatus}
-                  />
-                );
-              })}
+  return (
+    <POdetailCard
+      key={po.id}
+      po={po}
+      onClick={handlePOClick}
+      jobCompletionStatus={completionStatus}
+    />
+  );
+})}
+
             </div>
           )}
         </>

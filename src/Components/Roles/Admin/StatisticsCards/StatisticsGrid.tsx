@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, CheckCircle, PlayCircle, Clock, Users } from 'lucide-react';
+import { TrendingUp, CheckCircle, PlayCircle, Clock, Users, PauseCircle } from 'lucide-react';
 import StatisticsCard from './StatisticsCard';
 
 interface StatisticsGridProps {
@@ -45,14 +45,33 @@ const StatisticsGrid: React.FC<StatisticsGridProps> = ({
       isClickable: !!onTotalJobsClick
     },
     {
-      title: 'Completed Job Cards',
-      value: completedJobs,
-      icon: CheckCircle,
-      iconColor: 'text-[#10B981]',
-      iconBgColor: 'bg-green-100',
-      borderColor: 'border-[#10B981]',
-      onClick: onCompletedJobsClick,
-      isClickable: !!onCompletedJobsClick
+      title: 'Held Job Cards',
+      value: totalJobs,
+      icon: PauseCircle,
+      iconColor: 'text-[#7C3AED]',
+      iconBgColor: 'bg-purple-100',
+      borderColor: 'border-[#7C3AED]',
+      onClick: onTotalJobsClick,
+      isClickable: !!onTotalJobsClick
+    },
+     {
+      title: 'Active Users',
+      value: activeUsers,
+      icon: Users,
+      iconColor: 'text-[#EC4899]',
+      iconBgColor: 'bg-pink-100',
+      borderColor: 'border-[#EC4899]'
+    },
+    
+    {
+      title: 'Planned Job Cards',
+      value: plannedJobs,
+      icon: Clock,
+      iconColor: 'text-[#6B7280]',
+      iconBgColor: 'bg-gray-100',
+      borderColor: 'border-[#6B7280]',
+      onClick: onPlannedJobsClick,
+      isClickable: !!onPlannedJobsClick
     },
     {
       title: 'In Progress',
@@ -65,15 +84,16 @@ const StatisticsGrid: React.FC<StatisticsGridProps> = ({
       isClickable: !!onInProgressJobsClick
     },
     {
-      title: 'Planned Job Cards',
-      value: plannedJobs,
-      icon: Clock,
-      iconColor: 'text-[#6B7280]',
-      iconBgColor: 'bg-gray-100',
-      borderColor: 'border-[#6B7280]',
-      onClick: onPlannedJobsClick,
-      isClickable: !!onPlannedJobsClick
+      title: 'Completed Job Cards',
+      value: completedJobs,
+      icon: CheckCircle,
+      iconColor: 'text-[#10B981]',
+      iconBgColor: 'bg-green-100',
+      borderColor: 'border-[#10B981]',
+      onClick: onCompletedJobsClick,
+      isClickable: !!onCompletedJobsClick
     },
+    
     // {
     //   title: 'Total Steps',
     //   value: totalSteps,
@@ -90,14 +110,7 @@ const StatisticsGrid: React.FC<StatisticsGridProps> = ({
     //   iconBgColor: 'bg-purple-100',
     //   borderColor: 'border-[#8B5CF6]'
     // },
-    {
-      title: 'Active Users',
-      value: activeUsers,
-      icon: Users,
-      iconColor: 'text-[#EC4899]',
-      iconBgColor: 'bg-pink-100',
-      borderColor: 'border-[#EC4899]'
-    },
+   
     // {
     //   title: 'Efficiency',
     //   value: `${efficiency}%`,

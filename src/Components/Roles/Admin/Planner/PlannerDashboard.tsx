@@ -8,8 +8,10 @@ import {
   ClipboardDocumentListIcon,
   EyeIcon
 } from '@heroicons/react/24/outline';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell,  Tooltip, ResponsiveContainer } from 'recharts';
 import JobAssigned from '../../Planner/job_assigned'; // IMPORTED: New component
+import JobModal from './JobModal';
+
 
 interface PlannerJob {
   nrcJobNo: string;
@@ -81,7 +83,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
     return { completionData, comparisonData };
   }, [data.summary]);
 
-   console.log("processed jobs", data)
+   //console.log("processed jobs", data)
 
   // Apply filters and sorting
   const processedJobs = useMemo(() => {
@@ -181,7 +183,64 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
     });
   };
 
-  // console.log("processed job", processedJobs)
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean;
+    title: string;
+    jobs: PlannerJob[];
+  }>({
+    isOpen: false,
+    title: '',
+    jobs: []
+  });
+
+  const openModal = (title: string, jobs: PlannerJob[]) => {
+    setModalState({
+      isOpen: true,
+      title,
+      jobs
+    });
+  };
+
+  const closeModal = () => {
+    setModalState({
+      isOpen: false,
+      title: '',
+      jobs: []
+    });
+  };
+
+  // Filter jobs based on their completion status
+  const getJobsByStatus = (status: 'total' | 'completed' | 'partial' | 'notStarted') => {
+    switch (status) {
+      case 'total':
+        return data.allJobs;
+      case 'completed':
+        return data.allJobs.filter(job => 
+          job.poStatus === 'completed' && 
+          job.artworkStatus === 'completed' && 
+          job.machineDetailsStatus === 'completed'
+        );
+      case 'partial':
+        return data.allJobs.filter(job => {
+          const completedSteps = [
+            job.poStatus === 'completed',
+            job.artworkStatus === 'completed', 
+            job.machineDetailsStatus === 'completed'
+          ].filter(Boolean).length;
+          return completedSteps > 0 && completedSteps < 3;
+        });
+      case 'notStarted':
+        return data.allJobs.filter(job => 
+          job.poStatus === 'pending' && 
+          job.artworkStatus === 'pending' && 
+          job.machineDetailsStatus === 'pending'
+        );
+      default:
+        return [];
+    }
+  };
+
+   console.log("processed job", data)
   return (
     <div className="min-h-screen  p-6">
       {/* Header */}
@@ -208,7 +267,11 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        {/* Total Jobs Card */}
+        <div 
+          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => openModal('All Jobs', getJobsByStatus('total'))}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Job Cards</p>
@@ -220,7 +283,11 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        {/* Fully Completed Card */}
+        <div 
+          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => openModal('Fully Completed Jobs', getJobsByStatus('completed'))}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Fully Completed</p>
@@ -232,7 +299,11 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        {/* Partially Completed Card */}
+        <div 
+          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => openModal('Partially Completed Jobs', getJobsByStatus('partial'))}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Partially Completed</p>
@@ -244,7 +315,11 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        {/* Not Started Card */}
+        <div 
+          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => openModal('Not Started Jobs', getJobsByStatus('notStarted'))}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Not Started</p>
@@ -256,6 +331,14 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
           </div>
         </div>
       </div>
+
+      {/* Modal */}
+      <JobModal
+        isOpen={modalState.isOpen}
+        onClose={closeModal}
+        title={modalState.title}
+        jobs={modalState.jobs}
+      />
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -381,7 +464,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
             <thead className="bg-gray-50">
               <tr>
                 {[
-                  { key: 'nrcJobNo', label: 'NRC Job No' },
+                  { key: 'styleId', label: 'Style Id' },
                   { key: 'customerName', label: 'Customer Name' },
                   { key: 'poStatus', label: 'PO Status' },
                   { key: 'machineDetailsStatus', label: 'Machine Details' },
@@ -422,8 +505,8 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
                   <tr key={`${job.nrcJobNo}-${index}`} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div>
-                        <p className="text-sm font-medium text-gray-900 font-mono">{job.nrcJobNo}</p>
-                        <p className="text-xs text-gray-500">{job.styleItemSKU}</p>
+                        <p className="text-sm font-medium text-gray-900 font-mono">{job.styleItemSKU}</p>
+                        {/* <p className="text-xs text-gray-500">{job.styleItemSKU}</p> */}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate" title={job.customerName}>

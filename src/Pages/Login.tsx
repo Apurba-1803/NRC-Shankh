@@ -9,7 +9,7 @@ import { Eye, EyeOff } from "lucide-react";
  * Type for form data used in login
  */
 interface LoginFormData {
-  id: string;
+  email: string;
   password: string;
   role: string; // For UI display only
 }
@@ -28,7 +28,7 @@ export default function Login({ setIsAuthenticated, setUserRole, setTabValue }: 
 
   // ---------------------- State Declarations ---------------------- //
   const [formData, setFormData] = useState<LoginFormData>({
-    id: "",
+    email: "",
     password: "",
     role: "planner",
   });
@@ -48,11 +48,11 @@ export default function Login({ setIsAuthenticated, setUserRole, setTabValue }: 
     e.preventDefault();
     setIsSubmitting(true);
 
-    const { id, password } = formData;
+    const { email, password } = formData;
 
     try {
       // Simple frontend validation
-      if (!id.trim() || !password.trim()) {
+      if (!email.trim() || !password.trim()) {
         throw new Error("All fields are required.");
       }
 
@@ -60,7 +60,7 @@ export default function Login({ setIsAuthenticated, setUserRole, setTabValue }: 
       const API_ENDPOINT = "https://nrprod.nrcontainers.com/api/auth/login";
 
       // 🔥 Make the API call - this was missing!
-      const response = await axios.post(API_ENDPOINT, { id, password });
+      const response = await axios.post(API_ENDPOINT, { email, password });
 
       // If login successful
       if (response.data.success) {
@@ -97,7 +97,7 @@ export default function Login({ setIsAuthenticated, setUserRole, setTabValue }: 
         }
 
         // Clear form and navigate
-        setFormData({ id: "", password: "", role: "planner" });
+        setFormData({ email: "", password: "", role: "planner" });
         navigate('/dashboard');
       } else {
         setSubmitStatus("error");
@@ -133,8 +133,8 @@ export default function Login({ setIsAuthenticated, setUserRole, setTabValue }: 
             {/* ID Input */}
             <input
               type="text"
-              name="id"
-              value={formData.id}
+              name="email"
+              value={formData.email}
               onChange={handleChange}
               placeholder="Employee ID"
               className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#00AEEF]"

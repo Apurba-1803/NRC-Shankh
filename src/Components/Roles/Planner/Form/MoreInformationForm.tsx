@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {type Job,type JobStep,type Machine } from '../Types/job.ts';
 import SelectDemandModal from '../modal/SelectDemandModal.tsx';
 import AddStepsModal from '../modal/AddStepsModal.tsx';
-import MachineAssignedModal from '../modal/MachineAssignedModal.tsx';
+// import MachineAssignedModal from '../modal/MachineAssignedModal.tsx';
 
 interface MoreInformationFormProps {
   job: Job;
@@ -11,6 +11,19 @@ interface MoreInformationFormProps {
   onClose: () => void;
   isReadOnly: boolean;
 }
+
+const STEP_TO_MACHINE_MAPPING: Record<string, string[]> = {
+    'SideFlapPasting': ['auto flap pasting', 'manual flap pasting'],
+    'Punching': ['auto punching', 'manual punching'],
+    'FluteLaminateBoardConversion': ['flute laminator'],
+    'Corrugation': ['corrugation'],
+    'PrintingDetails': ['printing'],
+    'PaperStore': [],
+    'QualityDept': [],
+    'DispatchProcess': [],
+    'Die Cutting': []
+  };
+
 
 const MoreInformationForm: React.FC<MoreInformationFormProps> = ({ job, onSave, onClose, isReadOnly }) => {
   const [jobDemand, setJobDemand] = useState<Job['jobDemand']>(job.jobDemand || null);
@@ -21,7 +34,7 @@ const MoreInformationForm: React.FC<MoreInformationFormProps> = ({ job, onSave, 
 
   const [showDemandModal, setShowDemandModal] = useState(false);
   const [showStepsModal, setShowStepsModal] = useState(false);
-  const [showMachineModal, setShowMachineModal] = useState(false);
+  // const [showMachineModal, setShowMachineModal] = useState(false);
 
   useEffect(() => {
     if (job.machineId) {
@@ -104,22 +117,32 @@ const MoreInformationForm: React.FC<MoreInformationFormProps> = ({ job, onSave, 
       machineId: selectedMachines.length > 0 ? selectedMachines[0].id : null,
     };
 
-    const jobPlanningPayload = {
-      nrcJobNo: job.nrcJobNo,
-      jobDemand: jobDemand,
-      steps: selectedSteps.map(step => {
-        // find a machine for this step (logic depends on how you map steps to machine groups)
-        const assignedMachine = selectedMachines.find(m => m.machineType === step.stepName);
+   const jobPlanningPayload = {
+  nrcJobNo: job.nrcJobNo,
+  jobDemand: jobDemand,
+  steps: selectedSteps.map(step => {
+    // Use the mapping to find the correct machine for this step
+    const machineTypesForStep = STEP_TO_MACHINE_MAPPING[step.stepName];
+    let assignedMachine = null;
+    
+    if (machineTypesForStep && machineTypesForStep.length > 0) {
+      assignedMachine = selectedMachines.find(m => 
+        machineTypesForStep.some(type => 
+          m.machineType.toLowerCase().includes(type.toLowerCase())
+        )
+      );
+    }
 
-        return {
-          stepNo: step.stepNo,
-          stepName: step.stepName,
-          machineDetail: assignedMachine
-            ? assignedMachine.description || assignedMachine.machineCode
-            : 'Not Assigned',
-        };
-      }),
+    return {
+      stepNo: step.stepNo,
+      stepName: step.stepName,
+      machineDetail: assignedMachine
+        ? assignedMachine.description || assignedMachine.machineCode
+        : 'Not Assigned',
     };
+  }),
+};
+
 
     await onSave(updatedJobFields, jobPlanningPayload);
   } catch (err) {
@@ -204,7 +227,7 @@ const MoreInformationForm: React.FC<MoreInformationFormProps> = ({ job, onSave, 
           </div>
 
           {/* Machine Assigned */}
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Machine Assigned {jobDemand === 'medium' && <span className="text-red-500">*</span>}
             </label>
@@ -223,13 +246,13 @@ const MoreInformationForm: React.FC<MoreInformationFormProps> = ({ job, onSave, 
 </div>
 
             
-            {/* Machine requirement info */}
+            
             {jobDemand === 'medium' && (
               <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
                 <strong>Required:</strong> Machine assignment is mandatory for Regular demand
               </div>
             )}
-          </div>
+          </div> */}
 
           <button
             type="submit"
@@ -256,13 +279,18 @@ const MoreInformationForm: React.FC<MoreInformationFormProps> = ({ job, onSave, 
         />
       )}
       {showStepsModal && (
-        <AddStepsModal
-          currentSteps={selectedSteps}
-          onSelect={(steps) => { setSelectedSteps(steps); setShowStepsModal(false); }}
-          onClose={() => setShowStepsModal(false)}
-        />
-      )}
-      {showMachineModal && (
+  <AddStepsModal
+    currentSteps={selectedSteps}
+    selectedMachines={selectedMachines} // Pass current machines
+    onSelect={(steps, machines) => { 
+      setSelectedSteps(steps); 
+      setSelectedMachines(machines); // Update both
+      setShowStepsModal(false); 
+    }}
+    onClose={() => setShowStepsModal(false)}
+  />
+)}
+      {/* {showMachineModal && (
   <MachineAssignedModal
     currentMachine={selectedMachines} // ✅ pass array instead of single
     onSelect={(machines) => {         // ✅ machines is Machine[]
@@ -271,7 +299,7 @@ const MoreInformationForm: React.FC<MoreInformationFormProps> = ({ job, onSave, 
     }}
     onClose={() => setShowMachineModal(false)}
   />
-)}
+)} */}
 
     </div>
   );

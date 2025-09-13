@@ -878,6 +878,12 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
     previousStepCompleted = currentStepIsCompletedByDetail;
   }
 
+     const formatStepName = (stepName: string): string => {
+    return stepName
+      .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space before capital letters
+      .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2') // Handle consecutive capitals
+      .trim();
+  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-gray-100 min-h-screen">
@@ -965,7 +971,7 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
                 {icon}
               </div>
               <div className="flex-1 min-w-0 pr-4">
-                <h3 className="text-lg font-semibold text-gray-800 break-words">{step.stepName}</h3>
+                <h3 className="text-lg font-semibold text-gray-800 break-words">{formatStepName(step.stepName)}</h3>
                 <p className="text-sm text-gray-600 break-words">{statusText}</p>
                 {step.machineDetails && step.machineDetails.length > 0 && (
                   <p className="text-xs text-gray-500 mt-1 break-words">
