@@ -24,10 +24,10 @@ const allStepsOptions: { stepName: string; description: string }[] = [
 
 const STEP_TO_MACHINE_MAPPING: Record<string, string[]> = {
   // Steps with machines
-  'SideFlapPasting': ['auto flap pasting', 'manual flap pasting'],
-  'Punching': ['auto punching', 'manual punching'],
-  'FluteLaminateBoardConversion': ['flute laminator'],
-  'Corrugation': ['corrugation'],
+  'SideFlapPasting': ['auto flap ', 'manual fi'],
+  'Punching': ['auto pund', 'manual pu'],
+  'FluteLaminateBoardConversion': ['flute lam'],
+  'Corrugation': ['corrugatic'],
   'PrintingDetails': ['printing'],
   
   // Steps without machines (no machine assignment needed)
@@ -48,7 +48,7 @@ const AddStepsModal: React.FC<AddStepsModalProps> = ({
   const [stepMachines, setStepMachines] = useState<Record<string, string>>({});
   const [machines, setMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);
-
+console.log("machines", machines)
   useEffect(() => {
     fetchMachines();
     // Initialize step machines from current selection
@@ -130,12 +130,24 @@ const getMachinesForStep = (stepName: string) => {
 
   const handleSave = () => {
     // Convert stepMachines back to Machine[] format for existing data structure
-    const machinesArray = Object.entries(stepMachines)
-      .map(([ machineId]) => machines.find(m => m.id === machineId))
-      .filter(Boolean) as Machine[];
-    
-    onSelect(selectedSteps, machinesArray);
+   const machinesArray = Object.entries(stepMachines)
+    .map(([stepName, machineId]) => machines.find(m => m.id === machineId))
+    .filter(Boolean) as Machine[];
+  
+  console.log('Selected steps:', selectedSteps);
+  console.log('Step machines mapping:', stepMachines);
+  console.log('Machines array being sent:', machinesArray);
+  
+  onSelect(selectedSteps, machinesArray);
   };
+
+      const formatStepName = (stepName: string): string => {
+    return stepName
+      .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space before capital letters
+      .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2') // Handle consecutive capitals
+      .trim();
+  };
+
 
 return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8 bg-transparent bg-opacity-30 backdrop-blur-sm min-h-screen">
@@ -169,7 +181,7 @@ return (
                         className="form-checkbox h-5 w-5 text-[#00AEEF] border-gray-300 focus:ring-[#00AEEF] rounded"
                       />
                       <div className="ml-3 flex-1">
-                        <span className="block text-base font-medium text-gray-800">{option.stepName}</span>
+                        <span className="block text-base font-medium text-gray-800">{formatStepName(option.stepName)}</span>
                         <span className="block text-sm text-gray-500">{option.description}</span>
                         {!requiresMachine && (
                           <span className="block text-xs text-green-600 mt-1">No machine assignment required</span>

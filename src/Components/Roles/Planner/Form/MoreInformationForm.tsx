@@ -13,16 +13,19 @@ interface MoreInformationFormProps {
 }
 
 const STEP_TO_MACHINE_MAPPING: Record<string, string[]> = {
-    'SideFlapPasting': ['auto flap pasting', 'manual flap pasting'],
-    'Punching': ['auto punching', 'manual punching'],
-    'FluteLaminateBoardConversion': ['flute laminator'],
-    'Corrugation': ['corrugation'],
-    'PrintingDetails': ['printing'],
-    'PaperStore': [],
-    'QualityDept': [],
-    'DispatchProcess': [],
-    'Die Cutting': []
-  };
+  // Steps with machines
+  'SideFlapPasting': ['auto flap ', 'manual fl'],
+  'Punching': ['auto pund', 'manual pu'],
+  'FluteLaminateBoardConversion': ['flute lam'],
+  'Corrugation': ['corrugatic'],
+  'PrintingDetails': ['printing'],
+  
+  // Steps without machines (no machine assignment needed)
+  'PaperStore': [],
+  'QualityDept': [],
+  'DispatchProcess': [],
+  'Die Cutting': []
+};
 
 
 const MoreInformationForm: React.FC<MoreInformationFormProps> = ({ job, onSave, onClose, isReadOnly }) => {
@@ -139,6 +142,7 @@ const MoreInformationForm: React.FC<MoreInformationFormProps> = ({ job, onSave, 
       machineDetail: assignedMachine
         ? assignedMachine.description || assignedMachine.machineCode
         : 'Not Assigned',
+      machineId: assignedMachine ? assignedMachine.id : null,
     };
   }),
 };

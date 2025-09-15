@@ -12,9 +12,10 @@ export interface UserData {
 export interface CreateUserPayload {
   email: string;
   password: string;
-  roles: string[];
+  role: string[];
   firstName: string;
   lastName: string;
+  machineIds: string[];
 }
 
 export interface UpdateUserPayload {
@@ -22,6 +23,7 @@ export interface UpdateUserPayload {
   email: string;
   roles: string[];
   password?: string;
+  machineId : string[];
 }
 
 // Role options matching the backend expectations

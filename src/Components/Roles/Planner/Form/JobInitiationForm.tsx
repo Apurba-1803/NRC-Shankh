@@ -387,59 +387,144 @@ const [jobOptions, setJobOptions] = useState<Job[]>([]);
     }
   };
 
-  const handleMoreInfoSave = async (updatedFields: Partial<Job>, jobPlanningPayload?: any) => {
-    setError(null);
-    if (!job) return;
+ const handleMoreInfoSave = async (updatedFields: Partial<Job>, jobPlanningPayload?: any) => {
+  setError(null);
+  if (!job) return;
 
-    try {
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) throw new Error('Authentication token not found.');
+  try {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) throw new Error('Authentication token not found.');
 
-      const response = await fetch(`https://nrprod.nrcontainers.com/api/jobs/${job.nrcJobNo}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(updatedFields),
-      });
+    const response = await fetch(`https://nrprod.nrcontainers.com/api/jobs/${job.nrcJobNo}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(updatedFields),
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update more information.');
-      }
-      const result = await response.json();
-      if (result.success) {
-        const updatedJob = { ...job, ...updatedFields, updatedAt: result.data.updatedAt };
-        setJob(updatedJob);
-        onJobUpdated(updatedJob);
-        
-        // Create job plan entry after all forms are completed
-        try {
-          // Use the jobPlanningPayload if provided, otherwise create default
-          if (jobPlanningPayload && jobPlanningPayload.steps) {
-            await createJobPlanFromPayload(updatedJob, jobPlanningPayload, accessToken);
-          } else {
-            await createJobPlan(updatedJob, accessToken);
-          }
-          setSuccessMessage('All forms completed successfully! Job plan created. Redirecting to dashboard...');
-        } catch (jobPlanError) {
-          console.warn('Failed to create job plan:', jobPlanError);
-          setSuccessMessage('Forms completed but job plan creation failed. Redirecting to dashboard...');
-        }
-        
-        // Redirect to dashboard after showing success message
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 3000);
-      } else {
-        throw new Error(result.message || 'Failed to save more information.');
-      }
-    } catch (err) {
-      setError(`More Info Save Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      throw err;
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update more information.');
     }
-  };
+    
+    const result = await response.json();
+    if (result.success) {
+      const updatedJob = { ...job, ...updatedFields, updatedAt: result.data.updatedAt };
+      setJob(updatedJob);
+      onJobUpdated(updatedJob);
+      
+      // Create job plan entry after all forms are completed
+      try {
+        // Use the jobPlanningPayload if provided, otherwise create default
+        if (jobPlanningPayload && jobPlanningPayload.steps) {
+          await createJobPlanFromPayload(updatedJob, jobPlanningPayload, accessToken);
+          
+          // ✅ Update machine statuses to "busy" after successful job plan creation
+          await updateMachineStatuses(jobPlanningPayload, accessToken);
+        } else {
+          await createJobPlan(updatedJob, accessToken);
+          
+          // ✅ Update machine status for single machine if applicable
+          if (updatedFields.machineId) {
+            await updateSingleMachineStatus(updatedFields.machineId, accessToken);
+          }
+        }
+        setSuccessMessage('All forms completed successfully! Job plan created and machines assigned. Redirecting to dashboard...');
+      } catch (jobPlanError) {
+        console.warn('Failed to create job plan or update machine status:', jobPlanError);
+        setSuccessMessage('Forms completed but job plan creation failed. Redirecting to dashboard...');
+      }
+      
+      // Redirect to dashboard after showing success message
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 3000);
+    } else {
+      throw new Error(result.message || 'Failed to save more information.');
+    }
+  } catch (err) {
+    setError(`More Info Save Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    throw err;
+  }
+};
+
+// ✅ Add this helper function to update machine statuses
+const updateMachineStatuses = async (jobPlanningPayload: any, accessToken: string) => {
+  if (!jobPlanningPayload.steps || !Array.isArray(jobPlanningPayload.steps)) {
+    console.warn('No steps found in job planning payload');
+    return;
+  }
+
+  const machineUpdatePromises: Promise<void>[] = [];
+  const machineIds = new Set<string>();
+  
+  // ✅ Get machine IDs from steps
+  jobPlanningPayload.steps.forEach((step: any) => {
+    if (step.machineId) {
+      machineIds.add(step.machineId);
+    }
+  });
+
+  // ✅ Also get machine IDs from selectedMachines if available
+  if (jobPlanningPayload.selectedMachines && Array.isArray(jobPlanningPayload.selectedMachines)) {
+    jobPlanningPayload.selectedMachines.forEach((machine: any) => {
+      if (machine.id) {
+        machineIds.add(machine.id);
+      }
+    });
+  }
+
+  console.log('Updating machine statuses for machines:', Array.from(machineIds));
+
+  if (machineIds.size === 0) {
+    console.warn('No machine IDs found to update');
+    return;
+  }
+
+  // Update each machine status to "busy"
+  for (const machineId of machineIds) {
+    machineUpdatePromises.push(updateSingleMachineStatus(machineId, accessToken));
+  }
+
+  try {
+    await Promise.all(machineUpdatePromises);
+    console.log('✅ All machine statuses updated successfully');
+  } catch (error) {
+    console.error('❌ Failed to update some machine statuses:', error);
+    // Don't throw error here - we don't want to fail the entire process
+  }
+};
+
+
+// ✅ Add this helper function to update a single machine status
+const updateSingleMachineStatus = async (machineId: string, accessToken: string): Promise<void> => {
+  try {
+    const response = await fetch(`https://nrprod.nrcontainers.com/api/machines/${machineId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        status: 'busy'
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Failed to update machine ${machineId}: ${errorData.message || response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log(`✅ Machine ${machineId} status updated to busy:`, result);
+  } catch (error) {
+    console.error(`❌ Failed to update machine ${machineId} status:`, error);
+    throw error;
+  }
+};
+
 
   // Function to create job plan from the actual selected steps
   const createJobPlanFromPayload = async (completedJob: Job, jobPlanningPayload: any, accessToken: string) => {

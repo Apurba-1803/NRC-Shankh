@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
 import { roleOptions, type CreateUserPayload } from "../UserManagement/types";
 
@@ -21,6 +21,11 @@ const CreateNewId: React.FC<CreateNewIdProps> = ({ onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [selectedMachines, setSelectedMachines] = useState<string[]>([]);
+
+  const [machines, setMachines] = useState<Array<{id: string, machineCode: string, machineType: string}>>([]);
+  const [machinesLoading, setMachinesLoading] = useState(false);
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -37,70 +42,116 @@ const CreateNewId: React.FC<CreateNewIdProps> = ({ onClose, onSuccess }) => {
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (selectedRoles.length === 0) {
-      setError("Please select at least one role");
-      return;
-    }
+   useEffect(() => {
+    fetchMachines();
+  }, []);
 
-    setLoading(true);
-    setError(null);
-
+  const fetchMachines = async () => {
+    setMachinesLoading(true);
     try {
-      console.log('Form data:', form);
-      console.log('Selected roles before payload:', selectedRoles);
-      
-      const payload: CreateUserPayload = {
-        email: form.email,
-        password: form.password,
-        roles: selectedRoles,
-        firstName: form.firstName,
-        lastName: form.lastName,
-      };
-      
-      console.log('Final payload being sent to backend:', payload);
-      console.log('Payload JSON stringified:', JSON.stringify(payload));
-
       const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) throw new Error('Authentication token not found.');
+      if (!accessToken) {
+        console.error('No access token found');
+        return;
+      }
 
-      const response = await fetch('https://nrprod.nrcontainers.com/api/auth/add-member', {
-        method: 'POST',
+      const response = await fetch('https://nrprod.nrcontainers.com/api/machines', {
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(payload),
+          'Content-Type': 'application/json'
+        }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create user');
-      }
-
-      const result = await response.json();
-      if (result.success) {
-        setSuccess('User created successfully!');
-        setTimeout(() => {
-          onSuccess?.();
-          onClose();
-        }, 1500);
-      } else {
-        throw new Error(result.message || 'Failed to create user');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && Array.isArray(data.data)) {
+          setMachines(data.data.filter((machine: any) => machine.isActive));
+        }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create user');
+      console.error('Error fetching machines:', err);
     } finally {
-      setLoading(false);
+      setMachinesLoading(false);
     }
   };
 
+  const handleMachineToggle = (machineId: string) => {
+    console.log('Machine toggle clicked:', machineId);
+    setSelectedMachines(prev => {
+      const newMachines = prev.includes(machineId)
+        ? prev.filter(id => id !== machineId)
+        : [...prev, machineId];
+      console.log('Updated selected machines:', newMachines);
+      return newMachines;
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  if (selectedRoles.length === 0) {
+    setError("Please select at least one role");
+    return;
+  }
+
+  setLoading(true);
+  setError(null);
+
+  try {
+    console.log('Form data:', form);
+    console.log('Selected roles before payload:', selectedRoles);
+    
+    const payload =  {
+      email: form.email,
+      password: form.password,
+      roles: selectedRoles, 
+      firstName: form.firstName,
+      lastName: form.lastName,
+      machineIds: selectedMachines // ✅ Use 'machineIds' (plural)
+    };
+    
+    console.log('Final payload being sent to backend:', payload);
+    console.log('Payload JSON stringified:', JSON.stringify(payload));
+
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) throw new Error('Authentication token not found.');
+
+    const response = await fetch('https://nrprod.nrcontainers.com/api/auth/add-member', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to create user');
+    }
+
+    const result = await response.json();
+    if (result.success) {
+      setSuccess('User created successfully!');
+      setTimeout(() => {
+        onSuccess?.();
+        onClose();
+      }, 1500);
+    } else {
+      throw new Error(result.message || 'Failed to create user');
+    }
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'Failed to create user');
+  } finally {
+    setLoading(false);
+  }
+};
+
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8 bg-transparent bg-opacity-50 backdrop-blur-sm">
-      <div className="relative w-full max-w-md mx-auto bg-white rounded-2xl shadow-2xl p-0 flex flex-col items-center max-h-[90vh] overflow-hidden">
-        {/* Header */}
+      <div className="relative w-full max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-0 flex flex-col items-center max-h-[90vh] overflow-hidden">
+        {/* Header - same as before */}
         <div className="w-full px-8 pt-6 pb-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div>
@@ -158,8 +209,6 @@ const CreateNewId: React.FC<CreateNewIdProps> = ({ onClose, onSuccess }) => {
               />
             </div>
 
-
-
             {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -216,6 +265,60 @@ const CreateNewId: React.FC<CreateNewIdProps> = ({ onClose, onSuccess }) => {
                 <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
                   <strong>Selected:</strong> {selectedRoles.join(', ')}
                 </div>
+              )}
+            </div>
+
+            {/* Machine Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Select Machines (Multiple)</label>
+              {machinesLoading ? (
+                <div className="flex justify-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00AEEF]"></div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                    {machines.length === 0 ? (
+                      <div className="col-span-full text-center text-gray-500 text-sm py-4">
+                        No machines available
+                      </div>
+                    ) : (
+                      machines.map((machine) => (
+                        <button
+                          key={machine.id}
+                          type="button"
+                          onClick={() => handleMachineToggle(machine.id)}
+                          className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 text-left ${
+                            selectedMachines.includes(machine.id)
+                              ? 'bg-[#00AEEF] text-white shadow-lg'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium">{machine.machineCode}</div>
+                              <div className="text-xs opacity-75">{machine.machineType}</div>
+                            </div>
+                            {selectedMachines.includes(machine.id) && (
+                              <Check size={16} className="text-white ml-2" />
+                            )}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                  
+                  {/* Selected Machines Display */}
+                  {selectedMachines.length > 0 && (
+                    <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+                      <strong>Selected Machines ({selectedMachines.length}):</strong>{' '}
+                      {selectedMachines.map(machineId => {
+                        const machine = machines.find(m => m.id === machineId);
+                        return machine?.machineCode;
+                      }).filter(Boolean).join(', ')}
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
