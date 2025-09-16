@@ -1,6 +1,6 @@
 // src/Components/Roles/Planner/JobInitiationForm.tsx
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Search, CheckCircle, Clock } from 'lucide-react';
 import type { Job, PoDetailsPayload, JobPlanStep } from '../Types/job.ts';
 import ArtworkDetailsForm from './ArtworkDetailsForm.tsx';
@@ -14,8 +14,12 @@ interface JobInitiationFormProps {
 type FormStep = 'artwork' | 'po' | 'moreInfo';
 
 const JobInitiationForm: React.FC<JobInitiationFormProps> = ({ onJobUpdated }) => {
-  const { nrcJobNo } = useParams<{ nrcJobNo: string }>();
+   const { nrcJobNo } = useParams<{ nrcJobNo: string }>();
+  const [searchParams] = useSearchParams(); // Only one navigate declaration needed
   const navigate = useNavigate();
+
+const location = useLocation();
+
 
   const [job, setJob] = useState<Job | null>(null);
   const [loadingJob, setLoadingJob] = useState(true);
@@ -55,7 +59,109 @@ const [jobOptions, setJobOptions] = useState<Job[]>([]);
     { id: 'po', label: 'P.O. Details', component: PODetailsForm },
     { id: 'moreInfo', label: 'More Information', component: MoreInformationForm },
   ];
+  useEffect(() => {
+    const state = location.state as any;
+    
+    if (state?.searchJobId) {
+      console.log('Auto-searching for job:', state.searchJobId);
+      
+      // Auto-fill the search and trigger search
+      setSearchTerm(state.searchJobId);
+      
+      // You can also auto-trigger the search logic here
+      // This mimics what happens when user types in search
+      handleSearchChange({ target: { value: state.searchJobId } } as any);
+      
+      // Store the target step for later use
+      if (state.targetStep) {
+        // You might want to store this in state to use after job is found
+        localStorage.setItem('targetStep', state.targetStep);
+      }
+      
+      // Clear the state
+      window.history.replaceState({}, '', location.pathname);
+    }
+  }, [location.state]);
 
+//   useEffect(() => {
+//   const state = location.state as any;
+  
+//   if (state?.searchJobId && state?.targetStep) {
+//     console.log('Auto-navigating to job:', state.searchJobId, 'step:', state.targetStep);
+    
+//     // Auto search for the job
+//     setSearchTerm(state.searchJobId);
+    
+//     // If you have a direct job lookup function, use it
+//     const autoFindAndSetJob = async () => {
+//       try {
+//         setSearchLoading(true);
+//         // Use your existing job search API
+//         const response = await fetch(`/api/jobs/search?nrcJobNo=${encodeURIComponent(state.searchJobId)}`);
+//         const jobs = await response.json();
+//         const foundJob = jobs.find((job: Job) => job.nrcJobNo === state.searchJobId);
+        
+//         if (foundJob) {
+//           setJob(foundJob);
+//           setSearchedJob(foundJob);
+//           setCurrentStep(state.targetStep as FormStep);
+//         } else {
+//           setSearchError(`Job not found: ${state.searchJobId}`);
+//         }
+//       } catch (error) {
+//         console.error('Error finding job:', error);
+//         setSearchError('Error searching for job');
+//       } finally {
+//         setSearchLoading(false);
+//       }
+//     };
+    
+//     autoFindAndSetJob();
+//     window.history.replaceState({}, '', location.pathname);
+//   }
+// }, [location.state]);
+
+
+ 
+
+  // ✅ CORRECTED: Regular job loading (for non-modal navigation)
+  useEffect(() => {
+    const loadJobData = async () => {
+      if (isAddPOMode) {
+        setLoadingJob(false);
+        return;
+      }
+
+      if (!nrcJobNo) {
+        setJobError('No job number provided');
+        setLoadingJob(false);
+        return;
+      }
+
+      try {
+        setLoadingJob(true);
+        // Replace with your actual API call
+        const response = await fetch(`/api/jobs/${nrcJobNo}`);
+        if (response.ok) {
+          const jobData = await response.json();
+          setJob(jobData);
+          setCurrentStep(determineInitialStep(jobData));
+        } else {
+          setJobError('Failed to load job data');
+        }
+      } catch (error) {
+        console.error('Error loading job:', error);
+        setJobError('Error loading job data');
+      } finally {
+        setLoadingJob(false);
+      }
+    };
+
+    // Only load job data if we're not handling URL parameters
+    if (!searchParams.get('mode')) {
+      loadJobData();
+    }
+  }, [nrcJobNo, isAddPOMode, searchParams]);
   // Helper function to check job completion status
   const checkJobCompletionStatus = (job: Job): 'artwork_pending' | 'po_pending' | 'more_info_pending' | 'completed' => {
     // 1. Check Artwork Details

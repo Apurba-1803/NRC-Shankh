@@ -70,10 +70,10 @@ const EditMachineModal: React.FC<EditMachineModalProps> = ({
     const mapping: { [key: string]: string } = {
       'PaperStore': 'Paper Store',
       'PrintingDetails': 'Printing',
-      'Corrugation': 'Corrugation',
-      'FluteLaminateBoardConversion': 'Flute Laminator',
-      'Punching': 'Manual Punching', // or 'Auto Punching'
-      'SideFlapPasting': 'Manual Flap Pasting', // or 'Auto Flap Pasting'
+      'Corrugation': 'Corrugatic',
+      'FluteLaminateBoardConversion': 'Flute Lam',
+      'Punching': 'Manual Pu', // or 'Auto Punching'
+      'SideFlapPasting': 'Manual FI', // or 'Auto Flap Pasting'
       'QualityDept': 'Quality Department',
       'DispatchProcess': 'Dispatch Process'
     };
@@ -91,8 +91,8 @@ const EditMachineModal: React.FC<EditMachineModalProps> = ({
       const stepMachineType = getMachineTypeForStep(step.stepName);
       const filtered = machines.filter(machine => 
         machine.machineType === stepMachineType ||
-        (step.stepName === 'Punching' && (machine.machineType === 'Manual Punching' || machine.machineType === 'Auto Punching')) ||
-        (step.stepName === 'SideFlapPasting' && (machine.machineType === 'Manual Flap Pasting' || machine.machineType === 'Auto Flap Pasting'))
+        (step.stepName === 'Punching' && (machine.machineType === 'Manual Pu' || machine.machineType === 'Auto Pund')) ||
+        (step.stepName === 'SideFlapPasting' && (machine.machineType === 'Manual FI' || machine.machineType === 'Auto Flap'))
       );
       setFilteredMachines(filtered);
     }

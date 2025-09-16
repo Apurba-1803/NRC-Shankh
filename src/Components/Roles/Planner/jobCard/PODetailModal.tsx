@@ -40,10 +40,12 @@ interface PurchaseOrder {
 
 interface PODetailModalProps {
   po: PurchaseOrder | null;
+  completionStatus: 'artwork_pending' | 'po_pending' | 'more_info_pending' | 'completed';
   onClose: () => void;
+  onNavigateToForm?: (po : PurchaseOrder, formType: string) => void; // Add this
 }
 
-const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose }) => {
+const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose, completionStatus, onNavigateToForm  }) => {
   if (!po) return null;
 
   const formatDate = (dateString: string) => {
@@ -54,6 +56,12 @@ const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose }) => {
   const formatDateTime = (dateString: string) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleString('en-GB');
+  };
+
+
+    const handleFormNavigation = (po:PurchaseOrder, formType: string) => {
+    onClose(); // Close the modal first
+    onNavigateToForm?.(po, formType); // Then navigate to form
   };
 
   return (
@@ -265,13 +273,53 @@ const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose }) => {
 
         {/* Footer */}
         <div className="flex justify-end p-4 sm:p-6 border-t border-gray-200">
+  {completionStatus === 'more_info_pending' && (
           <button
-            onClick={onClose}
-            className="px-4 sm:px-6 py-2 sm:py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm sm:text-base"
+            onClick={() => handleFormNavigation(po, 'moreInfo')}
+            className="px-4 sm:px-6 py-2 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
           >
-            Close
+            Complete More Info
           </button>
-        </div>
+        )}
+  
+ {completionStatus === 'artwork_pending' && (
+          <button
+            onClick={() => handleFormNavigation(po, 'artwork')}
+            className="px-4 sm:px-6 py-2 sm:py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm sm:text-base"
+          >
+            Complete Artwork Details
+          </button>
+        )}
+        
+        {completionStatus === 'po_pending' && (
+          <button
+            onClick={() => handleFormNavigation(po, 'po')}
+            className="px-4 sm:px-6 py-2 sm:py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm sm:text-base"
+          >
+            Complete PO Details
+          </button>
+        )}
+  
+  {/* {completionStatus === 'completed' && (
+    <button
+      onClick={onClose}
+      className="px-4 sm:px-6 py-2 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base"
+    >
+      Completed
+    </button>
+  )} */}
+  
+  {/* Default Close button if no status matches */}
+  {!['more_info_pending', 'artwork_pending', 'po_pending', 'completed'].includes(completionStatus) && (
+    <button
+      onClick={onClose}
+      className="px-4 sm:px-6 py-2 sm:py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm sm:text-base"
+    >
+      Close
+    </button>
+  )}
+</div>
+
       </div>
     </div>
   );

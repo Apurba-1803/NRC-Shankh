@@ -118,12 +118,12 @@ const categoryStats = useMemo(() => {
 // Update getMachineCategory to ensure 6 categories
 function getMachineCategory(machineName: string): string {
   const name = machineName.toLowerCase();
-  if (name.includes('printing') || name.includes('heidelberg') || name.includes('lithrone')) return 'Printing';
-  if (name.includes('corrugation')) return 'Corrugation';
-  if (name.includes('flap') || name.includes('pasting')) return 'Pasting';
+  if (name.includes('printing') || name.includes('heidelber') || name.includes('lithrone')) return 'Printing';
+  if (name.includes('corrugatic')) return 'Corrugation';
+  if (name.includes('flap') || name.includes('manual fi')) return 'Pasting';
   if (name.includes('flute') || name.includes('laminator')) return 'Lamination';
-  if (name.includes('punching') || name.includes('pinning')) return 'Punching';
-  if (name.includes('quality') || name.includes('dispatch') || name.includes('paper')) return 'Processing';
+  if (name.includes('manual pu') || name.includes('auto pund')) return 'Punching';
+  if (name.includes('quality') || name.includes('dispatch')) return 'Processing';
   return 'Other';
 }
 

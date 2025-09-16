@@ -166,13 +166,13 @@ const mergePOWithJobPlanning = (purchaseOrders: any[], jobPlannings: any[]) => {
     const matchingJobPlan = jobPlannings.find(jp => 
       jp.nrcJobNo === po.jobNrcJobNo || jp.nrcJobNo === po.nrcJobNo
     );
-
+   console.log("matching job plan", matchingJobPlan)
     // Merge the data
     return {
       ...po,
       // Add job planning fields
       jobDemand: matchingJobPlan?.jobDemand || null,
-      machineId: matchingJobPlan?.machineId || null,
+      machineId: matchingJobPlan?.steps[0]?.machineDetails[0]?.machineId || null,
       jobSteps: matchingJobPlan?.steps || [],
       jobPlanId: matchingJobPlan?.jobPlanId || null,
       jobPlanCreatedAt: matchingJobPlan?.createdAt || null,
@@ -228,7 +228,7 @@ const fetchPurchaseOrders = async () => {
     // Parse responses
     const poData = await poResponse.json();
     const jobPlanData = jobPlanResponse.ok ? await jobPlanResponse.json() : { success: true, data: [] };
-
+    
     if (poData.success && Array.isArray(poData.data)) {
       // Merge purchase orders with job planning data
       const mergedData = mergePOWithJobPlanning(poData.data, jobPlanData.data || []);
@@ -517,6 +517,25 @@ const handleBulkUpload = async () => {
   }
 };
 
+const handleNavigateToJobForm = (po: PurchaseOrder, formType: string) => {
+  const jobId = po.jobNrcJobNo || po.job?.nrcJobNo;
+  
+  if (!jobId) {
+    console.error('No job ID found in PO:', po);
+    alert('Cannot navigate: Job ID not found');
+    return;
+  }
+  
+  // ✅ SIMPLE: Just navigate to the same route as "Add Purchase Order"
+  navigate('/dashboard/planner/initiate-job/new', { 
+    state: { 
+      searchJobId: jobId,  // Pass the job ID to search for
+      targetStep: formType // Pass the target step
+    }
+  });
+};
+
+
 console.log("filtered pos", filteredPOs)
 
   return (
@@ -668,14 +687,16 @@ console.log("filtered pos", filteredPOs)
 
       {/* PO Detail Modal */}
       {selectedPO && (
-        <PODetailModal
-          po={selectedPO}
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedPO(null);
-          }}
-        />
-      )}
+  <PODetailModal
+    po={selectedPO}
+    completionStatus={checkPOCompletionStatus(selectedPO)}
+    onClose={() => {
+      setIsModalOpen(false);
+      setSelectedPO(null);
+    }}
+    onNavigateToForm={(po, formType) => handleNavigateToJobForm(selectedPO, formType)}
+  />
+)}
     </div>
   );
 };
