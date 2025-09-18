@@ -140,9 +140,10 @@ const MoreInformationForm: React.FC<MoreInformationFormProps> = ({ job, onSave, 
       stepNo: step.stepNo,
       stepName: step.stepName,
       machineDetail: assignedMachine
-        ? assignedMachine.description || assignedMachine.machineCode
+        ? assignedMachine.machineType || assignedMachine.machineCode
         : 'Not Assigned',
       machineId: assignedMachine ? assignedMachine.id : null,
+       machineCode: assignedMachine ? assignedMachine.machineCode : null,
     };
   }),
 };
@@ -156,6 +157,7 @@ const MoreInformationForm: React.FC<MoreInformationFormProps> = ({ job, onSave, 
   }
 };
 
+console.log("selected Machine", selectedMachines)
 
   return (
     <div className="relative w-full max-w-lg mx-auto bg-white rounded-2xl shadow-2xl p-0 flex flex-col items-center">

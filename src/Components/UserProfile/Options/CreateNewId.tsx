@@ -26,6 +26,142 @@ const CreateNewId: React.FC<CreateNewIdProps> = ({ onClose, onSuccess }) => {
   const [machines, setMachines] = useState<Array<{id: string, machineCode: string, machineType: string}>>([]);
   const [machinesLoading, setMachinesLoading] = useState(false);
 
+   useEffect(() => {
+    if (machines.length > 0) {
+      console.log('=== MACHINES DEBUG ===');
+      console.log('Total machines:', machines.length);
+      machines.forEach(machine => {
+        const category = getMachineCategory(machine.machineType);
+        console.log(`Machine: ${machine.machineCode} | Type: ${machine.machineType} | Category: ${category}`);
+      });
+    }
+  }, [machines]);
+
+  // ✅ Add debug logging for roles
+  useEffect(() => {
+    if (selectedRoles.length > 0) {
+      console.log('=== ROLES DEBUG ===');
+      console.log('Selected roles:', selectedRoles);
+      selectedRoles.forEach(role => {
+        const categories = getRoleMachineCategories(role);
+        console.log(`Role: ${role} | Allowed categories: ${categories}`);
+      });
+      
+      const filtered = getFilteredMachines();
+      console.log('Filtered machines count:', filtered.length);
+    }
+  }, [selectedRoles, machines]);
+
+  // ✅ Helper function to categorize machines
+  // ✅ Helper function to categorize machines - FIXED for your machine types
+const getMachineCategory = (machineName: string): string => {
+  const name = machineName.toLowerCase();
+  
+  // Printing machines
+  if (name.includes('printing')) {
+    return 'Printing';
+  }
+  
+  // Corrugation machines - your machines use "Corrugatic"  
+  if (name.includes('corrugatic')) {
+    return 'Corrugation';
+  }
+  
+  // Lamination machines - your machines use "Flute Lam"
+  if (name.includes('flute lam')) {
+    return 'Lamination';
+  }
+  
+  // Pasting machines - your machines use "Manual FI" and "Auto Flap"
+  if (name.includes('manual fi') || name.includes('auto flap')) {
+    return 'Pasting';
+  }
+  
+  // Punching machines - your machines use "Manual Pu" and "Auto Pund"
+  if (name.includes('manual pu') || name.includes('auto pund')) {
+    return 'Punching';
+  }
+  
+  // Paper cutting machines
+  if (name.includes('paper cut')) {
+    return 'Cutting';
+  }
+  
+  // Thin blade machines
+  if (name.includes('thin blade')) {
+    return 'Cutting';
+  }
+  
+  // Pinning machines
+  if (name.includes('pinning')) {
+    return 'Finishing';
+  }
+  
+  // Foiling machines
+  if (name.includes('foiling ma')) {
+    return 'Finishing';
+  }
+  
+  console.log(`Machine "${machineName}" categorized as "Other"`);
+  return 'Other';
+};
+
+
+  // ✅ Map roles to machine categories they can access
+ // ✅ Map roles to machine categories they can access - UPDATED
+const getRoleMachineCategories = (role: string): string[] => {
+  const roleMap: { [key: string]: string[] } = {
+    'printer': ['Printing'],
+    'printing_operator': ['Printing'],
+    
+    'corrugator': ['Corrugation'], 
+    'corrugation_operator': ['Corrugation'],
+    
+    'flutelaminator': ['Lamination'],
+    'flute_laminator': ['Lamination'],
+    'lamination_operator': ['Lamination'],
+    
+    'pasting_operator': ['Pasting'],
+    'flap_pasting': ['Pasting'],
+    
+    'punching_operator': ['Punching'],
+    'die_cutting': ['Punching'],
+    
+    'cutting_operator': ['Cutting'],
+    'paper_cutting': ['Cutting'],
+    
+    'finishing_operator': ['Finishing'],
+    
+    'quality_controller': ['Finishing'], // Quality might use finishing machines
+    
+    'admin': ['Printing', 'Corrugation', 'Lamination', 'Pasting', 'Punching', 'Cutting', 'Finishing', 'Other'],
+    'supervisor': ['Printing', 'Corrugation', 'Lamination', 'Pasting', 'Punching', 'Cutting', 'Finishing', 'Other'],
+  };
+  
+  console.log(`Getting categories for role: ${role}`, roleMap[role] || []);
+  return roleMap[role] || [];
+};
+
+
+  // ✅ Filter machines based on selected roles
+  const getFilteredMachines = () => {
+    if (selectedRoles.length === 0) {
+      return machines; // Show all machines if no role selected
+    }
+
+    // Get all machine categories that the selected roles can access
+    const allowedCategories = new Set<string>();
+    selectedRoles.forEach(role => {
+      const categories = getRoleMachineCategories(role);
+      categories.forEach(category => allowedCategories.add(category));
+    });
+
+    // Filter machines based on allowed categories
+    return machines.filter(machine => {
+      const machineCategory = getMachineCategory( machine.machineType);
+      return allowedCategories.has(machineCategory);
+    });
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -38,11 +174,38 @@ const CreateNewId: React.FC<CreateNewIdProps> = ({ onClose, onSuccess }) => {
         ? prev.filter(role => role !== roleValue)
         : [...prev, roleValue];
       console.log('Updated selected roles:', newRoles);
+      
+      // ✅ Clear selected machines when roles change to avoid invalid selections
+      const filteredMachines = getFilteredMachinesForRoles(newRoles);
+      setSelectedMachines(prevMachines => 
+        prevMachines.filter(machineId => 
+          filteredMachines.some(machine => machine.id === machineId)
+        )
+      );
+      
       return newRoles;
     });
   };
 
-   useEffect(() => {
+  // ✅ Helper function to get filtered machines for specific roles
+  const getFilteredMachinesForRoles = (roles: string[]) => {
+    if (roles.length === 0) {
+      return machines;
+    }
+
+    const allowedCategories = new Set<string>();
+    roles.forEach(role => {
+      const categories = getRoleMachineCategories(role);
+      categories.forEach(category => allowedCategories.add(category));
+    });
+
+    return machines.filter(machine => {
+      const machineCategory = getMachineCategory( machine.machineType);
+      return allowedCategories.has(machineCategory);
+    });
+  };
+
+  useEffect(() => {
     fetchMachines();
   }, []);
 
@@ -87,66 +250,68 @@ const CreateNewId: React.FC<CreateNewIdProps> = ({ onClose, onSuccess }) => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  if (selectedRoles.length === 0) {
-    setError("Please select at least one role");
-    return;
-  }
-
-  setLoading(true);
-  setError(null);
-
-  try {
-    console.log('Form data:', form);
-    console.log('Selected roles before payload:', selectedRoles);
+    e.preventDefault();
     
-    const payload =  {
-      email: form.email,
-      password: form.password,
-      roles: selectedRoles, 
-      firstName: form.firstName,
-      lastName: form.lastName,
-      machineIds: selectedMachines // ✅ Use 'machineIds' (plural)
-    };
-    
-    console.log('Final payload being sent to backend:', payload);
-    console.log('Payload JSON stringified:', JSON.stringify(payload));
-
-    const accessToken = localStorage.getItem('accessToken');
-    if (!accessToken) throw new Error('Authentication token not found.');
-
-    const response = await fetch('https://nrprod.nrcontainers.com/api/auth/add-member', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to create user');
+    if (selectedRoles.length === 0) {
+      setError("Please select at least one role");
+      return;
     }
 
-    const result = await response.json();
-    if (result.success) {
-      setSuccess('User created successfully!');
-      setTimeout(() => {
-        onSuccess?.();
-        onClose();
-      }, 1500);
-    } else {
-      throw new Error(result.message || 'Failed to create user');
-    }
-  } catch (err) {
-    setError(err instanceof Error ? err.message : 'Failed to create user');
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    setError(null);
 
+    try {
+      console.log('Form data:', form);
+      console.log('Selected roles before payload:', selectedRoles);
+      
+      const payload = {
+        email: form.email,
+        password: form.password,
+        roles: selectedRoles, 
+        firstName: form.firstName,
+        lastName: form.lastName,
+        machineIds: selectedMachines
+      };
+      
+      console.log('Final payload being sent to backend:', payload);
+      console.log('Payload JSON stringified:', JSON.stringify(payload));
+
+      const accessToken = localStorage.getItem('accessToken');
+      if (!accessToken) throw new Error('Authentication token not found.');
+
+      const response = await fetch('https://nrprod.nrcontainers.com/api/auth/add-member', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create user');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        setSuccess('User created successfully!');
+        setTimeout(() => {
+          onSuccess?.();
+          onClose();
+        }, 1500);
+      } else {
+        throw new Error(result.message || 'Failed to create user');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create user');
+    } finally {
+      setLoading(false);
+    }
+  };
+console.log("machines", machines)
+  // ✅ Get filtered machines based on current role selection
+  const filteredMachines = getFilteredMachines();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8 bg-transparent bg-opacity-50 backdrop-blur-sm">
@@ -216,6 +381,7 @@ const CreateNewId: React.FC<CreateNewIdProps> = ({ onClose, onSuccess }) => {
                 type="email"
                 name="email"
                 value={form.email}
+                autoComplete="off"
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#00AEEF]"
                 required
@@ -229,6 +395,7 @@ const CreateNewId: React.FC<CreateNewIdProps> = ({ onClose, onSuccess }) => {
                 type="password"
                 name="password"
                 value={form.password}
+                autoComplete="new-password"
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#00AEEF]"
                 required
@@ -270,7 +437,15 @@ const CreateNewId: React.FC<CreateNewIdProps> = ({ onClose, onSuccess }) => {
 
             {/* Machine Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select Machines (Multiple)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Machines (Multiple)
+                {/* ✅ Show filtering status */}
+                {selectedRoles.length > 0 && (
+                  <span className="ml-2 text-xs text-blue-600">
+                    (Filtered by selected roles - {filteredMachines.length} of {machines.length} machines)
+                  </span>
+                )}
+              </label>
               {machinesLoading ? (
                 <div className="flex justify-center py-4">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00AEEF]"></div>
@@ -278,12 +453,12 @@ const CreateNewId: React.FC<CreateNewIdProps> = ({ onClose, onSuccess }) => {
               ) : (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3">
-                    {machines.length === 0 ? (
+                    {filteredMachines.length === 0 ? (
                       <div className="col-span-full text-center text-gray-500 text-sm py-4">
-                        No machines available
+                        {selectedRoles.length === 0 ? 'No machines available' : 'No machines available for selected roles'}
                       </div>
                     ) : (
-                      machines.map((machine) => (
+                      filteredMachines.map((machine) => (
                         <button
                           key={machine.id}
                           type="button"
@@ -297,7 +472,9 @@ const CreateNewId: React.FC<CreateNewIdProps> = ({ onClose, onSuccess }) => {
                           <div className="flex items-center justify-between">
                             <div className="flex-1">
                               <div className="font-medium">{machine.machineCode}</div>
-                              <div className="text-xs opacity-75">{machine.machineType}</div>
+                              <div className="text-xs opacity-75">
+                                {machine.machineType} • {getMachineCategory(machine.machineCode || machine.machineType)}
+                              </div>
                             </div>
                             {selectedMachines.includes(machine.id) && (
                               <Check size={16} className="text-white ml-2" />
@@ -344,3 +521,6 @@ const CreateNewId: React.FC<CreateNewIdProps> = ({ onClose, onSuccess }) => {
 };
 
 export default CreateNewId;
+
+
+

@@ -340,76 +340,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
         jobs={modalState.jobs}
       />
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Pie Chart - Job Distribution by Completion Status */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Job Distribution by Completion Status</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={chartData.completionData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                  label={({ name, value, percent }) => `${name}: ${value} (${((percent || 0) * 100).toFixed(0)}%)`}
-                >
-                  {chartData.completionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value, name) => [value, name]} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Bar Chart - Completion Comparison */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-  <h3 className="text-lg font-semibold text-gray-900 mb-4">Task Completion Progress</h3>
-  <div className="space-y-6">
-    {chartData.comparisonData.map((item, index) => {
-      const completionRate = (item.completed / item.total) * 100;
-      return (
-        <div key={index} className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="font-medium text-gray-900">{item.name}</span>
-            <span className="text-sm text-gray-600">
-              {item.completed}/{item.total} ({Math.round(completionRate)}%)
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div 
-              className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-300"
-              style={{ width: `${completionRate}%` }}
-            ></div>
-          </div>
-        </div>
-      );
-    })}
-  </div>
-  
-  {/* Overall summary */}
-  <div className="mt-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-lg p-4">
-    <div className="text-center">
-      <div className="text-2xl font-bold text-gray-900">
-        {Math.round(
-          (chartData.comparisonData.reduce((sum, item) => sum + item.completed, 0) /
-           chartData.comparisonData.reduce((sum, item) => sum + item.total, 0)) * 100
-        )}%
-      </div>
-      <div className="text-sm text-gray-600">Overall Completion Rate</div>
-    </div>
-  </div>
-</div>
-
-      </div>
-
-      {/* Filters */}
+            {/* Filters */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Filters</h3>
        
@@ -561,6 +492,77 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
           </table>
         </div>
       </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+        {/* Pie Chart - Job Distribution by Completion Status */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Job Distribution by Completion Status</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData.completionData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={40}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                  label={({ name, value, percent }) => `${name}: ${value} (${((percent || 0) * 100).toFixed(0)}%)`}
+                >
+                  {chartData.completionData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value, name) => [value, name]} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Bar Chart - Completion Comparison */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+  <h3 className="text-lg font-semibold text-gray-900 mb-4">Task Completion Progress</h3>
+  <div className="space-y-6">
+    {chartData.comparisonData.map((item, index) => {
+      const completionRate = (item.completed / item.total) * 100;
+      return (
+        <div key={index} className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="font-medium text-gray-900">{item.name}</span>
+            <span className="text-sm text-gray-600">
+              {item.completed}/{item.total} ({Math.round(completionRate)}%)
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-3">
+            <div 
+              className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-300"
+              style={{ width: `${completionRate}%` }}
+            ></div>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+  
+  {/* Overall summary */}
+  <div className="mt-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-lg p-4">
+    <div className="text-center">
+      <div className="text-2xl font-bold text-gray-900">
+        {Math.round(
+          (chartData.comparisonData.reduce((sum, item) => sum + item.completed, 0) /
+           chartData.comparisonData.reduce((sum, item) => sum + item.total, 0)) * 100
+        )}%
+      </div>
+      <div className="text-sm text-gray-600">Overall Completion Rate</div>
+    </div>
+  </div>
+</div>
+
+      </div>
+
+
       {selectedJob && (
   <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
     <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 relative">
@@ -641,7 +643,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
   </div>
 )}
 
- <JobAssigned />
+ {/* <JobAssigned /> */}
 
     </div>
   );

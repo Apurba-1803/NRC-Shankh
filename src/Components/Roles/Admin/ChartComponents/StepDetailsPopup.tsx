@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import JobStepDetailsPopup from "./JobStepDetailsPopup"
 
 interface JobPlanStep {
   id: number;
@@ -55,6 +56,8 @@ const StepDetailsPopup: React.FC<StepDetailsPopupProps> = ({
   stepData
 }) => {
   const [activeTab, setActiveTab] = useState<'completed' | 'inProgress' | 'planned'>('completed');
+   const [selectedJob, setSelectedJob] = useState<JobPlan | null>(null);
+  const [jobDetailsOpen, setJobDetailsOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -83,6 +86,23 @@ const StepDetailsPopup: React.FC<StepDetailsPopupProps> = ({
         return 0;
     }
   };
+
+   const handleJobClick = (job: JobPlan) => {
+    setSelectedJob(job);
+    setJobDetailsOpen(true);
+  };
+
+  const getStepInfo = (job: JobPlan) => {
+    // Find the specific step info for this stepName in the job's steps
+    return job.steps.find(step => step.stepName === stepName || 
+      (stepName === "Paper Store" && step.stepName === "PaperStore") ||
+      (stepName === "Printing" && step.stepName === "PrintingDetails")||
+      (stepName === "Flap Pasting" && step.stepName === "SideFlapPasting")||
+      (stepName === "Dispatch" && step.stepName === "DispatchProcess")||
+      (stepName === "Quality Control" && step.stepName === "QualityDept")||
+      (stepName === "Flute Lamination" && step.stepName === "FluteLaminateBoardConversion"));
+  };
+
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -147,6 +167,7 @@ const StepDetailsPopup: React.FC<StepDetailsPopupProps> = ({
                 <div
                   key={`${job.jobPlanId}-${index}`}
                   className="bg-gray-50 rounded-lg p-4 border border-gray-200"
+                  onClick={() => handleJobClick(job)}
                 >
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                    <div>
@@ -169,6 +190,19 @@ const StepDetailsPopup: React.FC<StepDetailsPopupProps> = ({
               ))}
             </div>
           )}
+
+          {selectedJob && (
+        <JobStepDetailsPopup
+          isOpen={jobDetailsOpen}
+          onClose={() => {
+            setJobDetailsOpen(false);
+            setSelectedJob(null);
+          }}
+          jobData={selectedJob}
+          stepName={stepName}
+          stepInfo={getStepInfo(selectedJob)}
+        />
+      )}
         </div>
       </div>
     </div>

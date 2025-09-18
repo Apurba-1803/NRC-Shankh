@@ -615,7 +615,7 @@ const processJobPlanData = async (
   // Initialize step statistics
   const stepNames = [
     "PaperStore",
-    "PrintingDetails",
+    "PrintingDetails", 
     "Corrugation",
     "FluteLaminateBoardConversion",
     "Punching",
@@ -623,6 +623,22 @@ const processJobPlanData = async (
     "QualityDept",
     "DispatchProcess",
   ];
+
+  // ✅ Helper function for step variants
+  const isStepVariant = (stepCategory: string, actualStepName: string): boolean => {
+    const stepMappings: { [key: string]: string[] } = {
+      'PaperStore': ['PaperStore', 'Paper Store'],
+      'PrintingDetails': ['PrintingDetails', 'Printing'],
+      'Corrugation': ['Corrugation'],
+      'FluteLaminateBoardConversion': ['FluteLaminateBoardConversion', 'Flute Lamination'],
+      'Punching': ['Punching'],
+      'SideFlapPasting': ['SideFlapPasting', 'Flap Pasting'],
+      'QualityDept': ['QualityDept', 'Quality Control'],
+      'DispatchProcess': ['DispatchProcess', 'Dispatch'],
+    };
+
+    return stepMappings[stepCategory]?.includes(actualStepName) || stepCategory === actualStepName;
+  };
   
   stepNames.forEach((step) => {
     stepStats[step] = { 
@@ -644,45 +660,90 @@ const processJobPlanData = async (
 
     totalSteps += totalStepsInJob;
 
+    // ✅ FIXED: Process each step category separately
+    stepNames.forEach((stepName) => {
+      // Find the matching step for this category in this job
+      const matchingStep = jobPlan.steps.find(step => 
+        isStepVariant(stepName, step.stepName)
+      );
+
+      if (matchingStep) {
+        // Categorize based on the matching step's status
+        if (
+          matchingStep.status === "stop" || 
+          (matchingStep.stepDetails && matchingStep.stepDetails.status === "accept")
+        ) {
+          // This step is completed
+          stepStats[stepName].completed++;
+          stepStats[stepName].completedData.push(jobPlan);
+          completedStepsInJob++;
+          completedSteps++;
+        } else if (
+          matchingStep.status === "start" ||
+          (matchingStep.stepDetails && matchingStep.stepDetails.status === "in_progress")
+        ) {
+          // This step is in progress
+          stepStats[stepName].inProgress++;
+          stepStats[stepName].inProgressData.push(jobPlan);
+          jobInProgress = true;
+          jobCompleted = false;
+        } else {
+          // This step is planned
+          stepStats[stepName].planned++;
+          stepStats[stepName].plannedData.push(jobPlan);
+          jobCompleted = false;
+        }
+
+        // Track unique users
+        if (matchingStep.user) {
+          uniqueUsers.add(matchingStep.user);
+        }
+      }
+    });
+
+    // ✅ SAFETY CHECK: Handle steps not in our predefined list
     jobPlan.steps.forEach((step) => {
-      // SAFETY CHECK: Ensure stepStats exists for this step name
-      if (!stepStats[step.stepName]) {
-        stepStats[step.stepName] = {
-          completed: 0,
-          inProgress: 0,
-          planned: 0,
-          completedData: [],
-          inProgressData: [],
-          plannedData: []
-        };
-      }
+      // Only process steps that are not already handled by the main logic
+      const isHandled = stepNames.some(stepName => isStepVariant(stepName, step.stepName));
+      
+      if (!isHandled) {
+        // SAFETY CHECK: Ensure stepStats exists for this step name
+        if (!stepStats[step.stepName]) {
+          stepStats[step.stepName] = {
+            completed: 0,
+            inProgress: 0,
+            planned: 0,
+            completedData: [],
+            inProgressData: [],
+            plannedData: []
+          };
+        }
 
-      // Determine step completion based on step details and status
-      if (step.stepDetails && step.stepDetails.status === "accept") {
-        // Step is completed
-        stepStats[step.stepName].completed++;
-        stepStats[step.stepName].completedData.push(jobPlan);
-        completedStepsInJob++;
-        completedSteps++;
-      } else if (
-        step.status === "start" ||
-        (step.stepDetails && step.stepDetails.status === "in_progress")
-      ) {
-        // Step is in progress
-        stepStats[step.stepName].inProgress++;
-        stepStats[step.stepName].inProgressData.push(jobPlan);
-        jobInProgress = true;
-        jobCompleted = false;
-      } else {
-        // Step is planned
-        stepStats[step.stepName].planned++;
-        stepStats[step.stepName].plannedData.push(jobPlan);
-        jobCompleted = false;
-      }
+        // Process the unhandled step
+        if (
+          step.status === "stop" || 
+          (step.stepDetails && step.stepDetails.status === "accept")
+        ) {
+          stepStats[step.stepName].completed++;
+          stepStats[step.stepName].completedData.push(jobPlan);
+        } else if (
+          step.status === "start" ||
+          (step.stepDetails && step.stepDetails.status === "in_progress")
+        ) {
+          stepStats[step.stepName].inProgress++;
+          stepStats[step.stepName].inProgressData.push(jobPlan);
+          jobInProgress = true;
+          jobCompleted = false;
+        } else {
+          stepStats[step.stepName].planned++;
+          stepStats[step.stepName].plannedData.push(jobPlan);
+          jobCompleted = false;
+        }
 
-      // Track unique users
-      if (step.user) {
-        uniqueUsers.add(step.user);
+        // Track unique users
+        if (step.user) {
+          uniqueUsers.add(step.user);
+        }
       }
     });
 
@@ -824,7 +885,7 @@ const processJobPlanData = async (
   if (!filteredData) {
     return <div>No data available</div>;
   }
-  console.log("step completion", filteredData.machineUtilization)
+  console.log("step completion", filteredData.stepCompletionStats)
 
 
 

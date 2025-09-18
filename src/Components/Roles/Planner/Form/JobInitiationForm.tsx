@@ -661,7 +661,7 @@ const updateSingleMachineStatus = async (machineId: string, accessToken: string)
             machineDetails.push({ 
               id: completedJob.machineId,
               unit: completedJob.unit || 'Unit 1',
-              machineCode: completedJob.machineId,
+              machineCode: step.machineCode,
               machineType: step.machineDetail || 'Production Step'
             });
           } else if (jobDemand === 'medium') {
