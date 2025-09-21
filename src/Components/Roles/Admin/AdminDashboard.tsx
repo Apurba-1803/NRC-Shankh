@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Calendar } from "lucide-react";
 import DateFilterComponent, {
   type DateFilterType,
@@ -848,7 +848,223 @@ const processJobPlanData = async (
   }, []);
 
   // Data is now filtered at the API level, so we use the data directly
-  const filteredData = data;
+  // const filteredData = data;
+
+// Helper function to check if a date falls within the selected range
+// Helper function to check if a date falls within the selected range
+const isDateInRange = (date: string | Date, startDate: Date, endDate: Date): boolean => {
+  const checkDate = new Date(date);
+  // Reset time to start of day for accurate comparison
+  checkDate.setHours(0, 0, 0, 0);
+  startDate.setHours(0, 0, 0, 0);
+  endDate.setHours(23, 59, 59, 999);
+  
+  return checkDate >= startDate && checkDate <= endDate;
+};
+
+// Calculate date range based on your filter options
+const getDateRange = (filter: DateFilterType, customRange?: {start: string; end: string}) => {
+  const today = new Date();
+  let startDate: Date;
+  let endDate: Date = new Date(today);
+
+  switch (filter) {
+    case 'today':
+      startDate = new Date(today);
+      endDate = new Date(today);
+      break;
+    case 'week':
+      // This week (from Monday to Sunday)
+      startDate = new Date(today);
+      const dayOfWeek = today.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, Monday = 1
+      startDate.setDate(today.getDate() - daysToMonday);
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      break;
+    case 'month':
+      // This month
+      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      break;
+    case 'quarter':
+      // This quarter
+      const currentQuarter = Math.floor(today.getMonth() / 3);
+      startDate = new Date(today.getFullYear(), currentQuarter * 3, 1);
+      endDate = new Date(today.getFullYear(), (currentQuarter + 1) * 3, 0);
+      break;
+    case 'year':
+      // This year
+      startDate = new Date(today.getFullYear(), 0, 1);
+      endDate = new Date(today.getFullYear(), 11, 31);
+      break;
+    case 'custom':
+      if (customRange) {
+        startDate = new Date(customRange.start);
+        endDate = new Date(customRange.end);
+      } else {
+        // Fallback to today if no custom range
+        startDate = new Date(today);
+        endDate = new Date(today);
+      }
+      break;
+    default:
+      // Show all data
+      return null;
+  }
+
+  return { startDate, endDate };
+};
+
+// Filter the data based on selected dates
+const filteredData = useMemo(() => {
+  if (!data) return null;
+
+  // If no date filter is applied, return all data
+  if (!dateFilter) return data;
+
+  const dateRange = getDateRange(dateFilter, customDateRange);
+  
+  // If no date range specified, return all data
+  if (!dateRange) return data;
+
+  const { startDate, endDate } = dateRange;
+
+  console.log('Filtering data from:', startDate.toDateString(), 'to:', endDate.toDateString());
+
+  // Filter jobPlans based on createdAt date
+  const filteredJobPlans = data.jobPlans.filter(jobPlan => {
+    const jobDate = new Date(jobPlan.createdAt);
+    return isDateInRange(jobDate, new Date(startDate), new Date(endDate));
+  });
+
+  // Filter completedJobsData based on poDate
+  const filteredCompletedJobsData = data.completedJobsData.filter(completedJob => {
+    const poDate = completedJob.purchaseOrderDetails?.poDate;
+    if (!poDate) return false;
+    return isDateInRange(poDate, new Date(startDate), new Date(endDate));
+  });
+
+  // Filter timeSeriesData based on date
+  const filteredTimeSeriesData = data.timeSeriesData.filter(timeData => {
+    return isDateInRange(timeData.date, new Date(startDate), new Date(endDate));
+  });
+
+  // Recalculate statistics based on filtered data
+  const totalJobs = filteredJobPlans.length;
+  const completedJobs = filteredCompletedJobsData.length;
+  
+  let inProgressJobs = 0;
+  let plannedJobs = 0;
+  let totalSteps = 0;
+  let completedSteps = 0;
+  const uniqueUsers = new Set<string>();
+
+  // Recalculate step completion stats
+  const stepCompletionStats: Record<string, {
+    completed: number;
+    inProgress: number;
+    planned: number;
+    completedData: any[];
+    inProgressData: any[];
+    plannedData: any[];
+  }> = {};
+
+  // Initialize step stats
+  const stepNames = ['PaperStore', 'PrintingDetails', 'Corrugation', 'FluteLaminateBoardConversion', 'Punching', 'SideFlapPasting', 'QualityDept', 'DispatchProcess'];
+  stepNames.forEach(step => {
+    stepCompletionStats[step] = {
+      completed: 0,
+      inProgress: 0,
+      planned: 0,
+      completedData: [],
+      inProgressData: [],
+      plannedData: []
+    };
+  });
+
+  // Process filtered job plans
+  filteredJobPlans.forEach(jobPlan => {
+    let jobCompleted = true;
+    let jobInProgress = false;
+    const totalStepsInJob = jobPlan.steps.length;
+    let completedStepsInJob = 0;
+
+    totalSteps += totalStepsInJob;
+
+    // Process each step
+    jobPlan.steps.forEach(step => {
+      // Track unique users
+      if (step.user) {
+        uniqueUsers.add(step.user);
+      }
+
+      // Categorize step status
+      if (step.status === 'stop' || (step.stepDetails && step.stepDetails.status === 'accept')) {
+        completedStepsInJob++;
+        completedSteps++;
+      } else if (step.status === 'start' || (step.stepDetails && step.stepDetails.status === 'inprogress')) {
+        jobInProgress = true;
+        jobCompleted = false;
+      } else {
+        jobCompleted = false;
+      }
+
+      // Update step completion stats
+      const stepName = step.stepName;
+      if (!stepCompletionStats[stepName]) {
+        stepCompletionStats[stepName] = {
+          completed: 0,
+          inProgress: 0,
+          planned: 0,
+          completedData: [],
+          inProgressData: [],
+          plannedData: []
+        };
+      }
+
+      if (step.status === 'stop' || (step.stepDetails && step.stepDetails.status === 'accept')) {
+        stepCompletionStats[stepName].completed++;
+        stepCompletionStats[stepName].completedData.push(jobPlan);
+      } else if (step.status === 'start' || (step.stepDetails && step.stepDetails.status === 'inprogress')) {
+        stepCompletionStats[stepName].inProgress++;
+        stepCompletionStats[stepName].inProgressData.push(jobPlan);
+      } else {
+        stepCompletionStats[stepName].planned++;
+        stepCompletionStats[stepName].plannedData.push(jobPlan);
+      }
+    });
+
+    // Categorize job status
+    if (jobInProgress) {
+      inProgressJobs++;
+    } else if (!jobCompleted) {
+      plannedJobs++;
+    }
+  });
+
+  // Calculate efficiency
+  const efficiency = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+
+  // Use your existing mergeStepCompletionStats function
+  const mergedStepStats = mergeStepCompletionStats(stepCompletionStats);
+
+  return {
+    ...data, // Keep machine utilization and other non-date-dependent data
+    jobPlans: filteredJobPlans,
+    totalJobs: totalJobs + completedJobs, // Total includes both in-progress and completed
+    completedJobs,
+    inProgressJobs,
+    plannedJobs,
+    totalSteps,
+    completedSteps,
+    activeUsers: uniqueUsers.size,
+    efficiency,
+    stepCompletionStats: mergedStepStats,
+    timeSeriesData: filteredTimeSeriesData,
+    completedJobsData: filteredCompletedJobsData,
+  };
+}, [data, dateFilter, customDateRange]);
 
 
 
@@ -885,7 +1101,7 @@ const processJobPlanData = async (
   if (!filteredData) {
     return <div>No data available</div>;
   }
-  console.log("step completion", filteredData.stepCompletionStats)
+  console.log("filtered", filteredData)
 
 
 

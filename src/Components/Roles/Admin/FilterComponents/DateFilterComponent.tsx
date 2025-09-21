@@ -1,7 +1,13 @@
-import React from 'react';
-import { Calendar, Filter } from 'lucide-react';
+import React from "react";
+import { Calendar, Filter } from "lucide-react";
 
-export type DateFilterType = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
+export type DateFilterType =
+  | "today"
+  | "week"
+  | "month"
+  | "quarter"
+  | "year"
+  | "custom";
 
 interface DateFilterComponentProps {
   dateFilter: DateFilterType;
@@ -16,7 +22,7 @@ const DateFilterComponent: React.FC<DateFilterComponentProps> = ({
   setDateFilter,
   customDateRange,
   setCustomDateRange,
-  className = ''
+  className = "",
 }) => {
   return (
     <div className={`flex flex-wrap items-center gap-4 ${className}`}>
@@ -24,7 +30,7 @@ const DateFilterComponent: React.FC<DateFilterComponentProps> = ({
         <Filter className="text-gray-500" size={16} />
         <span className="text-sm font-medium text-gray-700">Filter by:</span>
       </div>
-      
+
       <select
         value={dateFilter}
         onChange={(e) => setDateFilter(e.target.value as DateFilterType)}
@@ -38,14 +44,19 @@ const DateFilterComponent: React.FC<DateFilterComponentProps> = ({
         <option value="custom">Custom Range</option>
       </select>
 
-      {dateFilter === 'custom' && (
+      {dateFilter === "custom" && (
         <div className="flex items-center space-x-2">
           <div className="flex items-center space-x-2">
             <Calendar className="text-gray-500" size={16} />
             <input
               type="date"
               value={customDateRange.start}
-              onChange={(e) => setCustomDateRange((prev: { start: string; end: string }) => ({ ...prev, start: e.target.value }))}
+              onChange={(e) =>
+                setCustomDateRange({
+                  ...customDateRange,
+                  start: e.target.value,
+                })
+              }
               className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-[#00AEEF]"
             />
           </div>
@@ -55,7 +66,9 @@ const DateFilterComponent: React.FC<DateFilterComponentProps> = ({
             <input
               type="date"
               value={customDateRange.end}
-              onChange={(e) => setCustomDateRange((prev: { start: string; end: string }) => ({ ...prev, end: e.target.value }))}
+              onChange={(e) =>
+                setCustomDateRange({ ...customDateRange, end: e.target.value })
+              }
               className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-[#00AEEF]"
             />
           </div>
@@ -65,4 +78,4 @@ const DateFilterComponent: React.FC<DateFilterComponentProps> = ({
   );
 };
 
-export default DateFilterComponent; 
+export default DateFilterComponent;
