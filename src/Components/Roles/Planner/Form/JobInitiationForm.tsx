@@ -608,7 +608,7 @@ const updateMachineStatuses = async (jobPlanningPayload: any, accessToken: strin
 const updateSingleMachineStatus = async (machineId: string, accessToken: string): Promise<void> => {
   try {
     const response = await fetch(`https://nrprod.nrcontainers.com/api/machines/${machineId}/status`, {
-      method: 'PATCH',
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`,
