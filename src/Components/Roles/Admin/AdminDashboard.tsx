@@ -176,40 +176,80 @@ const AdminDashboard: React.FC = () => {
   // stepColors removed as it's not used
 
   // Handle Total Jobs card click
-  const handleTotalJobsClick = () => {
-    navigate("/dashboard/job-details", {
-      state: {
-        jobData: {
-          totalJobs: filteredData?.totalJobs || 0,
-          completedJobs: filteredData?.completedJobs || 0,
-          inProgressJobs: filteredData?.inProgressJobs || 0,
-          plannedJobs: filteredData?.plannedJobs || 0,
-        },
+ // Handle Total Jobs card click
+const handleTotalJobsClick = () => {
+  navigate("/dashboard/job-details", {
+    state: {
+      jobData: {
+        totalJobs: filteredData?.totalJobs || 0,
+        completedJobs: filteredData?.completedJobs || 0,
+        inProgressJobs: filteredData?.inProgressJobs || 0,
+        plannedJobs: filteredData?.plannedJobs || 0,
       },
-    });
-  };
+      // Pass the filtered job plans and completed jobs data
+      filteredJobPlans: filteredData?.jobPlans || [],
+      filteredCompletedJobs: filteredData?.completedJobsData || [],
+      dateFilter: dateFilter,
+      customDateRange: customDateRange
+    },
+  });
+};
 
-  // Handle Completed Jobs card click
-  const handleCompletedJobsClick = () => {
-    console.log(
-      "Completed Jobs card clicked - navigating to completed jobs view"
+// Handle Completed Jobs card click
+const handleCompletedJobsClick = () => {
+  console.log("Completed Jobs card clicked - navigating to completed jobs view");
+  navigate("/dashboard/completed-jobs", {
+    state: {
+      completedJobs: filteredData?.completedJobsData || [],
+      dateFilter: dateFilter,
+      customDateRange: customDateRange
+    }
+  });
+};
+
+// Handle In Progress Jobs card click
+const handleInProgressJobsClick = () => {
+  console.log("In Progress Jobs card clicked - navigating to in-progress jobs view");
+  
+  // Filter job plans to get only in-progress jobs
+  const inProgressJobPlans = filteredData?.jobPlans?.filter(jobPlan => {
+    return jobPlan.steps.some(step => 
+      step.status === "start" || 
+      (step.stepDetails && step.stepDetails.status === "in_progress")
     );
-    navigate("/dashboard/completed-jobs");
-  };
+  }) || [];
 
-  // Handle In Progress Jobs card click
-  const handleInProgressJobsClick = () => {
-    console.log(
-      "In Progress Jobs card clicked - navigating to in-progress jobs view"
+  navigate("/dashboard/in-progress-jobs", {
+    state: {
+      inProgressJobs: inProgressJobPlans,
+      dateFilter: dateFilter,
+      customDateRange: customDateRange
+    }
+  });
+};
+
+// Handle Planned Jobs card click
+const handlePlannedJobsClick = () => {
+  console.log("Planned Jobs card clicked - navigating to planned jobs view");
+  
+  // Filter job plans to get only planned jobs
+  const plannedJobPlans = filteredData?.jobPlans?.filter(jobPlan => {
+    // A job is planned if it has no started or completed steps
+    return !jobPlan.steps.some(step => 
+      step.status === "start" || 
+      step.status === "stop" ||
+      (step.stepDetails && (step.stepDetails.status === "in_progress" || step.stepDetails.status === "accept"))
     );
-    navigate("/dashboard/in-progress-jobs");
-  };
+  }) || [];
 
-  // Handle Planned Jobs card click
-  const handlePlannedJobsClick = () => {
-    console.log("Planned Jobs card clicked - navigating to planned jobs view");
-    navigate("/dashboard/planned-jobs");
-  };
+  navigate("/dashboard/planned-jobs", {
+    state: {
+      plannedJobs: plannedJobPlans,
+      dateFilter: dateFilter,
+      customDateRange: customDateRange
+    }
+  });
+};
 
   // Fetch step-specific details for a job
   const fetchStepDetails = async (

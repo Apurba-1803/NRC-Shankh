@@ -322,12 +322,12 @@ function getMachineCategory(machineName: string): string {
                     {machine.category}
                   </span>
                 </div>
-                <div 
+                {/* <div 
                   className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm"
                   style={{ backgroundColor: getStatusColor(machine.utilizationRate) }}
                 >
                   {machine.utilizationRate}%
-                </div>
+                </div> */}
               </div>
               
               <div className="space-y-2">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { ArrowLeft, Clock } from 'lucide-react';
 import JobSearchBar from './JobDetailsComponents/JobSearchBar';
 import JobBarsChart from './JobDetailsComponents/JobBarsChart';
@@ -26,14 +27,25 @@ interface JobPlanStep {
   stepDetails?: any;
 }
 
+
+
 const PlannedJobs: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJob, setSelectedJob] = useState<JobPlan | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Set to false initially
   const [error, setError] = useState<string | null>(null);
   const [plannedJobs, setPlannedJobs] = useState<JobPlan[]>([]);
+
+  // Extract state data passed from dashboard
+  const { 
+    plannedJobs: passedPlannedJobs, 
+    dateFilter, 
+    customDateRange 
+  } = location.state || {};
 
   // Fetch planned jobs data
   const fetchPlannedJobs = async () => {
@@ -42,8 +54,18 @@ const PlannedJobs: React.FC = () => {
       const accessToken = localStorage.getItem('accessToken');
       if (!accessToken) throw new Error('Authentication token not found.');
 
-      // Fetch job planning data
-      const jobPlanningResponse = await fetch('https://nrprod.nrcontainers.com/api/job-planning/', {
+      // Build query parameters for date filtering if available
+      const queryParams = new URLSearchParams();
+      if (dateFilter && dateFilter !== "custom") {
+        queryParams.append("filter", dateFilter);
+      } else if (customDateRange) {
+        queryParams.append("startDate", customDateRange.start);
+        queryParams.append("endDate", customDateRange.end);
+      }
+
+      // Fetch job planning data with date filter
+      const jobPlanningUrl = `https://nrprod.nrcontainers.com/api/job-planning/?${queryParams.toString()}`;
+      const jobPlanningResponse = await fetch(jobPlanningUrl, {
         headers: { 'Authorization': `Bearer ${accessToken}` },
       });
 
@@ -54,9 +76,13 @@ const PlannedJobs: React.FC = () => {
       const jobPlanningResult = await jobPlanningResponse.json();
       
       if (jobPlanningResult.success && Array.isArray(jobPlanningResult.data)) {
-        // Filter only planned jobs
+        // Filter only planned jobs (no started or completed steps)
         const planned = jobPlanningResult.data.filter((job: JobPlan) => 
-          !job.steps.some(step => step.status === 'start')
+          !job.steps.some(step => 
+            step.status === 'start' || 
+            step.status === 'stop' ||
+            (step.stepDetails && (step.stepDetails.status === 'in_progress' || step.stepDetails.status === 'accept'))
+          )
         );
         setPlannedJobs(planned);
       } else {
@@ -71,8 +97,17 @@ const PlannedJobs: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchPlannedJobs();
-  }, []);
+    // Check if we have passed data from dashboard
+    if (passedPlannedJobs && Array.isArray(passedPlannedJobs)) {
+      console.log('Using passed planned jobs data:', passedPlannedJobs);
+      setPlannedJobs(passedPlannedJobs);
+      setLoading(false);
+    } else {
+      // Fallback: fetch data if no state was passed (direct URL access)
+      console.log('No passed data found, fetching planned jobs...');
+      fetchPlannedJobs();
+    }
+  }, [passedPlannedJobs]);
 
   const handleJobClick = (job: JobPlan) => {
     setSelectedJob(job);
@@ -116,8 +151,8 @@ const PlannedJobs: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
         
-        {/* Header with Back Button */}
-        <div className="flex items-center justify-center mb-8">
+        {/* Header with Back Button and Filter Info */}
+        <div className="flex items-center justify-between mb-8">
           <button
             onClick={handleBackToDashboard}
             className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors hover:cursor-pointer"
@@ -125,6 +160,16 @@ const PlannedJobs: React.FC = () => {
             <ArrowLeft size={20} />
             <span>Back to Dashboard</span>
           </button>
+          
+          {/* Show current filter if available */}
+          {dateFilter && (
+            <div className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-full">
+              Filter: {dateFilter === 'custom' 
+                ? `${customDateRange?.start} to ${customDateRange?.end}` 
+                : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)
+              }
+            </div>
+          )}
         </div>
 
         {/* Search Bar */}
@@ -143,7 +188,14 @@ const PlannedJobs: React.FC = () => {
               <Clock className="h-6 w-6 text-gray-600" />
             </div>
             <div>
-              <h3 className="text-xl font-semibold text-gray-800">Planned Jobs</h3>
+              <h3 className="text-xl font-semibold text-gray-800">
+                Planned Jobs
+                {dateFilter && (
+                  <span className="text-sm font-normal text-gray-500 ml-2">
+                    ({dateFilter})
+                  </span>
+                )}
+              </h3>
               <p className="text-3xl font-bold text-gray-600">{plannedJobs.length}</p>
             </div>
           </div>
@@ -156,6 +208,22 @@ const PlannedJobs: React.FC = () => {
           />
         </div>
 
+        {/* Show message if no jobs found */}
+        {plannedJobs.length === 0 && (
+          <div className="bg-white rounded-lg shadow-md p-8 mt-6 text-center">
+            <div className="text-gray-500">
+              <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium mb-2">No Planned Jobs Found</h3>
+              <p className="text-sm">
+                {dateFilter 
+                  ? `No planned jobs found for the selected ${dateFilter} period.`
+                  : 'No planned jobs available at the moment.'
+                }
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Detailed Job Modal */}
         <DetailedJobModal
           isOpen={isModalOpen}
@@ -167,4 +235,7 @@ const PlannedJobs: React.FC = () => {
   );
 };
 
-export default PlannedJobs; 
+export default PlannedJobs;
+
+
+// export default PlannedJobs; 

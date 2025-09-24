@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { ArrowLeft, TrendingUp, CheckCircle, PlayCircle, Clock } from 'lucide-react';
 import JobSearchBar from './JobSearchBar';
 import JobBarsChart from './JobBarsChart';
@@ -85,23 +86,31 @@ interface JobDetailsContainerProps {
   // This will be populated from route params or API call
 }
 
+
 const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [selectedCategory, setSelectedCategory] = useState<'completed' | 'inProgress' | 'planned' | null>(null);
   const [isDirectCompleted, setIsDirectCompleted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJob, setSelectedJob] = useState<CompletedJob | JobPlan | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Set to false initially
   const [error, setError] = useState<string | null>(null);
   
   // State for real job data
   const [jobPlans, setJobPlans] = useState<JobPlan[]>([]);
   const [completedJobs, setCompletedJobs] = useState<CompletedJob[]>([]);
-  
-  // Note: jobData from location state is not used in this component
-  // as we fetch real data from APIs
+
+  // Extract state data passed from dashboard
+  const { 
+    jobData,
+    filteredJobPlans, 
+    filteredCompletedJobs,
+    dateFilter, 
+    customDateRange 
+  } = location.state || {};
 
   // Fetch real job data from APIs
   const fetchJobData = async () => {
@@ -110,8 +119,18 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
       const accessToken = localStorage.getItem('accessToken');
       if (!accessToken) throw new Error('Authentication token not found.');
 
-      // Fetch job planning data
-      const jobPlanningResponse = await fetch('https://nrprod.nrcontainers.com/api/job-planning/', {
+      // Build query parameters for date filtering if available
+      const queryParams = new URLSearchParams();
+      if (dateFilter && dateFilter !== "custom") {
+        queryParams.append("filter", dateFilter);
+      } else if (customDateRange) {
+        queryParams.append("startDate", customDateRange.start);
+        queryParams.append("endDate", customDateRange.end);
+      }
+
+      // Fetch job planning data with date filter
+      const jobPlanningUrl = `https://nrprod.nrcontainers.com/api/job-planning/?${queryParams.toString()}`;
+      const jobPlanningResponse = await fetch(jobPlanningUrl, {
         headers: { 'Authorization': `Bearer ${accessToken}` },
       });
 
@@ -124,7 +143,8 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
       // Fetch completed jobs data with better error handling
       let completedJobsData: CompletedJob[] = [];
       try {
-        const completedJobsResponse = await fetch('https://nrprod.nrcontainers.com/api/completed-jobs', {
+        const completedJobsUrl = `https://nrprod.nrcontainers.com/api/completed-jobs?${queryParams.toString()}`;
+        const completedJobsResponse = await fetch(completedJobsUrl, {
           headers: { 
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json'
@@ -133,7 +153,6 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
 
         if (completedJobsResponse.status === 401) {
           console.warn('Authentication failed for completed-jobs API. Token may be expired.');
-          // Don't throw error, just set empty array
           completedJobsData = [];
         } else if (completedJobsResponse.ok) {
           const completedJobsResult = await completedJobsResponse.json();
@@ -146,7 +165,6 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
         }
       } catch (completedJobsError) {
         console.warn('Failed to fetch completed jobs:', completedJobsError);
-        // Don't fail the entire request, just set empty array
         completedJobsData = [];
       }
 
@@ -165,7 +183,18 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
   };
 
   useEffect(() => {
-    fetchJobData();
+    // Check if we have passed data from dashboard
+    if (filteredJobPlans && Array.isArray(filteredJobPlans) && 
+        filteredCompletedJobs && Array.isArray(filteredCompletedJobs)) {
+      console.log('Using passed job data:', { filteredJobPlans, filteredCompletedJobs });
+      setJobPlans(filteredJobPlans);
+      setCompletedJobs(filteredCompletedJobs);
+      setLoading(false);
+    } else {
+      // Fallback: fetch data if no state was passed (direct URL access)
+      console.log('No passed data found, fetching job data...');
+      fetchJobData();
+    }
     
     // Check if we should go directly to completed jobs view
     const directToCompleted = localStorage.getItem('directToCompleted');
@@ -173,19 +202,27 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
     if (directToCompleted === 'true') {
       console.log('Setting isDirectCompleted to true');
       setIsDirectCompleted(true);
-      // Clear the localStorage after using it
       localStorage.removeItem('directToCompleted');
     }
-  }, []);
+  }, [filteredJobPlans, filteredCompletedJobs]);
 
-  // Categorize jobs
+  // Categorize jobs using the same logic as dashboard
   const getJobsByCategory = () => {
     const completed: CompletedJob[] = completedJobs;
+    
     const inProgress: JobPlan[] = jobPlans.filter(job => 
-      job.steps.some(step => step.status === 'start')
+      job.steps.some(step => 
+        step.status === 'start' || 
+        (step.stepDetails && step.stepDetails.status === 'in_progress')
+      )
     );
+    
     const planned: JobPlan[] = jobPlans.filter(job => 
-      !job.steps.some(step => step.status === 'start')
+      !job.steps.some(step => 
+        step.status === 'start' || 
+        step.status === 'stop' ||
+        (step.stepDetails && (step.stepDetails.status === 'in_progress' || step.stepDetails.status === 'accept'))
+      )
     );
 
     return { completed, inProgress, planned };
@@ -196,17 +233,17 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
   const handleCategoryClick = (category: 'completed' | 'inProgress' | 'planned') => {
     setSelectedCategory(category);
     setIsDirectCompleted(false);
-    setSearchTerm(''); // Reset search when changing category
-    setSelectedJob(null); // Reset selected job
-    setIsModalOpen(false); // Close any open modal
+    setSearchTerm('');
+    setSelectedJob(null);
+    setIsModalOpen(false);
   };
 
   const handleDirectCompletedClick = () => {
     setIsDirectCompleted(true);
     setSelectedCategory(null);
-    setSearchTerm(''); // Reset search
-    setSelectedJob(null); // Reset selected job
-    setIsModalOpen(false); // Close any open modal
+    setSearchTerm('');
+    setSelectedJob(null);
+    setIsModalOpen(false);
   };
 
   const handleJobClick = (job: CompletedJob | JobPlan) => {
@@ -265,8 +302,8 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 py-8">
           
-          {/* Header with Back Button */}
-          <div className="flex items-center space-x-4 mb-8">
+          {/* Header with Back Button and Filter Info */}
+          <div className="flex items-center justify-between mb-8">
             <button
               onClick={handleBackFromDirectCompleted}
               className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors hover:cursor-pointer"
@@ -274,6 +311,16 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
               <ArrowLeft size={20} />
               <span>Back to Dashboard</span>
             </button>
+            
+            {/* Show current filter if available */}
+            {dateFilter && (
+              <div className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-full">
+                Filter: {dateFilter === 'custom' 
+                  ? `${customDateRange?.start} to ${customDateRange?.end}` 
+                  : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)
+                }
+              </div>
+            )}
           </div>
 
           {/* Search Bar - Only for completed jobs */}
@@ -289,10 +336,17 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
           <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
             <div className="flex items-center space-x-3 mb-6">
               <div className="bg-green-100 p-3 rounded-full">
-                <CheckCircle className="h-6 w-6" />
+                <CheckCircle className="h-6 w-6 text-green-600" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-gray-800">Completed Jobs</h3>
+                <h3 className="text-xl font-semibold text-gray-800">
+                  Completed Jobs
+                  {dateFilter && (
+                    <span className="text-sm font-normal text-gray-500 ml-2">
+                      ({dateFilter})
+                    </span>
+                  )}
+                </h3>
                 <p className="text-3xl font-bold text-green-600">{completed.length}</p>
               </div>
             </div>
@@ -304,6 +358,22 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
               searchTerm={searchTerm}
             />
           </div>
+
+          {/* Show message if no jobs found */}
+          {completed.length === 0 && (
+            <div className="bg-white rounded-lg shadow-md p-8 mt-6 text-center">
+              <div className="text-gray-500">
+                <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <h3 className="text-lg font-medium mb-2">No Completed Jobs Found</h3>
+                <p className="text-sm">
+                  {dateFilter 
+                    ? `No completed jobs found for the selected ${dateFilter} period.`
+                    : 'No completed jobs available at the moment.'
+                  }
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Detailed Job Modal */}
           <DetailedJobModal
@@ -319,9 +389,9 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
   // Show category view (bars + search) when a category is selected
   if (selectedCategory) {
     const categoryData = {
-      completed: { jobs: completed, title: 'Completed Jobs', icon: <CheckCircle className="h-6 w-6" />, color: 'green' },
-      inProgress: { jobs: inProgress, title: 'In Progress Jobs', icon: <PlayCircle className="h-6 w-6" />, color: 'yellow' },
-      planned: { jobs: planned, title: 'Planned Jobs', icon: <Clock className="h-6 w-6" />, color: 'gray' }
+      completed: { jobs: completed, title: 'Completed Jobs', icon: <CheckCircle className="h-6 w-6 text-green-600" />, color: 'green', borderColor: 'border-green-500' },
+      inProgress: { jobs: inProgress, title: 'In Progress Jobs', icon: <PlayCircle className="h-6 w-6 text-yellow-600" />, color: 'yellow', borderColor: 'border-yellow-500' },
+      planned: { jobs: planned, title: 'Planned Jobs', icon: <Clock className="h-6 w-6 text-gray-600" />, color: 'gray', borderColor: 'border-gray-500' }
     };
 
     const currentCategory = categoryData[selectedCategory];
@@ -330,8 +400,8 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 py-8">
           
-          {/* Header with Back Button */}
-          <div className="flex items-center space-x-4 mb-8">
+          {/* Header with Back Button and Filter Info */}
+          <div className="flex items-center justify-between mb-8">
             <button
               onClick={handleBackToCategories}
               className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors hover:cursor-pointer"
@@ -339,6 +409,16 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
               <ArrowLeft size={20} />
               <span>Back to Categories</span>
             </button>
+            
+            {/* Show current filter if available */}
+            {dateFilter && (
+              <div className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-full">
+                Filter: {dateFilter === 'custom' 
+                  ? `${customDateRange?.start} to ${customDateRange?.end}` 
+                  : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)
+                }
+              </div>
+            )}
           </div>
 
           {/* Search Bar - Only for this category */}
@@ -351,14 +431,21 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
           </div>
 
           {/* Job Bars for Selected Category */}
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+          <div className={`bg-white rounded-lg shadow-md p-6 border-l-4 ${currentCategory.borderColor}`}>
             <div className="flex items-center space-x-3 mb-6">
               <div className={`bg-${currentCategory.color}-100 p-3 rounded-full`}>
                 {currentCategory.icon}
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-gray-800">{currentCategory.title}</h3>
-                <p className="text-3xl font-bold text-green-600">{currentCategory.jobs.length}</p>
+                <h3 className="text-xl font-semibold text-gray-800">
+                  {currentCategory.title}
+                  {dateFilter && (
+                    <span className="text-sm font-normal text-gray-500 ml-2">
+                      ({dateFilter})
+                    </span>
+                  )}
+                </h3>
+                <p className={`text-3xl font-bold text-${currentCategory.color}-600`}>{currentCategory.jobs.length}</p>
               </div>
             </div>
             
@@ -369,6 +456,24 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
               searchTerm={searchTerm}
             />
           </div>
+
+          {/* Show message if no jobs found */}
+          {currentCategory.jobs.length === 0 && (
+            <div className="bg-white rounded-lg shadow-md p-8 mt-6 text-center">
+              <div className="text-gray-500">
+                <div className={`bg-${currentCategory.color}-100 p-3 rounded-full w-fit mx-auto mb-4`}>
+                  {React.cloneElement(currentCategory.icon, { className: `h-12 w-12 text-${currentCategory.color}-600 opacity-50` })}
+                </div>
+                <h3 className="text-lg font-medium mb-2">No {currentCategory.title} Found</h3>
+                <p className="text-sm">
+                  {dateFilter 
+                    ? `No ${currentCategory.title.toLowerCase()} found for the selected ${dateFilter} period.`
+                    : `No ${currentCategory.title.toLowerCase()} available at the moment.`
+                  }
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Detailed Job Modal */}
           <DetailedJobModal
@@ -386,8 +491,8 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
         
-        {/* Header with Back Button */}
-        <div className="flex items-center space-x-4 mb-8">
+        {/* Header with Back Button and Filter Info */}
+        <div className="flex items-center justify-between mb-8">
           <button
             onClick={handleBackToDashboard}
             className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors hover:cursor-pointer"
@@ -395,7 +500,16 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
             <ArrowLeft size={20} />
             <span>Back to Dashboard</span>
           </button>
-          {/* <h1 className="text-3xl font-bold text-gray-800">Job Details Overview</h1> */}
+          
+          {/* Show current filter if available */}
+          {dateFilter && (
+            <div className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-full">
+              Filter: {dateFilter === 'custom' 
+                ? `${customDateRange?.start} to ${customDateRange?.end}` 
+                : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)
+              }
+            </div>
+          )}
         </div>
 
         {/* Summary Card */}
@@ -403,7 +517,14 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
           <div className="flex items-center space-x-3">
             <TrendingUp size={32} />
             <div>
-              <h2 className="text-2xl font-bold">Total Jobs</h2>
+              <h2 className="text-2xl font-bold">
+                Total Jobs
+                {dateFilter && (
+                  <span className="text-lg font-normal text-blue-100 ml-2">
+                    ({dateFilter})
+                  </span>
+                )}
+              </h2>
               <p className="text-blue-100">Complete overview of all job categories</p>
             </div>
             <div className="ml-auto text-right">
@@ -426,7 +547,7 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
                 <CheckCircle className="text-green-600" size={24} />
               </div>
               <div>
-                {/* <h3 className="text-lg font-semibold text-gray-800">Completed Jobs</h3> */}
+                <h3 className="text-lg font-semibold text-gray-800">Completed Jobs</h3>
                 <p className="text-3xl font-bold text-green-600">{completed.length}</p>
               </div>
             </div>
@@ -467,9 +588,25 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
             <p className="text-sm text-gray-600 mt-3">Click to view all planned jobs</p>
           </div>
         </div>
+
+        {/* Show message if no jobs found */}
+        {(completed.length + inProgress.length + planned.length) === 0 && (
+          <div className="bg-white rounded-lg shadow-md p-8 mt-8 text-center">
+            <div className="text-gray-500">
+              <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium mb-2">No Jobs Found</h3>
+              <p className="text-sm">
+                {dateFilter 
+                  ? `No jobs found for the selected ${dateFilter} period.`
+                  : 'No jobs available at the moment.'
+                }
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export default JobDetailsContainer; 
+export default JobDetailsContainer;
