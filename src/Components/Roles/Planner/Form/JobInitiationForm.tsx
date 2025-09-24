@@ -659,7 +659,7 @@ const updateSingleMachineStatus = async (machineId: string, accessToken: string)
           
           if (completedJob.machineId && step.machineDetail) {
             machineDetails.push({ 
-              id: completedJob.machineId,
+              id: step.machineId,
               unit: completedJob.unit || 'Unit 1',
               machineCode: step.machineCode,
               machineType: step.machineDetail || 'Production Step'

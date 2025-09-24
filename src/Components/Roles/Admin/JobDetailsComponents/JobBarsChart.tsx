@@ -82,7 +82,7 @@ interface CompletedJob {
 interface JobBarsChartProps {
   jobs: (CompletedJob | JobPlan)[];
   category: 'completed' | 'inProgress' | 'planned';
-  onJobClick: (job: CompletedJob | JobPlan) => void;
+  onJobClick: (job: CompletedJob | JobPlan) => void
   searchTerm: string;
 }
 
