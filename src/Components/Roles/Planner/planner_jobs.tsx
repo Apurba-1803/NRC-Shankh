@@ -172,7 +172,7 @@ const mergePOWithJobPlanning = (purchaseOrders: any[], jobPlannings: any[]) => {
       ...po,
       // Add job planning fields
       jobDemand: matchingJobPlan?.jobDemand || null,
-      machineId: matchingJobPlan?.steps[0]?.machineDetails[0]?.machineId || null,
+      machineId: matchingJobPlan?.steps[0]?.machineDetails[0]?.machineId || matchingJobPlan?.steps[1]?.machineDetails[0]?.machineId || null,
       jobSteps: matchingJobPlan?.steps || [],
       jobPlanId: matchingJobPlan?.jobPlanId || null,
       jobPlanCreatedAt: matchingJobPlan?.createdAt || null,
