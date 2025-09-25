@@ -23,6 +23,7 @@ import CreateNewJob from '../../Components/Roles/Planner/CreateNewJob';
 import PlannerNotifications from '../../Components/Roles/Planner/planner_notifications';
 import PlannerJobs from '../../Components/Roles/Planner/planner_jobs';
 import JobAssigned from '../../Components/Roles/Planner/job_assigned'; // IMPORTED: New component
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface DashboardProps {
   tabValue: string;
@@ -45,9 +46,29 @@ interface DummyJob { // Re-defined a local dummy interface for these sections
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ tabValue, setTabValue, role }) => {
-  // Re-added state for jobs, loading, error, etc., specifically for the
-  // Printing Manager and Production Head sections that were using them.
-  // This is to restore their original functionality as per your request.
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // 🔥 BETTER LOGIC: Get the actual user role from localStorage
+  const getActualUserRole = () => {
+    try {
+      const userData = localStorage.getItem('userData');
+      if (userData) {
+        const parsedData = JSON.parse(userData);
+        return parsedData.roles?.[0] || 'admin';
+      }
+    } catch (error) {
+      console.error('Error parsing user data:', error);
+    }
+    return 'admin'; // Default fallback
+  };
+
+  const actualUserRole = getActualUserRole();
+  const isOnPlannerDashboardRoute = location.pathname === '/planner-dashboard';
+
+  console.log('Dashboard Debug - actualUserRole:', actualUserRole, 'tabValue:', tabValue, 'pathname:', location.pathname);
+
+  // Re-added state for jobs, loading, error, etc.
   const [jobs, setJobs] = useState<DummyJob[]>([
     {
       id: '1',
@@ -70,63 +91,64 @@ const Dashboard: React.FC<DashboardProps> = ({ tabValue, setTabValue, role }) =>
       dispatchDate: '16/04/2025',
     },
   ]);
-  const [loading, setLoading] = useState(false); // Re-added
-  const [error, setError] = useState<string | null>(null); // Re-added
-  const [showStopScreen, setShowStopScreen] = useState(false); // Re-added
-  const [activeJob, setActiveJob] = useState<DummyJob | null>(null); // Re-added
-  const [showReadyDispatch, setShowReadyDispatch] = useState(false); // Re-added
-  const [showProductionSteps, setShowProductionSteps] = useState(false); // Re-added
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showStopScreen, setShowStopScreen] = useState(false);
+  const [activeJob, setActiveJob] = useState<DummyJob | null>(null);
+  const [showReadyDispatch, setShowReadyDispatch] = useState(false);
+  const [showProductionSteps, setShowProductionSteps] = useState(false);
 
-  // Re-added useEffect if it was previously used with activeJob
   useEffect(() => {
   }, [activeJob]);
-
 
   return (
     <div className="px-4 sm:px-8 py-8 bg-[#f7f7f7] min-h-screen">
       <Suspense fallback={<div>Loading...</div>}>
-        {/* Admin Role Tabs */}
-        {role === 'admin' && tabValue === 'dashboard' && (
+        {/* 🔥 FIXED: Admin Dashboard - Only show when NOT on planner dashboard route */}
+        {actualUserRole === 'admin' && tabValue === 'dashboard' && !isOnPlannerDashboardRoute && (
           <AdminDashboard />
         )}
-        {role === 'admin' && tabValue === 'planner' && (
-          <PlannerDashboardContainer />
-        )}
-        {role === 'admin' && tabValue === 'production' && (
+        
+        {/* 🔥 FIXED: Admin other tabs - show regardless of route */}
+        {actualUserRole === 'admin' && tabValue === 'production' && (
           <ProductionHeadDashboard />
         )}
-        {role === 'admin' && tabValue === 'dispatch' && (
+        {actualUserRole === 'admin' && tabValue === 'dispatch' && (
           <DispatchOverview />
         )}
-        {role === 'admin' && tabValue === 'qc' && (
+        {actualUserRole === 'admin' && tabValue === 'qc' && (
           <QCDashboard />
         )}
-        {role === 'admin' && tabValue === 'printing' && (
+        {actualUserRole === 'admin' && tabValue === 'printing' && (
           <PrintingDashboard />
         )}
-        {role === 'admin' && tabValue === 'edit-working-details' && (
+        {actualUserRole === 'admin' && tabValue === 'edit-working-details' && (
           <EditWorkingDetails />
         )}
 
-        {/* Planner role specific components */}
-        {role === 'planner' && tabValue === 'dashboard' && (
+        {/* 🔥 FIXED: Planner Dashboard - Show when on planner route OR actual planner user */}
+        {((actualUserRole === 'planner' && tabValue === 'planner') || 
+          (isOnPlannerDashboardRoute && tabValue === 'planner')) && (
           <PlannerDashboardContainer />
         )}
-        {role === 'planner' && tabValue === 'start new job' && (
+
+        {/* Planner role specific components - Only for actual planner users */}
+        {actualUserRole === 'planner' && tabValue === 'start new job' && (
           <StartNewJob />
         )}
-        {role === 'planner' && tabValue === 'create new job' && (
+        {actualUserRole === 'planner' && tabValue === 'create new job' && (
           <CreateNewJob onBack={() => setTabValue('dashboard')} />
         )}
-        {role === 'planner' && tabValue === 'notifications' && (
+        {actualUserRole === 'planner' && tabValue === 'notifications' && (
           <PlannerNotifications />
         )}
-        {role === 'planner' && tabValue === 'jobs' && (
+        {actualUserRole === 'planner' && tabValue === 'jobs' && (
           <PlannerJobs />
         )}
-        {role === 'planner' && tabValue === 'job assigned' && (
+        {actualUserRole === 'planner' && tabValue === 'job assigned' && (
           <JobAssigned />
         )}
+
 
 
         {/* Printing Manager jobs tab - RESTORED ORIGINAL CONTENT */}

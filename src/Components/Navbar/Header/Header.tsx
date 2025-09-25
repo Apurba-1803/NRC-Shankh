@@ -99,7 +99,7 @@ const allTabSets: { [key: string]: { label: string; value: string }[] } = {
     // { label: 'Notifications', value: 'notifications' },
   ],
   planner: [
-    { label: 'Dashboard', value: 'dashboard' },
+    { label: 'Dashboard', value: 'planner' },
     // { label: 'Start New Job', value: 'start new job' },
     { label: 'Create New Job', value: 'create new job' },
     // { label: 'Notifications', value: 'notifications' },
@@ -121,87 +121,101 @@ const Header: React.FC<HeaderProps> = ({ tabValue, setTabValue, onLogout, role }
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [activeManageRole, setActiveManageRole] = useState<string | null>(null);
 
-  // 🔥 NEW: Enhanced tab change handler using Approach 1
- const handleTabChange = (val: string) => {
+  // 🔥 UPDATED: Handle planner dashboard specifically, others use regular dashboard
+ // 🔥 UPDATED: Handle dashboard tab click when on planner dashboard route
+const handleTabChange = (val: string) => {
   const currentPath = window.location.pathname;
-  const isOnNestedRoute = currentPath !== '/dashboard' && currentPath.startsWith('/dashboard/');
+  const isOnNestedRoute = currentPath !== '/dashboard' && currentPath !== '/planner-dashboard' && 
+                            (currentPath.startsWith('/dashboard/') || currentPath.startsWith('/planner-dashboard/'));
   
   console.log('Tab change requested:', val);
   console.log('Current path:', currentPath);
-  console.log('Is nested route:', isOnNestedRoute);
+  console.log('User role:', role);
   
+  // 🔥 SPECIFIC HANDLING: Only planner dashboard goes to /planner-dashboard
+  if ((role === 'planner' && val === 'dashboard') || (role === 'admin' && val === 'planner')) {
+    console.log('🚀 Navigating to /planner-dashboard');
+    navigate('/planner-dashboard');
+   setTabValue('planner');
+    return;
+  }
+
+  // 🔥 NEW: Handle admin clicking "Dashboard" tab while on planner dashboard route
+  if (role === 'admin' && val === 'dashboard' && currentPath === '/planner-dashboard') {
+    console.log('🚀 Admin clicking Dashboard tab from planner dashboard, navigating to /dashboard');
+    navigate('/dashboard');
+    setTabValue('dashboard');
+    return;
+  }
+
+  // 🔥 ALL OTHER CASES: Use regular dashboard route with tab switching
   if (isOnNestedRoute) {
     // If on nested route, navigate back to dashboard first
-    console.log('Navigating back to dashboard...');
+    console.log('Navigating back to /dashboard...');
     navigate('/dashboard');
     
-    // Use a longer timeout to ensure navigation completes
     setTimeout(() => {
       console.log('Setting tab value to:', val);
       setTabValue(val);
-    }, 100); // Increased timeout for more reliable navigation
+    }, 100);
   } else {
     // Normal tab switching within dashboard
     console.log('Setting tab directly:', val);
     setTabValue(val);
     
     // Always ensure we're on dashboard route for tab-based navigation
-    if (currentPath !== '/dashboard') {
-      navigate("/dashboard");
+    if (currentPath !== '/dashboard' && currentPath !== '/planner-dashboard') {
+      navigate('/dashboard');
     }
   }
 };
 
-const handleLogoClick = () => {
-  // Check if we're on a nested route
-  const isNestedRoute = location.pathname !== '/dashboard';
-  
-  // Navigate to dashboard based on role
-  if (role === 'admin') {
-    setTabValue('dashboard'); // This will show AdminDashboard
-    // If we're on a nested route, navigate back to the main dashboard
-    if (isNestedRoute) {
+
+  // 🔥 UPDATED: Logo click handles role-specific dashboard routing
+  const handleLogoClick = () => {
+    console.log('🏠 Logo clicked, role:', role);
+    
+    if (role === 'planner') {
+      console.log('🚀 Planner logo click, navigating to /planner-dashboard');
+      setTabValue('planner');
+      navigate('/planner-dashboard');
+    } else {
+      console.log('🚀 Admin logo click, navigating to /dashboard');
+      setTabValue('dashboard');
       navigate('/dashboard');
     }
-  } else if (role === 'planner') {
-    setTabValue('dashboard'); // This will show PlannerDashboardContainer  
-    // If we're on a nested route, navigate back to the main dashboard
-    if (isNestedRoute) {
-      navigate('/dashboard');
-    }
-  }
-};
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-[#fafafa] w-full shadow-sm">
       <div className="flex items-center justify-between px-4 sm:px-8 py-2">
         {/* Logo */}
         <button 
-    onClick={handleLogoClick}
-    className="hover:opacity-80 transition-opacity focus:outline-none"
-    aria-label="Go to dashboard"
-  >
-    <img src={logo} alt="Logo" className="h-15 w-auto cursor-pointer" />
-  </button>
+          onClick={handleLogoClick}
+          className="hover:opacity-80 transition-opacity focus:outline-none"
+          aria-label="Go to dashboard"
+        >
+          <img src={logo} alt="Logo" className="h-15 w-auto cursor-pointer" />
+        </button>
+
         {/* Desktop Tabs */}
         <TabProvider value={tabValue}>
-  <div className="hidden sm:flex flex-1 justify-center">
-    <TabList 
-      value={tabValue} 
-      onChange={handleTabChange} // 🔥 Change this from setTabValue to handleTabChange
-    >
-      {tabItems.map((tab: { label: string; value: string }) => (
-        <Tab
-          key={tab.value}
-          label={tab.label}
-          value={tab.value}
-          selected={tabValue === tab.value}
-        />
-      ))}
-    </TabList>
-  </div>
-</TabProvider>
-
+          <div className="hidden sm:flex flex-1 justify-center">
+            <TabList 
+              value={tabValue} 
+              onChange={handleTabChange}
+            >
+              {tabItems.map((tab: { label: string; value: string }) => (
+                <Tab
+                  key={tab.value}
+                  label={tab.label}
+                  value={tab.value}
+                  selected={tabValue === tab.value}
+                />
+              ))}
+            </TabList>
+          </div>
+        </TabProvider>
 
         {/* Desktop User Icon */}
         <div className="hidden sm:flex items-center">
@@ -234,17 +248,17 @@ const handleLogoClick = () => {
             <TabList
               value={tabValue}
               onChange={value => { 
-                handleTabChange(value); // 🔥 Use the new handler
+                handleTabChange(value);
                 setMenuOpen(false); 
               }}
               direction="vertical"
             >
               {tabItems.map((tab: { label: string; value: string }) => (
-                <Tab key={tab.value} label={tab.label} value={tab.value} onChange={handleTabChange} />
+                <Tab key={tab.value} label={tab.label} value={tab.value} />
               ))}
             </TabList>
           </TabProvider>
-          <div className="flex justify-center items-center ">
+          <div className="flex justify-center items-center">
             <span
               className="text-base font-medium text-gray-700 hover:cursor-pointer px-4 py-2 rounded hover:bg-gray-100 transition"
               onClick={() => {
@@ -268,24 +282,27 @@ const handleLogoClick = () => {
           if (normalizedRole === 'admin') {
             switch (option) {
               case "Dashboard":
-                handleTabChange("dashboard"); // 🔥 Use new handler
+                handleTabChange("dashboard");
                 break;
               case "Planner":
-                handleTabChange("planner"); // 🔥 Use new handler
+                // 🔥 SPECIFIC: Admin accessing planner goes to /planner-dashboard
+                console.log('🚀 Admin sidebar planner click, navigating to /planner-dashboard');
+                navigate('/planner-dashboard');
+                setTabValue('dashboard');
                 break;
               case "Production Head":
-                handleTabChange("production"); // 🔥 Use new handler
+                handleTabChange("production");
                 break;
               case "Dispatch Head":
               case "Dispatch Executive":
-                handleTabChange("dispatch"); // 🔥 Use new handler
+                handleTabChange("dispatch");
                 break;
               case "QC Manager":
-                handleTabChange("qc"); // 🔥 Use new handler
+                handleTabChange("qc");
                 break;
               case "Printing":
               case "Printing Manager":
-                handleTabChange("printing"); // 🔥 Use new handler
+                handleTabChange("printing");
                 break;
               case "Create new ID":
                 setShowCreateId(true);
@@ -300,29 +317,33 @@ const handleLogoClick = () => {
                 navigate('/dashboard/test-edit-machine');
                 break;
               case "Edit Working Details":
-                handleTabChange("edit-working-details"); // 🔥 Use new handler
+                handleTabChange("edit-working-details");
                 break;
             }
             setSidebarOpen(false);
             setMenuOpen(false);
           } else if (normalizedRole === 'printing_manager' || normalizedRole === 'production_head' || normalizedRole === 'dispatch_executive') {
             const found = sidebarConfig[normalizedRole].options.find(o => o.label === option);
-            if (found) handleTabChange(found.tab); // 🔥 Use new handler
+            if (found) handleTabChange(found.tab);
             setSidebarOpen(false);
             setMenuOpen(false);
           } else if (normalizedRole === 'planner') {
             if (option === "Edit Machine") {
               navigate('/dashboard/edit-machine');
-            } else if (option === "Create New Job") {
-              handleTabChange("create new job"); // 🔥 Use new handler
-            } else if (option === "Start New Job") {
-              handleTabChange("start new job"); // 🔥 Use new handler
-            } else if (option === "Jobs") {
-              handleTabChange("jobs"); // 🔥 Use new handler
-            } else if (option === "Job Assigned") {
-              handleTabChange("job assigned"); // 🔥 Use new handler
             } else if (option === "Dashboard") {
-              handleTabChange("dashboard"); // 🔥 Use new handler
+              // 🔥 SPECIFIC: Planner dashboard goes to /planner-dashboard
+              console.log('🚀 Planner sidebar dashboard click, navigating to /planner-dashboard');
+              navigate('/planner-dashboard');
+              setTabValue('planner');
+            } else if (option === "Create New Job") {
+              // 🔥 OTHER TABS: Use regular dashboard route
+              handleTabChange("create new job");
+            } else if (option === "Start New Job") {
+              handleTabChange("start new job");
+            } else if (option === "Job cards") {
+              handleTabChange("jobs");
+            } else if (option === "Job Assigned") {
+              handleTabChange("job assigned");
             }
             setSidebarOpen(false);
             setMenuOpen(false);
@@ -369,5 +390,5 @@ const handleLogoClick = () => {
   );
 };
 
-
 export default Header;
+

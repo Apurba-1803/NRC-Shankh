@@ -78,15 +78,31 @@ function AppContent() {
   };
 
   return (
-    <Routes>
+   <Routes>
       <Route
         path="/login"
         element={
-          isAuthenticated ?
-            <Navigate to="/dashboard" replace /> :
+          isAuthenticated ? (
+            // 🔥 Role-based redirect after login
+            userRole === 'planner' ? 
+              <Navigate to="/planner-dashboard" replace /> : 
+              <Navigate to="/dashboard" replace />
+          ) : (
             <Login setIsAuthenticated={setIsAuthenticated} setUserRole={setUserRole} setTabValue={setTabValue} />
+          )
         }
       />
+      
+      {/* 🔥 NEW: Separate route for planner dashboard */}
+      <Route
+  path="/planner-dashboard"
+  element={
+    <ProtectedRoute isAuthenticated={isAuthenticated}>
+      <Header tabValue={tabValue} setTabValue={setTabValue} onLogout={handleLogout} role={userRole || 'planner'} />
+      <Dashboard tabValue={tabValue} setTabValue={setTabValue} role={userRole || 'admin'} />
+    </ProtectedRoute>
+  }
+/>
       <Route
         path="/dashboard/*" // Use wildcard to allow nested routes under dashboard
         element={

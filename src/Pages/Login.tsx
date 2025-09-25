@@ -44,73 +44,86 @@ export default function Login({ setIsAuthenticated, setUserRole, setTabValue }: 
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  setIsSubmitting(true);
 
-    const { email, password } = formData;
+  const { email, password } = formData;
 
-    try {
-      // Simple frontend validation
-      if (!email.trim() || !password.trim()) {
-        throw new Error("All fields are required.");
-      }
+  try {
+    // Simple frontend validation
+    if (!email.trim() || !password.trim()) {
+      throw new Error("All fields are required.");
+    }
 
-      // API endpoint
-      const API_ENDPOINT = "https://nrprod.nrcontainers.com/api/auth/login";
+    // API endpoint
+    const API_ENDPOINT = "https://nrprod.nrcontainers.com/api/auth/login";
 
-      // 🔥 Make the API call - this was missing!
-      const response = await axios.post(API_ENDPOINT, { email, password });
+    // 🔥 Make the API call - this was missing!
+    const response = await axios.post(API_ENDPOINT, { email, password });
 
-      // If login successful
-      if (response.data.success) {
-        setSubmitStatus("success");
+    // If login successful
+    if (response.data.success) {
+      setSubmitStatus("success");
+      
+      // Log the response for debugging
+      console.log('Login response:', response.data);
+
+      // Store the access token in localStorage
+      localStorage.setItem("accessToken", response.data.acessToken);
+
+      // Store user data in localStorage for persistence
+      localStorage.setItem("userData", JSON.stringify(response.data.data));
+
+      const userData = response.data.data;
+
+      // Set authentication state and user role
+      setIsAuthenticated(true);
+
+      // Handle roles array from backend response
+      if (userData.roles && userData.roles.length > 0) {
+        const userRole = userData.roles[0];
+        setUserRole(userRole);
         
-        // Log the response for debugging
-        console.log('Login response:', response.data);
+        // 🔥 Initialize default tab based on role
+        setTabValue('dashboard'); // Always start with dashboard tab
+        
+        console.log('User role set to:', userRole);
+        console.log('Tab value initialized to: dashboard');
 
-        // Store the access token in localStorage
-        localStorage.setItem("accessToken", response.data.acessToken);
+        // Clear form first
+        setFormData({ email: "", password: "", role: "planner" });
 
-        // Store user data in localStorage for persistence
-        localStorage.setItem("userData", JSON.stringify(response.data.data));
-
-        const userData = response.data.data;
-
-        // Set authentication state and user role
-        setIsAuthenticated(true);
-
-        // Handle roles array from backend response
-        if (userData.roles && userData.roles.length > 0) {
-          const userRole = userData.roles[0];
-          setUserRole(userRole);
-          
-          // 🔥 Initialize default tab based on role
-          setTabValue('dashboard'); // Always start with dashboard tab
-          
-          console.log('User role set to:', userRole);
-          console.log('Tab value initialized to: dashboard');
+        // 🔥 UPDATED: Role-based navigation
+        if (userRole === 'planner') {
+          console.log('Planner role detected, navigating to /planner-dashboard');
+          navigate('/planner-dashboard');
+          setTabValue('planner');
         } else {
-          console.error('No roles found in user data:', userData);
-          setUserRole(null);
-          setTabValue('dashboard'); // Default fallback
+          console.log('Admin/other role detected, navigating to /dashboard');
+          navigate('/dashboard');
         }
-
-        // Clear form and navigate
+      } else {
+        console.error('No roles found in user data:', userData);
+        setUserRole(null);
+        setTabValue('dashboard'); // Default fallback
+        
+        // Clear form and navigate to default dashboard
         setFormData({ email: "", password: "", role: "planner" });
         navigate('/dashboard');
-      } else {
-        setSubmitStatus("error");
-        setTimeout(() => setSubmitStatus(null), 3000);
       }
-    } catch (error) {
-      console.error("Login Error:", error);
+    } else {
       setSubmitStatus("error");
       setTimeout(() => setSubmitStatus(null), 3000);
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  } catch (error) {
+    console.error("Login Error:", error);
+    setSubmitStatus("error");
+    setTimeout(() => setSubmitStatus(null), 3000);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
 
 

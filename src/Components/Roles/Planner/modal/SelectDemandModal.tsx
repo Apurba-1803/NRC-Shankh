@@ -10,7 +10,7 @@ interface SelectDemandModalProps {
 
 // Updated demand options: Urgent maps to "high", Regular maps to "medium"
 const demandOptions: { value: Job['jobDemand']; label: string; description: string; uiLabel: string }[] = [
-  { value: 'high', label: 'Urgent', description: 'Priority scheduling, flexible machine assignment', uiLabel: 'Urgent' },
+  // { value: 'high', label: 'Urgent', description: 'Priority scheduling, flexible machine assignment', uiLabel: 'Urgent' },
   { value: 'medium', label: 'Regular', description: 'Standard production timeline, machines required for selected steps', uiLabel: 'Regular' },
 ];
 
