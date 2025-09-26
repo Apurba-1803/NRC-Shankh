@@ -208,15 +208,25 @@ const handleCompletedJobsClick = () => {
 };
 
 // Handle In Progress Jobs card click
+// Handle In Progress Jobs card click
 const handleInProgressJobsClick = () => {
   console.log("In Progress Jobs card clicked - navigating to in-progress jobs view");
   
-  // Filter job plans to get only in-progress jobs
+  // 🔥 UPDATED: Use the same logic as processJobPlanData
   const inProgressJobPlans = filteredData?.jobPlans?.filter(jobPlan => {
-    return jobPlan.steps.some(step => 
-      step.status === "start" || 
-      (step.stepDetails && step.stepDetails.status === "in_progress")
-    );
+    let jobInProgress = false;
+
+    // Check each step to determine if job is in progress
+    jobPlan.steps.forEach(step => {
+      if (
+        step.status === "start" ||
+        (step.stepDetails && step.stepDetails.status === "in_progress")
+      ) {
+        jobInProgress = true;
+      }
+    });
+
+    return jobInProgress;
   }) || [];
 
   navigate("/dashboard/in-progress-jobs", {
@@ -228,18 +238,40 @@ const handleInProgressJobsClick = () => {
   });
 };
 
+
+// Handle Planned Jobs card click
 // Handle Planned Jobs card click
 const handlePlannedJobsClick = () => {
   console.log("Planned Jobs card clicked - navigating to planned jobs view");
   
-  // Filter job plans to get only planned jobs
+  // 🔥 UPDATED: Use the same logic as processJobPlanData
   const plannedJobPlans = filteredData?.jobPlans?.filter(jobPlan => {
-    // A job is planned if it has no started or completed steps
-    return !jobPlan.steps.some(step => 
-      step.status === "start" || 
-      step.status === "stop" ||
-      (step.stepDetails && (step.stepDetails.status === "in_progress" || step.stepDetails.status === "accept"))
-    );
+    let jobCompleted = true;
+    let jobInProgress = false;
+
+    // Check each step to determine job status
+    jobPlan.steps.forEach(step => {
+      if (
+        step.status === "stop" || 
+        (step.stepDetails && step.stepDetails.status === "accept")
+      ) {
+        // This step is completed - continue checking other steps
+      } else if (
+        step.status === "start" ||
+        (step.stepDetails && step.stepDetails.status === "in_progress")
+      ) {
+        // This step is in progress
+        jobInProgress = true;
+        jobCompleted = false;
+      } else {
+        // This step is planned (not started)
+        jobCompleted = false;
+      }
+    });
+
+    // 🔥 FIXED: A job is "planned" if it's not completed AND not in progress
+    // This matches the logic from processJobPlanData
+    return !jobCompleted && !jobInProgress;
   }) || [];
 
   navigate("/dashboard/planned-jobs", {
@@ -250,6 +282,7 @@ const handlePlannedJobsClick = () => {
     }
   });
 };
+
 
   // Fetch step-specific details for a job
   const fetchStepDetails = async (
@@ -957,6 +990,7 @@ const getDateRange = (filter: DateFilterType, customRange?: {start: string; end:
 };
 
 // Filter the data based on selected dates
+// 🔥 FIXED: filteredData useMemo with consistent logic
 const filteredData = useMemo(() => {
   if (!data) return null;
 
@@ -990,7 +1024,7 @@ const filteredData = useMemo(() => {
     return isDateInRange(timeData.date, new Date(startDate), new Date(endDate));
   });
 
-  // Recalculate statistics based on filtered data
+  // 🔥 RECALCULATE USING THE SAME LOGIC AS processJobPlanData
   const totalJobs = filteredJobPlans.length;
   const completedJobs = filteredCompletedJobsData.length;
   
@@ -1000,7 +1034,55 @@ const filteredData = useMemo(() => {
   let completedSteps = 0;
   const uniqueUsers = new Set<string>();
 
-  // Recalculate step completion stats
+  // 🔥 UPDATED: Process each job plan using the exact same logic
+  filteredJobPlans.forEach(jobPlan => {
+    let jobCompleted = true;
+    let jobInProgress = false;
+    const totalStepsInJob = jobPlan.steps.length;
+    let completedStepsInJob = 0;
+
+    totalSteps += totalStepsInJob;
+
+    // 🔥 IMPORTANT: Use the exact same step processing logic
+    jobPlan.steps.forEach(step => {
+      // Track unique users
+      if (step.user) {
+        uniqueUsers.add(step.user);
+      }
+
+      // 🔥 FIXED: Use the same categorization logic as processJobPlanData
+      if (
+        step.status === "stop" || 
+        (step.stepDetails && step.stepDetails.status === "accept")
+      ) {
+        // This step is completed
+        completedStepsInJob++;
+        completedSteps++;
+      } else if (
+        step.status === "start" ||
+        (step.stepDetails && step.stepDetails.status === "in_progress")
+      ) {
+        // This step is in progress
+        jobInProgress = true;
+        jobCompleted = false;
+      } else {
+        // This step is planned (not started)
+        jobCompleted = false;
+      }
+    });
+
+    // 🔥 FIXED: Use the same job categorization logic
+    if (jobCompleted) {
+      // This job is completed, but we're not counting it here since it comes from completed jobs API
+      // NOTE: This case should not happen for job plans
+    } else if (jobInProgress) {
+      inProgressJobs++;
+    } else {
+      plannedJobs++;
+    }
+  });
+
+  // 🔥 RECALCULATE STEP STATS USING SAME LOGIC (if needed for step completion stats)
   const stepCompletionStats: Record<string, {
     completed: number;
     inProgress: number;
@@ -1010,10 +1092,11 @@ const filteredData = useMemo(() => {
     plannedData: any[];
   }> = {};
 
-  // Initialize step stats
-  const stepNames = ['PaperStore', 'PrintingDetails', 'Corrugation', 'FluteLaminateBoardConversion', 'Punching', 'SideFlapPasting', 'QualityDept', 'DispatchProcess'];
-  stepNames.forEach(step => {
-    stepCompletionStats[step] = {
+  // Initialize step stats using the same step names as processJobPlanData
+  const stepNames = ["PaperStore", "PrintingDetails", "Corrugation", "FluteLaminateBoardConversion", "Punching", "SideFlapPasting", "QualityDept", "DispatchProcess"];
+  
+  stepNames.forEach(stepName => {
+    stepCompletionStats[stepName] = {
       completed: 0,
       inProgress: 0,
       planned: 0,
@@ -1023,64 +1106,83 @@ const filteredData = useMemo(() => {
     };
   });
 
-  // Process filtered job plans
+  // 🔥 HELPER FUNCTION: Same as processJobPlanData
+  const isStepVariant = (stepCategory: string, actualStepName: string): boolean => {
+    const stepMappings: { [key: string]: string[] } = {
+      'PaperStore': ['PaperStore', 'Paper Store'],
+      'PrintingDetails': ['PrintingDetails', 'Printing'],
+      'Corrugation': ['Corrugation'],
+      'FluteLaminateBoardConversion': ['FluteLaminateBoardConversion', 'Flute Lamination'],
+      'Punching': ['Punching'],
+      'SideFlapPasting': ['SideFlapPasting', 'Flap Pasting'],
+      'QualityDept': ['QualityDept', 'Quality Control'],
+      'DispatchProcess': ['DispatchProcess', 'Dispatch'],
+    };
+
+    return stepMappings[stepCategory]?.includes(actualStepName) || stepCategory === actualStepName;
+  };
+
+  // Process step completion stats using the same logic
   filteredJobPlans.forEach(jobPlan => {
-    let jobCompleted = true;
-    let jobInProgress = false;
-    const totalStepsInJob = jobPlan.steps.length;
-    let completedStepsInJob = 0;
+    stepNames.forEach(stepName => {
+      const matchingStep = jobPlan.steps.find(step => 
+        isStepVariant(stepName, step.stepName)
+      );
 
-    totalSteps += totalStepsInJob;
-
-    // Process each step
-    jobPlan.steps.forEach(step => {
-      // Track unique users
-      if (step.user) {
-        uniqueUsers.add(step.user);
-      }
-
-      // Categorize step status
-      if (step.status === 'stop' || (step.stepDetails && step.stepDetails.status === 'accept')) {
-        completedStepsInJob++;
-        completedSteps++;
-      } else if (step.status === 'start' || (step.stepDetails && step.stepDetails.status === 'inprogress')) {
-        jobInProgress = true;
-        jobCompleted = false;
-      } else {
-        jobCompleted = false;
-      }
-
-      // Update step completion stats
-      const stepName = step.stepName;
-      if (!stepCompletionStats[stepName]) {
-        stepCompletionStats[stepName] = {
-          completed: 0,
-          inProgress: 0,
-          planned: 0,
-          completedData: [],
-          inProgressData: [],
-          plannedData: []
-        };
-      }
-
-      if (step.status === 'stop' || (step.stepDetails && step.stepDetails.status === 'accept')) {
-        stepCompletionStats[stepName].completed++;
-        stepCompletionStats[stepName].completedData.push(jobPlan);
-      } else if (step.status === 'start' || (step.stepDetails && step.stepDetails.status === 'inprogress')) {
-        stepCompletionStats[stepName].inProgress++;
-        stepCompletionStats[stepName].inProgressData.push(jobPlan);
-      } else {
-        stepCompletionStats[stepName].planned++;
-        stepCompletionStats[stepName].plannedData.push(jobPlan);
+      if (matchingStep) {
+        if (
+          matchingStep.status === "stop" || 
+          (matchingStep.stepDetails && matchingStep.stepDetails.status === "accept")
+        ) {
+          stepCompletionStats[stepName].completed++;
+          stepCompletionStats[stepName].completedData.push(jobPlan);
+        } else if (
+          matchingStep.status === "start" ||
+          (matchingStep.stepDetails && matchingStep.stepDetails.status === "in_progress")
+        ) {
+          stepCompletionStats[stepName].inProgress++;
+          stepCompletionStats[stepName].inProgressData.push(jobPlan);
+        } else {
+          stepCompletionStats[stepName].planned++;
+          stepCompletionStats[stepName].plannedData.push(jobPlan);
+        }
       }
     });
 
-    // Categorize job status
-    if (jobInProgress) {
-      inProgressJobs++;
-    } else if (!jobCompleted) {
-      plannedJobs++;
-    }
+    // Handle steps not in predefined list (same as processJobPlanData)
+    jobPlan.steps.forEach(step => {
+      const isHandled = stepNames.some(stepName => isStepVariant(stepName, step.stepName));
+      
+      if (!isHandled) {
+        if (!stepCompletionStats[step.stepName]) {
+          stepCompletionStats[step.stepName] = {
+            completed: 0,
+            inProgress: 0,
+            planned: 0,
+            completedData: [],
+            inProgressData: [],
+            plannedData: []
+          };
+        }
+
+        if (
+          step.status === "stop" || 
+          (step.stepDetails && step.stepDetails.status === "accept")
+        ) {
+          stepCompletionStats[step.stepName].completed++;
+          stepCompletionStats[step.stepName].completedData.push(jobPlan);
+        } else if (
+          step.status === "start" ||
+          (step.stepDetails && step.stepDetails.status === "in_progress")
+        ) {
+          stepCompletionStats[step.stepName].inProgress++;
+          stepCompletionStats[step.stepName].inProgressData.push(jobPlan);
+        } else {
+          stepCompletionStats[step.stepName].planned++;
+          stepCompletionStats[step.stepName].plannedData.push(jobPlan);
+        }
+      }
+    });
   });
 
   // Calculate efficiency
@@ -1088,6 +1190,13 @@ const filteredData = useMemo(() => {
 
   // Use your existing mergeStepCompletionStats function
   const mergedStepStats = mergeStepCompletionStats(stepCompletionStats);
+
+  console.log('🔍 Filtered Data Results:');
+  console.log('Total filtered jobPlans:', filteredJobPlans.length);
+  console.log('Completed jobs:', completedJobs);
+  console.log('In progress jobs:', inProgressJobs);
+  console.log('Planned jobs:', plannedJobs);
+  console.log('Total jobs:', totalJobs + completedJobs);
 
   return {
     ...data, // Keep machine utilization and other non-date-dependent data
@@ -1105,6 +1214,7 @@ const filteredData = useMemo(() => {
     completedJobsData: filteredCompletedJobsData,
   };
 }, [data, dateFilter, customDateRange]);
+
 
 
 

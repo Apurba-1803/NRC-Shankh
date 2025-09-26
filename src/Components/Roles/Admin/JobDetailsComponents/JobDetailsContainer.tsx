@@ -207,26 +207,81 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
   }, [filteredJobPlans, filteredCompletedJobs]);
 
   // Categorize jobs using the same logic as dashboard
-  const getJobsByCategory = () => {
-    const completed: CompletedJob[] = completedJobs;
-    
-    const inProgress: JobPlan[] = jobPlans.filter(job => 
-      job.steps.some(step => 
-        step.status === 'start' || 
-        (step.stepDetails && step.stepDetails.status === 'in_progress')
-      )
-    );
-    
-    const planned: JobPlan[] = jobPlans.filter(job => 
-      !job.steps.some(step => 
-        step.status === 'start' || 
-        step.status === 'stop' ||
-        (step.stepDetails && (step.stepDetails.status === 'in_progress' || step.stepDetails.status === 'accept'))
-      )
-    );
+ // Categorize jobs
+// Categorize jobs using the same logic as dashboard
+// 🔥 SAFER VERSION: Ensure every job gets categorized
+// 🔥 UPDATED: Use the exact same logic as admin dashboard
+const getJobsByCategory = () => {
+  console.log('🔍 getJobsByCategory - Input jobPlans:', jobPlans.length);
+  
+  const completed: CompletedJob[] = completedJobs;
+  const inProgress: JobPlan[] = [];
+  const planned: JobPlan[] = [];
 
-    return { completed, inProgress, planned };
-  };
+  // 🔥 Use the EXACT same logic as your admin dashboard processJobPlanData
+  jobPlans.forEach((jobPlan, index) => {
+    console.log(`Processing job ${index + 1}/${jobPlans.length}: ${jobPlan.nrcJobNo}`);
+    
+    let jobCompleted = true;
+    let jobInProgress = false;
+
+    // If job has no steps, it's planned
+    if (!jobPlan.steps || jobPlan.steps.length === 0) {
+      console.log(`  → PLANNED (no steps)`);
+      planned.push(jobPlan);
+      return;
+    }
+
+    // Process each step using EXACT same logic as admin dashboard
+    jobPlan.steps.forEach(step => {
+      if (
+        step.status === "stop" || 
+        (step.stepDetails && step.stepDetails.status === "accept")
+      ) {
+        // This step is completed - continue checking other steps
+      } else if (
+        step.status === "start" ||
+        (step.stepDetails && step.stepDetails.status === "in_progress")
+      ) {
+        // This step is in progress
+        jobInProgress = true;
+        jobCompleted = false;
+      } else {
+        // This step is planned (not started)
+        jobCompleted = false;
+      }
+    });
+
+    // Determine job status using EXACT same logic as admin dashboard
+    if (jobCompleted) {
+      // This job is completed, but we're not counting it here since it comes from completed jobs API
+      console.log(`  → Should be in completed jobs API (not job plans)`);
+      // Note: This case should not happen for job plans
+    } else if (jobInProgress) {
+      console.log(`  → IN PROGRESS`);
+      inProgress.push(jobPlan);
+    } else {
+      console.log(`  → PLANNED`);
+      planned.push(jobPlan);
+    }
+  });
+
+  console.log('📊 Final counts (using admin dashboard logic):');
+  console.log(`  Completed (API): ${completed.length}`);
+  console.log(`  In Progress: ${inProgress.length}`);
+  console.log(`  Planned: ${planned.length}`);
+  console.log(`  TOTAL: ${completed.length + inProgress.length + planned.length}`);
+
+  // Safety check
+  const totalCategorized = inProgress.length + planned.length;
+  if (totalCategorized !== jobPlans.length) {
+    console.error(`❌ JOBS LOST! Input: ${jobPlans.length}, Categorized: ${totalCategorized}`);
+  }
+
+  return { completed, inProgress, planned };
+};
+
+
 
   const { completed, inProgress, planned } = getJobsByCategory();
 
@@ -528,7 +583,7 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
               <p className="text-blue-100">Complete overview of all job categories</p>
             </div>
             <div className="ml-auto text-right">
-              <div className="text-4xl font-bold">{completed.length + inProgress.length + planned.length}</div>
+              <div className="text-4xl font-bold">{jobPlans.length}</div>
               <div className="text-blue-100">Total Count</div>
             </div>
           </div>
