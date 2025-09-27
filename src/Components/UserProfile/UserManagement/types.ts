@@ -30,6 +30,7 @@ export interface UpdateUserPayload {
 export const roleOptions = [
   { label: "Admin", value: "admin" },
   { label: "Planner", value: "planner" },
+  { label: "Flying Squad", value: "flyingsquad" },
   { label: "Production Head", value: "production_head" },
   { label: "Dispatch Executive", value: "dispatch_executive" },
   { label: "QC Manager", value: "qc_manager" },
@@ -53,7 +54,8 @@ export const getRoleDisplayName = (roleValue: string): string => {
     'flutelaminator': 'Flute Laminator',
     'pasting_operator': 'Pasting Operator',
     'punching_operator': 'Punching Operator',
-    'paperstore': 'Paper Store'
+    'paperstore': 'Paper Store',
+    'flyingsquad': 'Flying Squad',
   };
   return roleMap[roleValue] || roleValue;
 };

@@ -19,7 +19,7 @@ const allStepsOptions: { stepName: string; description: string }[] = [
   { stepName: 'SideFlapPasting', description: 'Responsible : Pasting Operator, Assembly Worker' },
   { stepName: 'QualityDept', description: 'Responsible : QC Inspector, Quality Manager' },
   { stepName: 'DispatchProcess', description: 'Responsible : Dispatch Officer, Logistics Coordinator' },
-  { stepName: 'Die Cutting', description: 'Responsible : Dispatch Officer, Logistics Coordinator' },
+  // { stepName: 'Die Cutting', description: 'Responsible : Dispatch Officer, Logistics Coordinator' },
 ];
 
 const STEP_TO_MACHINE_MAPPING: Record<string, string[]> = {
@@ -34,7 +34,7 @@ const STEP_TO_MACHINE_MAPPING: Record<string, string[]> = {
   'PaperStore': [],
   'QualityDept': [],
   'DispatchProcess': [],
-  'Die Cutting': []
+  
 };
 
 

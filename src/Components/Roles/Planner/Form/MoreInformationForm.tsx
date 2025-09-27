@@ -24,7 +24,7 @@ const STEP_TO_MACHINE_MAPPING: Record<string, string[]> = {
   'PaperStore': [],
   'QualityDept': [],
   'DispatchProcess': [],
-  'Die Cutting': []
+ 
 };
 
 
