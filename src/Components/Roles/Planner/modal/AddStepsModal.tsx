@@ -187,19 +187,38 @@ const getMachinesForStep = (stepName: string) => {
     return machineTypes && machineTypes.length > 0;
   };
 
+// Add this helper function at the top of your component
+const sortStepsByPredefinedOrder = (steps: JobStep[]): JobStep[] => {
+  return steps
+    .slice() // Create a copy
+    .sort((a, b) => {
+      const indexA = allStepsOptions.findIndex(option => option.stepName === a.stepName);
+      const indexB = allStepsOptions.findIndex(option => option.stepName === b.stepName);
+      return indexA - indexB;
+    })
+    .map((step, index) => ({
+      ...step,
+      stepNo: index + 1 // Update stepNo to reflect correct order
+    }));
+};
+
+// Then use it in handleSave:
 const handleSave = () => {
-  // Flatten all selected machines from all steps
+  // 🔥 SORT: Reorder selected steps according to predefined order
+  const sortedSteps = sortStepsByPredefinedOrder(selectedSteps);
+  
+  // Rest of your existing logic...
   const allSelectedMachineIds = Object.values(stepMachines).flat();
   const machinesArray = allSelectedMachineIds
     .map(machineId => machines.find(m => m.id === machineId))
     .filter(Boolean) as Machine[];
   
-  console.log('Selected steps:', selectedSteps);
-  console.log('Step machines mapping:', stepMachines);
-  console.log('Machines array being sent:', machinesArray);
+  console.log('Original steps:', selectedSteps);
+  console.log('Sorted steps:', sortedSteps);
   
-  onSelect(selectedSteps, machinesArray);
+  onSelect(sortedSteps, machinesArray);
 };
+
 
 
  

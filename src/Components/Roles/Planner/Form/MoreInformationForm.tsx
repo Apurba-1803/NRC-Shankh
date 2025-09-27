@@ -14,7 +14,7 @@ interface MoreInformationFormProps {
 
 const STEP_TO_MACHINE_MAPPING: Record<string, string[]> = {
   // Steps with machines
-  'SideFlapPasting': ['auto flap ', 'manual fi'],
+  'SideFlapPasting': ['auto flap', 'manual fi'],
   'Punching': ['auto pund', 'manual pu'],
   'FluteLaminateBoardConversion': ['flute lam'],
   'Corrugation': ['corrugatic'],
