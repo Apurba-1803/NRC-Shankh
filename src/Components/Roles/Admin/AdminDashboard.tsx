@@ -627,6 +627,7 @@ const fetchDashboardData = async (
         })
       );
 
+      console.log("completedJobsData", completedJobsData)
       // Process the data to create dashboard statistics - AWAIT this call
       const processedData = await processJobPlanData(
         jobPlansWithDetails,
@@ -646,6 +647,8 @@ const fetchDashboardData = async (
     setLoading(false);
   }
 };
+
+
 
 // Updated processJobPlanData - fetch machines once, not in loop
 const processJobPlanData = async (
