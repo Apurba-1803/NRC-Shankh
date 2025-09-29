@@ -633,20 +633,25 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
     };
 
     switch (showStepSpecificForm) {
-      case 'PaperStore':
-        return <PaperStoreForm {...commonFormProps} onCompleteWork={(payload) => {
-          console.log('🔍 [PaperStore onCompleteWork] - Step:', stepToEdit);
-          console.log('🔍 [PaperStore onCompleteWork] - PaperStore Details:', stepToEdit.paperStoreDetails);
-          console.log('🔍 [PaperStore onCompleteWork] - Payload:', payload);
-          
-          // Use the step-specific record ID if available, otherwise use the by-job endpoint
-          const endpoint = stepToEdit.paperStoreDetails?.id 
-            ? `https://nrprod.nrcontainers.com/api/paper-store/${stepToEdit.paperStoreDetails.id}`
-            : `https://nrprod.nrcontainers.com/api/paper-store/by-job/${encodeURIComponent(jobPlan.nrcJobNo)}`;
-          
-          console.log('🔍 [PaperStore onCompleteWork] - Using endpoint:', endpoint);
-          return handleCompleteWork(stepToEdit, payload, endpoint, stepToEdit.user || '');
-        }} />;
+  case 'PaperStore':
+    return <PaperStoreForm {...commonFormProps} onCompleteWork={(payload) => {
+      console.log('🔍 [PaperStore onCompleteWork] - Step:', stepToEdit);
+      console.log('🔍 [PaperStore onCompleteWork] - PaperStore Details:', stepToEdit.paperStoreDetails);
+      console.log('🔍 [PaperStore onCompleteWork] - Payload:', payload);
+      
+      // Find the specific paperStore item that matches this step's ID
+      const paperStoreItem = (stepToEdit.paperStoreDetails as any[])?.find((item: any) => item.jobStepId === stepToEdit.id);
+      
+      // Use the step-specific record ID if available, otherwise use the by-job endpoint
+      const endpoint = paperStoreItem?.id 
+        ? `https://nrprod.nrcontainers.com/api/paper-store/${paperStoreItem.id}`
+        : `https://nrprod.nrcontainers.com/api/paper-store/by-job/${encodeURIComponent(jobPlan.nrcJobNo)}`;
+      
+      console.log('🔍 [PaperStore onCompleteWork] - Found paperStore item:', paperStoreItem);
+      console.log('🔍 [PaperStore onCompleteWork] - Using endpoint:', endpoint);
+      return handleCompleteWork(stepToEdit, payload, endpoint, stepToEdit.user || '');
+    }} />;
+
       case 'Corrugation':
       case 'PrintingDetails':
       case 'FluteLamination':
@@ -660,38 +665,57 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
     }
   };
 
+  const findDetailStatus = (details: any, stepId: number): boolean => {
+  if (!Array.isArray(details)) return false;
+  const item = details.find((detail: any) => detail.jobStepId === stepId);
+  return item?.status === 'accept';
+};
+
   // --- Step Card Rendering Logic ---
-  const getStepStatusVisual = (step: JobPlanStep, isPreviousStepCompleted: boolean, isNextPlannedStep: boolean) => {
+ const getStepStatusVisual = (step: JobPlanStep, isPreviousStepCompleted: boolean, isNextPlannedStep: boolean) => {
     let isDetailStatusAccepted = false;
+    console.log ("step", step)
+    
     switch (step.stepName) {
       case 'PaperStore':
-        isDetailStatusAccepted = step.paperStoreDetails?.status === 'accept';
+        // Find the paperStore item that matches this step's ID
+        const paperStoreItem = step.paperStoreDetails?.find(item => item.jobStepId === step.id);
+        isDetailStatusAccepted = paperStoreItem?.status === 'accept';
         break;
       case 'Corrugation':
-        isDetailStatusAccepted = step.corrugationDetails?.status === 'accept';
+        const corrugationItem = step.corrugationDetails?.find(item => item.jobStepId === step.id);
+        isDetailStatusAccepted = corrugationItem?.status === 'accept';
         break;
       case 'PrintingDetails':
-        isDetailStatusAccepted = step.printingDetails?.status === 'accept';
+        const printingItem = step.printingDetails?.find(item => item.jobStepId === step.id);
+        isDetailStatusAccepted = printingItem?.status === 'accept';
         break;
       case 'FluteLamination':
-        isDetailStatusAccepted = step.fluteLaminationDetails?.status === 'accept';
+        const fluteItem = step.fluteLaminationDetails?.find(item => item.jobStepId === step.id);
+        isDetailStatusAccepted = fluteItem?.status === 'accept';
         break;
       case 'Punching':
-        isDetailStatusAccepted = step.punchingDetails?.status === 'accept';
+        const punchingItem = step.punchingDetails?.find(item => item.jobStepId === step.id);
+        isDetailStatusAccepted = punchingItem?.status === 'accept';
         break;
       case 'FlapPasting':
-        isDetailStatusAccepted = step.flapPastingDetails?.status === 'accept';
+        const flapPastingItem = step.flapPastingDetails?.find(item => item.jobStepId === step.id);
+        isDetailStatusAccepted = flapPastingItem?.status === 'accept';
         break;
       case 'QualityDept':
-        isDetailStatusAccepted = step.qcDetails?.status === 'accept';
+        const qcItem = step.qcDetails?.find(item => item.jobStepId === step.id);
+        isDetailStatusAccepted = qcItem?.status === 'accept';
         break;
       case 'DispatchProcess':
-        isDetailStatusAccepted = step.dispatchDetails?.status === 'accept';
+        const dispatchItem = step.dispatchDetails?.find(item => item.jobStepId === step.id);
+        isDetailStatusAccepted = dispatchItem?.status === 'accept';
         break;
       default:
         isDetailStatusAccepted = step.status === 'stop' && step.endDate !== null;
         break;
     }
+
+    // Rest of your code remains the same...
 
     const isCompleted = isDetailStatusAccepted;
     const isStarted = step.status === 'start' && step.startDate !== null;
@@ -795,35 +819,40 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
   // Calculate progress
   const completedStepsCount = jobPlan.steps.filter(step => {
     let isDetailStatusAccepted = false;
-    switch (step.stepName) {
-      case 'PaperStore':
-        isDetailStatusAccepted = step.paperStoreDetails?.status === 'accept';
-        break;
-      case 'Corrugation':
-        isDetailStatusAccepted = step.corrugationDetails?.status === 'accept';
-        break;
-      case 'PrintingDetails':
-        isDetailStatusAccepted = step.printingDetails?.status === 'accept';
-        break;
-      case 'FluteLamination':
-        isDetailStatusAccepted = step.fluteLaminationDetails?.status === 'accept';
-        break;
-      case 'Punching':
-        isDetailStatusAccepted = step.punchingDetails?.status === 'accept';
-        break;
-      case 'FlapPasting':
-        isDetailStatusAccepted = step.flapPastingDetails?.status === 'accept';
-        break;
-      case 'QualityDept':
-        isDetailStatusAccepted = step.qcDetails?.status === 'accept';
-        break;
-      case 'DispatchProcess':
-        isDetailStatusAccepted = step.dispatchDetails?.status === 'accept';
-        break;
-      default:
-        isDetailStatusAccepted = step.status === 'stop' && step.endDate !== null;
-        break;
-    }
+    // Helper function to safely find and check status in detail arrays
+
+
+// Then use it in your switch statement:
+switch (step.stepName) {
+  case 'PaperStore':
+    isDetailStatusAccepted = findDetailStatus(step.paperStoreDetails, step.id);
+    break;
+  case 'Corrugation':
+    isDetailStatusAccepted = findDetailStatus(step.corrugationDetails, step.id);
+    break;
+  case 'PrintingDetails':
+    isDetailStatusAccepted = findDetailStatus(step.printingDetails, step.id);
+    break;
+  case 'FluteLamination':
+    isDetailStatusAccepted = findDetailStatus(step.fluteLaminationDetails, step.id);
+    break;
+  case 'Punching':
+    isDetailStatusAccepted = findDetailStatus(step.punchingDetails, step.id);
+    break;
+  case 'FlapPasting':
+    isDetailStatusAccepted = findDetailStatus(step.flapPastingDetails, step.id);
+    break;
+  case 'QualityDept':
+    isDetailStatusAccepted = findDetailStatus(step.qcDetails, step.id);
+    break;
+  case 'DispatchProcess':
+    isDetailStatusAccepted = findDetailStatus(step.dispatchDetails, step.id);
+    break;
+  default:
+    isDetailStatusAccepted = step.status === 'stop' && step.endDate !== null;
+    break;
+}
+
     return isDetailStatusAccepted;
   }).length;
   const totalSteps = jobPlan.steps.length;
@@ -837,34 +866,35 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
     const step = jobPlan.steps[i];
     let currentStepIsCompletedByDetail = false;
     switch (step.stepName) {
-      case 'PaperStore':
-        currentStepIsCompletedByDetail = step.paperStoreDetails?.status === 'accept';
-        break;
-      case 'Corrugation':
-        currentStepIsCompletedByDetail = step.corrugationDetails?.status === 'accept';
-        break;
-      case 'PrintingDetails':
-        currentStepIsCompletedByDetail = step.printingDetails?.status === 'accept';
-        break;
-      case 'FluteLamination':
-        currentStepIsCompletedByDetail = step.fluteLaminationDetails?.status === 'accept';
-        break;
-      case 'Punching':
-        currentStepIsCompletedByDetail = step.punchingDetails?.status === 'accept';
-        break;
-      case 'FlapPasting':
-        currentStepIsCompletedByDetail = step.flapPastingDetails?.status === 'accept';
-        break;
-      case 'QualityDept':
-        currentStepIsCompletedByDetail = step.qcDetails?.status === 'accept';
-        break;
-      case 'DispatchProcess':
-        currentStepIsCompletedByDetail = step.dispatchDetails?.status === 'accept';
-        break;
-      default:
-        currentStepIsCompletedByDetail = step.status === 'stop' && step.endDate !== null;
-        break;
-    }
+  case 'PaperStore':
+    currentStepIsCompletedByDetail = findDetailStatus(step.paperStoreDetails, step.id);
+    break;
+  case 'Corrugation':
+    currentStepIsCompletedByDetail = findDetailStatus(step.corrugationDetails, step.id);
+    break;
+  case 'PrintingDetails':
+    currentStepIsCompletedByDetail = findDetailStatus(step.printingDetails, step.id);
+    break;
+  case 'FluteLamination':
+    currentStepIsCompletedByDetail = findDetailStatus(step.fluteLaminationDetails, step.id);
+    break;
+  case 'Punching':
+    currentStepIsCompletedByDetail = findDetailStatus(step.punchingDetails, step.id);
+    break;
+  case 'FlapPasting':
+    currentStepIsCompletedByDetail = findDetailStatus(step.flapPastingDetails, step.id);
+    break;
+  case 'QualityDept':
+    currentStepIsCompletedByDetail = findDetailStatus(step.qcDetails, step.id);
+    break;
+  case 'DispatchProcess':
+    currentStepIsCompletedByDetail = findDetailStatus(step.dispatchDetails, step.id);
+    break;
+  default:
+    currentStepIsCompletedByDetail = step.status === 'stop' && step.endDate !== null;
+    break;
+}
+
 
     if (step.status === 'planned') {
       if (previousStepCompleted) {
@@ -928,34 +958,35 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
           if (index > 0) {
             const prevStep = jobPlan.steps[index - 1];
             switch (prevStep.stepName) {
-              case 'PaperStore':
-                isPreviousStepCompleted = prevStep.paperStoreDetails?.status === 'accept';
-                break;
-              case 'Corrugation':
-                isPreviousStepCompleted = prevStep.corrugationDetails?.status === 'accept';
-                break;
-              case 'PrintingDetails':
-                isPreviousStepCompleted = prevStep.printingDetails?.status === 'accept';
-                break;
-              case 'FluteLamination':
-                isPreviousStepCompleted = prevStep.fluteLaminationDetails?.status === 'accept';
-                break;
-              case 'Punching':
-                isPreviousStepCompleted = prevStep.punchingDetails?.status === 'accept';
-                break;
-              case 'FlapPasting':
-                isPreviousStepCompleted = prevStep.flapPastingDetails?.status === 'accept';
-                break;
-              case 'QualityDept':
-                isPreviousStepCompleted = prevStep.qcDetails?.status === 'accept';
-                break;
-              case 'DispatchProcess':
-                isPreviousStepCompleted = prevStep.dispatchDetails?.status === 'accept';
-                break;
-              default:
-                isPreviousStepCompleted = prevStep.status === 'stop' && prevStep.endDate !== null;
-                break;
-            }
+  case 'PaperStore':
+    isPreviousStepCompleted = findDetailStatus(prevStep.paperStoreDetails, prevStep.id);
+    break;
+  case 'Corrugation':
+    isPreviousStepCompleted = findDetailStatus(prevStep.corrugationDetails, prevStep.id);
+    break;
+  case 'PrintingDetails':
+    isPreviousStepCompleted = findDetailStatus(prevStep.printingDetails, prevStep.id);
+    break;
+  case 'FluteLamination':
+    isPreviousStepCompleted = findDetailStatus(prevStep.fluteLaminationDetails, prevStep.id);
+    break;
+  case 'Punching':
+    isPreviousStepCompleted = findDetailStatus(prevStep.punchingDetails, prevStep.id);
+    break;
+  case 'FlapPasting':
+    isPreviousStepCompleted = findDetailStatus(prevStep.flapPastingDetails, prevStep.id);
+    break;
+  case 'QualityDept':
+    isPreviousStepCompleted = findDetailStatus(prevStep.qcDetails, prevStep.id);
+    break;
+  case 'DispatchProcess':
+    isPreviousStepCompleted = findDetailStatus(prevStep.dispatchDetails, prevStep.id);
+    break;
+  default:
+    isPreviousStepCompleted = prevStep.status === 'stop' && prevStep.endDate !== null;
+    break;
+}
+
           }
 
           const isNextPlannedStep = step.id === nextPlannedStep?.id;

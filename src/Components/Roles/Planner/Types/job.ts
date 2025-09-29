@@ -199,14 +199,17 @@ export interface JobPlanStep {
   createdAt: string;
   updatedAt: string;
   // Optional properties to store fetched step-specific details
-  paperStoreDetails?: PaperStorePayload;
-  corrugationDetails?: CorrugationPayload;
-  printingDetails?: PrintingDetailsPayload;
-  fluteLaminationDetails?: FluteLaminationPayload;
-  punchingDetails?: PunchingPayload;
-  flapPastingDetails?: FlapPastingPayload;
-  qcDetails?: QCDetailsPayload;
-  dispatchDetails?: DispatchDetailsPayload;
+ 
+  paperStoreDetails?: PaperStorePayload[];      // ✅ Correct - array
+  corrugationDetails?: CorrugationPayload[];    // ✅ Correct - array
+  printingDetails?: PrintingDetailsPayload[];   // ✅ Correct - array
+  fluteLaminationDetails?: FluteLaminationPayload[]; // ✅ Correct - array
+  punchingDetails?: PunchingPayload[];          // ✅ Correct - array
+  flapPastingDetails?: FlapPastingPayload[];    // ✅ Correct - array
+  qcDetails?: QCDetailsPayload[];               // ✅ Correct - array
+  dispatchDetails?: DispatchDetailsPayload[];   // ✅ Correct - array
+
+
 }
 
 export interface JobPlan {
