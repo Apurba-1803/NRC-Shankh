@@ -4,6 +4,8 @@ import { CheckCircle, Clock, AlertCircle, XCircle } from 'lucide-react';
 interface PurchaseOrder {
   id: number;
   boardSize: string | null;
+  boxDimensions: string | null;
+  jobBoardSize: string | null;
   customer: string;
   deliveryDate: string;
   dieCode: number | null;
@@ -36,6 +38,7 @@ interface PurchaseOrder {
     styleItemSKU: string;
   } | null;
   user: any | null;
+  processColors?: string;
 }
 
 interface POdetailCardProps {
@@ -110,6 +113,8 @@ const POdetailCard: React.FC<POdetailCardProps> = ({ po, onClick, jobCompletionS
     return new Date(dateString).toLocaleDateString('en-GB');
   };
 
+  console.log('Rendering POdetailCard with PO:', po);
+
   return (
     <div 
       onClick={() => onClick(po)}
@@ -150,9 +155,15 @@ const POdetailCard: React.FC<POdetailCardProps> = ({ po, onClick, jobCompletionS
       {/* Key Details Grid */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div>
+          <p className="text-xs text-gray-500">Dimensions</p>
+          <p className="text-xs sm:text-sm font-medium text-gray-700 truncate">
+            {po.boxDimensions || 'N/A'}
+          </p>
+        </div>
+         <div>
           <p className="text-xs text-gray-500">Board Size</p>
           <p className="text-xs sm:text-sm font-medium text-gray-700 truncate">
-            {po.boardSize || 'N/A'}
+            {po.jobBoardSize || 'N/A'}
           </p>
         </div>
         <div>
@@ -171,6 +182,12 @@ const POdetailCard: React.FC<POdetailCardProps> = ({ po, onClick, jobCompletionS
           <p className="text-xs text-gray-500">Sheets</p>
           <p className="text-xs sm:text-sm font-medium text-gray-700">
             {po.noOfSheets || 0}
+          </p>
+        </div>
+         <div>
+          <p className="text-xs text-gray-500">Colors</p>
+          <p className="text-xs sm:text-sm font-medium text-gray-700">
+            {po.processColors || 'N/A'}
           </p>
         </div>
       </div>

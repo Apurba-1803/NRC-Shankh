@@ -313,7 +313,7 @@ function getMachineCategory(machineName: string): string {
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <h3 className="font-semibold text-gray-900 text-sm">
-                    {machine.machine || machine.originalMachine || machine.description}
+                    {machine.machineCode || machine.originalMachine || machine.description}
                   </h3>
                   <span 
                     className="inline-block px-2 py-1 text-white text-xs rounded mt-1"

@@ -37,6 +37,7 @@ interface PlannerSummary {
   fullyCompleted: number;
   partiallyCompleted: number;
   notStarted: number;
+   totalActiveJobs: number;
 }
 
 interface PlannerDashboardData {
@@ -218,7 +219,8 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
         return data.allJobs.filter(job => 
           job.poStatus === 'completed' && 
           job.artworkStatus === 'completed' && 
-          job.machineDetailsStatus === 'completed'
+          job.machineDetailsStatus === 'completed'&&
+          job.status !== "COMPLETED"
         );
       case 'partial':
         return data.allJobs.filter(job => {
@@ -274,8 +276,8 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Job Cards</p>
-              <p className="text-3xl font-bold text-blue-600">{data.summary.totalJobs}</p>
+              <p className="text-sm font-medium text-gray-600">Total Active Jobs </p>
+              <p className="text-3xl font-bold text-blue-600">{data.summary.totalActiveJobs}</p>
             </div>
             <div className="bg-blue-100 p-3 rounded-xl">
               <DocumentTextIcon className="h-8 w-8 text-blue-600" />

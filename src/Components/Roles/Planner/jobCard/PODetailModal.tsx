@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, Calendar, Package, User, Building, Hash, Ruler } from 'lucide-react';
+import SingleJobPlanningModal from '../../Planner/modal/SingleJobPlanningModal';
 
 interface PurchaseOrder {
   id: number;
   boardSize: string | null;
+  boxDimensions: string | null;
+  jobBoardSize: string | null;
   customer: string;
   deliveryDate: string;
   dieCode: number | null;
@@ -43,10 +46,13 @@ interface PODetailModalProps {
   completionStatus: 'artwork_pending' | 'po_pending' | 'more_info_pending' | 'completed';
   onClose: () => void;
   onNavigateToForm?: (po : PurchaseOrder, formType: string) => void; // Add this
+   onRefresh?: () => void;
 }
 
-const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose, completionStatus, onNavigateToForm  }) => {
+const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose, completionStatus, onNavigateToForm, onRefresh   }) => {
   if (!po) return null;
+
+   const [showJobPlanningModal, setShowJobPlanningModal] = useState(false);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -58,12 +64,103 @@ const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose, completionSt
     return new Date(dateString).toLocaleString('en-GB');
   };
 
-
-    const handleFormNavigation = (po:PurchaseOrder, formType: string) => {
+  const handleFormNavigation = (po: PurchaseOrder, formType: string) => {
+    if (formType === 'moreInfo') {
+      // For 'moreInfo', show the job planning modal instead of navigation
+      setShowJobPlanningModal(true);
+      return;
+    }
+    
+    // For other form types, use the existing navigation
     onClose(); // Close the modal first
     onNavigateToForm?.(po, formType); // Then navigate to form
   };
 
+  const handleJobPlanningSubmit = async (jobPlanningData: any) => {
+    try {
+      const accessToken = localStorage.getItem('accessToken');
+      if (!accessToken) throw new Error('Authentication token not found.');
+
+      // Create the job plan payload
+      const jobPlanPayload = {
+        nrcJobNo: po.jobNrcJobNo || po.job?.nrcJobNo,
+        jobDemand: jobPlanningData.jobDemand,
+        steps: jobPlanningData.steps.map((step: any, index: number) => ({
+          jobStepId: index + 1,
+          stepNo: index + 1,
+          stepName: step.stepName,
+          machineDetails: step.machineId ? [{
+            id: step.machineId,
+            unit: po.unit || 'Unit 1',
+            machineCode: step.machineCode,
+            machineType: step.machineDetail || 'Production Step'
+          }] : [{
+            unit: po.unit || 'Unit 1',
+            machineId: null,
+            machineCode: null,
+            machineType: "Not Assigned"
+          }],
+          status: 'planned' as const,
+          startDate: null,
+          endDate: null,
+          user: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }))
+      };
+
+      const response = await fetch('https://nrprod.nrcontainers.com/api/job-planning/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(jobPlanPayload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Failed to create job plan: ${errorData.message || response.statusText}`);
+      }
+
+      // Update machine statuses if needed
+      if (jobPlanningData.selectedMachines?.length > 0) {
+        const machineUpdatePromises = jobPlanningData.selectedMachines
+          .filter((machine: any) => machine.id)
+          .map(async (machine: any) => {
+            try {
+              await fetch(`https://nrprod.nrcontainers.com/api/machines/${machine.id}/status`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({ status: 'busy' }),
+              });
+            } catch (error) {
+              console.warn(`Error updating machine ${machine.id} status:`, error);
+            }
+          });
+
+        await Promise.all(machineUpdatePromises);
+      }
+
+      setShowJobPlanningModal(false);
+      onClose(); // Close the PO detail modal
+      alert('Job plan created successfully!');
+      
+      // You might want to trigger a refresh of the parent component here
+      // by calling a callback function passed as prop
+       // **IMPORTANT: Call the refresh callback to update the parent data**
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+    } catch (error) {
+      console.error('Job planning error:', error);
+      alert(`Failed to create job plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
   return (
     <div className="fixed inset-0 bg-transparent backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 overflow-hidden">
       <div className="bg-white rounded-lg shadow-xl w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto mx-2">
@@ -309,6 +406,14 @@ const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose, completionSt
       Close
     </button>
   )}
+
+  {showJobPlanningModal && (
+        <SingleJobPlanningModal
+          po={po}
+          onSave={handleJobPlanningSubmit}
+          onClose={() => setShowJobPlanningModal(false)}
+        />
+      )}
 </div>
 
       </div>

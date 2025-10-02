@@ -583,7 +583,7 @@ const getJobsByCategory = () => {
               <p className="text-blue-100">Complete overview of all job categories</p>
             </div>
             <div className="ml-auto text-right">
-              <div className="text-4xl font-bold">{jobPlans.length}</div>
+              <div className="text-4xl font-bold">{jobPlans.length + completedJobs.length}</div>
               <div className="text-blue-100">Total Count</div>
             </div>
           </div>
