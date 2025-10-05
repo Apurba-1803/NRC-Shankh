@@ -5,6 +5,7 @@ import Header from './Components/Navbar/Header/Header';
 import Login from './Pages/Login';
 import ProtectedRoute from './Routes/ProtectedRoute';
 
+
 const Dashboard = lazy(() => import('./Pages/Dashboard/Dashboard'));
 const JobInitiationForm = lazy(() => import('./Components/Roles/Planner/Form/JobInitiationForm'));
 const JobStepsView = lazy(() => import('./Components/Roles/Planner/Form/JobStepsView')); // IMPORTED: New component
@@ -14,11 +15,17 @@ const InProgressJobs = lazy(() => import('./Components/Roles/Admin/InProgressJob
 const PlannedJobs = lazy(() => import('./Components/Roles/Admin/PlannedJobs')); // New planned jobs view
 const EditMachinePage = lazy(() => import('./Components/Roles/Planner/EditMachinePage')); // NEW: Edit Machine page
 const UserDetailsPage = lazy(() => import('./Components/UserProfile/UserManagement/UserDetailsPage')); // NEW: User Details page
+const HeldJobs = lazy(() => import('./Components/Roles/Admin/HeldJobs')); // NEW: Held Jobs page
 
 // Wrapper component to use useNavigate
 function AppContent() {
   const navigate = useNavigate();
-  const [tabValue, setTabValue] = useState('dashboard');
+  const [tabValue, setTabValue] = useState(() => {
+  const path = window.location.pathname;
+  if (path === '/planner-dashboard') return 'planner';
+  return 'dashboard';
+});
+
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
 
@@ -168,6 +175,9 @@ function AppContent() {
                   <PlannedJobs />
                 }
               />
+             
+<Route path="held-jobs" element={<HeldJobs />} />
+
               {/* Nested Route for EditMachinePage */}
               <Route
                 path="edit-machine" // New route for edit machine

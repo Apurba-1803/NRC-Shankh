@@ -6,13 +6,16 @@ import {
   ExclamationTriangleIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
-  EyeIcon
+  EyeIcon,
+  CalendarIcon,
+  PlayCircleIcon
 } from '@heroicons/react/24/outline';
 import { dispatchService, type DispatchProcess, type DispatchData } from './dispatchService';
 import LoadingSpinner from '../../../common/LoadingSpinner';
 
 const DispatchOverview: React.FC = () => {
   const [dispatchData, setDispatchData] = useState<DispatchProcess[]>([]);
+  const [summaryData, setSummaryData] = useState<DispatchData | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -24,8 +27,12 @@ const DispatchOverview: React.FC = () => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const data = await dispatchService.getAllDispatchProcesses();
+        const [data, summary] = await Promise.all([
+          dispatchService.getAllDispatchProcesses(),
+          dispatchService.getDispatchStatistics()
+        ]);
         setDispatchData(data);
+        setSummaryData(summary);
       } catch (error) {
         console.error('Error loading dispatch data:', error);
       } finally {
@@ -34,16 +41,6 @@ const DispatchOverview: React.FC = () => {
     };
     loadData();
   }, []);
-
-  // Calculate summary data
-  const summaryData: DispatchData = {
-    totalDispatches: dispatchData.length,
-    totalQuantityDispatched: dispatchData.reduce((sum, item) => sum + item.quantity, 0),
-    totalBalanceQuantity: dispatchData.reduce((sum, item) => sum + item.balanceQty, 0),
-    completedDispatches: dispatchData.filter(item => item.status === 'accept').length,
-    pendingDispatches: dispatchData.filter(item => item.status === 'pending').length,
-    rejectedDispatches: dispatchData.filter(item => item.status === 'rejected').length,
-  };
 
   // Filter data based on search and status
   const filteredData = dispatchData.filter(item => {
@@ -59,20 +56,26 @@ const DispatchOverview: React.FC = () => {
 
   // Sort by dispatch date (latest first) and limit to 5 items
   const sortedData = filteredData
-    .sort((a, b) => new Date(b.dispatchDate).getTime() - new Date(a.dispatchDate).getTime());
+    .sort((a, b) => new Date(b.dispatchDate || b.date).getTime() - new Date(a.dispatchDate || a.date).getTime());
   
   // Show all data or limit to 5 based on state
   const displayData = showAllData ? sortedData : sortedData.slice(0, 5);
 
-  // Get status color and label
+  // Get status color and label - Updated with new statuses
   const getStatusInfo = (status: string) => {
     switch (status) {
       case 'accept':
-        return { color: 'bg-green-100 text-green-800 border-green-200', label: 'Accepted', icon: CheckCircleIcon };
+        return { color: 'bg-green-100 text-green-800 border-green-200', label: 'Completed', icon: CheckCircleIcon };
       case 'pending':
         return { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', label: 'Pending', icon: ClockIcon };
       case 'rejected':
         return { color: 'bg-red-100 text-red-800 border-red-200', label: 'Rejected', icon: ExclamationTriangleIcon };
+      case 'planned':
+        return { color: 'bg-gray-100 text-gray-800 border-gray-200', label: 'Planned', icon: CalendarIcon };
+      case 'start':
+        return { color: 'bg-blue-100 text-blue-800 border-blue-200', label: 'In Progress', icon: PlayCircleIcon };
+      case 'stop':
+        return { color: 'bg-purple-100 text-purple-800 border-purple-200', label: 'Dispatched', icon: TruckIcon };
       default:
         return { color: 'bg-gray-100 text-gray-800 border-gray-200', label: 'Unknown', icon: ExclamationTriangleIcon };
     }
@@ -80,13 +83,17 @@ const DispatchOverview: React.FC = () => {
 
   // Format date
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      return new Date(dateString).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Invalid Date';
+    }
   };
 
   // Handle row click to show details
@@ -101,9 +108,26 @@ const DispatchOverview: React.FC = () => {
     setSelectedDispatch(null);
   };
 
+  // Refresh data handler
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      const [data, summary] = await Promise.all([
+        dispatchService.getAllDispatchProcesses(),
+        dispatchService.getDispatchStatistics()
+      ]);
+      setDispatchData(data);
+      setSummaryData(summary);
+    } catch (error) {
+      console.error('Error refreshing dispatch data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen  flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner size="xl" text="Loading Dispatch Dashboard..." />
       </div>
     );
@@ -116,7 +140,7 @@ const DispatchOverview: React.FC = () => {
         <div className="mb-8">
           <div className="flex items-center space-x-4 mb-2">
             <div className="bg-blue-500 p-3 rounded-xl">
-              <TruckIcon className="h-4 w-4 text-white" />
+              <TruckIcon className="h-8 w-8 text-white" />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Dispatch Head Dashboard</h1>
@@ -130,10 +154,7 @@ const DispatchOverview: React.FC = () => {
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No Dispatch Data Available</h3>
           <p className="text-gray-600 mb-4">No dispatch processes found in the system.</p>
           <button
-            onClick={() => {
-              setLoading(true);
-              dispatchService.getAllDispatchProcesses().then(setDispatchData).finally(() => setLoading(false));
-            }}
+            onClick={handleRefresh}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
           >
             Refresh Data
@@ -143,8 +164,10 @@ const DispatchOverview: React.FC = () => {
     );
   }
 
+  console.log("Dispatch Data:", dispatchData);
+
   return (
-    <div className="min-h-screenp-6">
+    <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -153,15 +176,12 @@ const DispatchOverview: React.FC = () => {
               <TruckIcon className="h-8 w-8 text-white" />
             </div>
             <div>
-             
+              <h1 className="text-3xl font-bold text-gray-900">Dispatch Head Dashboard</h1>
               <p className="text-gray-600 text-lg">Monitor and manage all dispatch operations</p>
             </div>
           </div>
           <button
-            onClick={() => {
-              setLoading(true);
-              dispatchService.getAllDispatchProcesses().then(setDispatchData).finally(() => setLoading(false));
-            }}
+            onClick={handleRefresh}
             disabled={loading}
             className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
           >
@@ -188,13 +208,13 @@ const DispatchOverview: React.FC = () => {
         </p>
       </div>
 
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+      {/* Summary KPI Cards - Updated to use summaryData from state */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-6 mb-8">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Dispatches</p>
-              <p className="text-xl font-bold text-blue-600">{summaryData.totalDispatches}</p>
+              <p className="text-xl font-bold text-blue-600">{summaryData?.totalDispatches || 0}</p>
             </div>
             <div className="bg-blue-100 p-3 rounded-xl">
               <TruckIcon className="h-4 w-4 text-blue-600" />
@@ -206,7 +226,7 @@ const DispatchOverview: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Quantity Dispatched</p>
-              <p className="text-l font-bold text-green-600">{summaryData.totalQuantityDispatched.toLocaleString()}</p>
+              <p className="text-xl font-bold text-green-600">{summaryData?.totalQuantityDispatched?.toLocaleString() || 0}</p>
             </div>
             <div className="bg-green-100 p-3 rounded-xl">
               <CheckCircleIcon className="h-4 w-4 text-green-600" />
@@ -218,7 +238,7 @@ const DispatchOverview: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Balance Qty</p>
-              <p className="text-xl font-bold text-orange-600">{summaryData.totalBalanceQuantity.toLocaleString()}</p>
+              <p className="text-xl font-bold text-orange-600">{summaryData?.totalBalanceQuantity?.toLocaleString() || 0}</p>
             </div>
             <div className="bg-orange-100 p-3 rounded-xl">
               <ClockIcon className="h-4 w-4 text-orange-600" />
@@ -230,7 +250,7 @@ const DispatchOverview: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Completed</p>
-              <p className="text-xl font-bold text-green-600">{summaryData.completedDispatches}</p>
+              <p className="text-xl font-bold text-green-600">{summaryData?.completedDispatches || 0}</p>
             </div>
             <div className="bg-green-100 p-3 rounded-xl">
               <CheckCircleIcon className="h-4 w-4 text-green-600" />
@@ -242,7 +262,7 @@ const DispatchOverview: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Pending</p>
-              <p className="text-xl font-bold text-yellow-600">{summaryData.pendingDispatches}</p>
+              <p className="text-xl font-bold text-yellow-600">{summaryData?.pendingDispatches || 0}</p>
             </div>
             <div className="bg-yellow-100 p-3 rounded-xl">
               <ClockIcon className="h-4 w-4 text-yellow-600" />
@@ -254,16 +274,40 @@ const DispatchOverview: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Rejected</p>
-              <p className="text-xl font-bold text-red-600">{summaryData.rejectedDispatches}</p>
+              <p className="text-xl font-bold text-red-600">{summaryData?.rejectedDispatches || 0}</p>
             </div>
             <div className="bg-red-100 p-3 rounded-xl">
               <ExclamationTriangleIcon className="h-4 w-4 text-red-600" />
             </div>
           </div>
         </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Planned</p>
+              <p className="text-xl font-bold text-gray-600">{summaryData?.plannedDispatches || 0}</p>
+            </div>
+            <div className="bg-gray-100 p-3 rounded-xl">
+              <CalendarIcon className="h-4 w-4 text-gray-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">In Progress</p>
+              <p className="text-xl font-bold text-blue-600">{summaryData?.inProgressDispatches || 0}</p>
+            </div>
+            <div className="bg-blue-100 p-3 rounded-xl">
+              <PlayCircleIcon className="h-4 w-4 text-blue-600" />
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Filters and Search */}
+      {/* Filters and Search - Updated filter options */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="flex items-center space-x-4 flex-1">
@@ -285,7 +329,10 @@ const DispatchOverview: React.FC = () => {
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">All Status</option>
-                <option value="accept">Accepted</option>
+                <option value="planned">Planned</option>
+                <option value="start">In Progress</option>
+                <option value="accept">Completed</option>
+                <option value="stop">Dispatched</option>
                 <option value="pending">Pending</option>
                 <option value="rejected">Rejected</option>
               </select>
@@ -297,7 +344,7 @@ const DispatchOverview: React.FC = () => {
         </div>
       </div>
 
-      {/* Dispatch Details Table */}
+      {/* Dispatch Details Table - Updated to handle potential division by zero */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Dispatch Details</h3>
@@ -310,8 +357,8 @@ const DispatchOverview: React.FC = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dispatch No</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job No</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dispatch Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Step Info</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Balance Qty</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -334,6 +381,10 @@ const DispatchOverview: React.FC = () => {
                 displayData.map((dispatch: DispatchProcess) => {
                   const statusInfo = getStatusInfo(dispatch.status);
                   const StatusIcon = statusInfo.icon;
+                  const totalQuantity = dispatch.quantity || 0;
+                  const balanceQty = dispatch.balanceQty || 0;
+                  const dispatchedQty = totalQuantity - balanceQty;
+                  const completionPercentage = totalQuantity > 0 ? (dispatchedQty / totalQuantity) * 100 : 0;
                   
                   return (
                     <tr 
@@ -348,30 +399,35 @@ const DispatchOverview: React.FC = () => {
                         <div className="text-sm text-gray-900 font-mono">{dispatch.jobNrcJobNo}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 max-w-xs truncate">
-                          {dispatch.jobNrcJobNo.split('–')[1]?.trim() || 'N/A'}
+                        <div className="text-sm text-gray-900">
+                          <div>Step {dispatch.stepNo}: {dispatch.stepName?.replace(/([a-z])([A-Z])/g, '$1 $2')}</div>
+                          <div className="text-xs text-gray-500">{dispatch.machineDetails?.[0]?.machineCode || 'Not Assigned'}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(dispatch.dispatchDate)}
+                        {formatDate(dispatch.dispatchDate || dispatch.date)}
                       </td>
-                                           <td className="px-6 py-4 whitespace-nowrap text-center">
-                       <div className="text-sm font-medium text-gray-900">{dispatch.quantity.toLocaleString()}</div>
-                     </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                       <div className="flex flex-col items-center space-y-1">
-                         <div className="text-sm font-medium text-gray-900">{dispatch.balanceQty.toLocaleString()}</div>
-                         <div className="w-20 bg-gray-200 rounded-full h-2">
-                           <div 
-                             className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                             style={{ width: `${((dispatch.quantity - dispatch.balanceQty) / dispatch.quantity) * 100}%` }}
-                           ></div>
-                         </div>
-                         <div className="text-xs text-gray-500">
-                           {Math.round(((dispatch.quantity - dispatch.balanceQty) / dispatch.quantity) * 100)}%
-                         </div>
-                       </div>
-                     </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="text-sm font-medium text-gray-900">{totalQuantity.toLocaleString()}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="flex flex-col items-center space-y-1">
+                          <div className="text-sm font-medium text-gray-900">{balanceQty.toLocaleString()}</div>
+                          {totalQuantity > 0 && (
+                            <>
+                              <div className="w-20 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                  style={{ width: `${completionPercentage}%` }}
+                                ></div>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {Math.round(completionPercentage)}%
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${statusInfo.color}`}>
                           <StatusIcon className="h-4 w-4 mr-1" />
@@ -379,7 +435,7 @@ const DispatchOverview: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {dispatch.operatorName || 'N/A'}
+                        {dispatch.operatorName || dispatch.user || 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button className="text-blue-600 hover:text-blue-800 transition-colors">
@@ -415,9 +471,9 @@ const DispatchOverview: React.FC = () => {
         )}
       </div>
 
-      {/* Detail Side Panel */}
+      {/* Detail Side Panel - Updated with step information */}
       {showDetailPanel && selectedDispatch && (
-        <div className="fixed inset-0 bg-transparent bg-opacity-50 z-50 flex justify-end">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-end">
           <div className="bg-white w-full max-w-md h-full overflow-y-auto shadow-2xl">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
@@ -445,6 +501,12 @@ const DispatchOverview: React.FC = () => {
                       <span className="text-sm font-medium text-gray-900 font-mono">{selectedDispatch.jobNrcJobNo}</span>
                     </div>
                     <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Step:</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {selectedDispatch.stepNo}: {selectedDispatch.stepName?.replace(/([a-z])([A-Z])/g, '$1 $2')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Status:</span>
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusInfo(selectedDispatch.status).color}`}>
                         {getStatusInfo(selectedDispatch.status).label}
@@ -453,26 +515,54 @@ const DispatchOverview: React.FC = () => {
                   </div>
                 </div>
 
+                {selectedDispatch.machineDetails && selectedDispatch.machineDetails.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">Machine Information</h4>
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      {selectedDispatch.machineDetails.map((machine, index) => (
+                        <div key={index} className="space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">Unit:</span>
+                            <span className="text-sm font-medium text-gray-900">{machine.unit || 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">Machine Code:</span>
+                            <span className="text-sm font-medium text-gray-900">{machine.machineCode || 'Not Assigned'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">Type:</span>
+                            <span className="text-sm font-medium text-gray-900">{machine.machineType || 'N/A'}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 mb-2">Quantity Details</h4>
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Quantity:</span>
-                      <span className="text-sm font-medium text-gray-900">{selectedDispatch.quantity.toLocaleString()}</span>
+                      <span className="text-sm font-medium text-gray-900">{selectedDispatch.quantity?.toLocaleString() || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Balance Qty:</span>
-                      <span className="text-sm font-medium text-gray-900">{selectedDispatch.balanceQty.toLocaleString()}</span>
+                      <span className="text-sm font-medium text-gray-900">{selectedDispatch.balanceQty?.toLocaleString() || 0}</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${((selectedDispatch.quantity - selectedDispatch.balanceQty) / selectedDispatch.quantity) * 100}%` }}
-                      ></div>
-                    </div>
-                    <div className="text-xs text-gray-500 text-center">
-                      {selectedDispatch.quantity - selectedDispatch.balanceQty} of {selectedDispatch.quantity} dispatched
-                    </div>
+                    {selectedDispatch.quantity > 0 && (
+                      <>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${((selectedDispatch.quantity - selectedDispatch.balanceQty) / selectedDispatch.quantity) * 100}%` }}
+                          ></div>
+                        </div>
+                        <div className="text-xs text-gray-500 text-center">
+                          {selectedDispatch.quantity - selectedDispatch.balanceQty} of {selectedDispatch.quantity} dispatched
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -481,7 +571,7 @@ const DispatchOverview: React.FC = () => {
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Operator:</span>
-                      <span className="text-sm font-medium text-gray-900">{selectedDispatch.operatorName || 'N/A'}</span>
+                      <span className="text-sm font-medium text-gray-900">{selectedDispatch.operatorName || selectedDispatch.user || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Shift:</span>
@@ -501,14 +591,26 @@ const DispatchOverview: React.FC = () => {
                       <span className="text-sm text-gray-600">Created:</span>
                       <span className="text-sm font-medium text-gray-900">{formatDate(selectedDispatch.date)}</span>
                     </div>
+                    {selectedDispatch.startDate && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Started:</span>
+                        <span className="text-sm font-medium text-gray-900">{formatDate(selectedDispatch.startDate)}</span>
+                      </div>
+                    )}
+                    {selectedDispatch.endDate && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Ended:</span>
+                        <span className="text-sm font-medium text-gray-900">{formatDate(selectedDispatch.endDate)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Dispatch Date:</span>
-                      <span className="text-sm font-medium text-gray-900">{formatDate(selectedDispatch.dispatchDate)}</span>
+                      <span className="text-sm font-medium text-gray-900">{formatDate(selectedDispatch.dispatchDate || selectedDispatch.date)}</span>
                     </div>
                   </div>
                 </div>
 
-                {selectedDispatch.remarks && (
+                {selectedDispatch.remarks && selectedDispatch.remarks !== '-' && (
                   <div>
                     <h4 className="text-sm font-medium text-gray-500 mb-2">Remarks</h4>
                     <div className="bg-gray-50 rounded-lg p-4">

@@ -12,10 +12,13 @@ interface StatisticsGridProps {
   activeUsers: number;
   // efficiency: number;
   className?: string;
+   heldJobs: number;
   onTotalJobsClick?: () => void;
   onCompletedJobsClick?: () => void;
   onInProgressJobsClick?: () => void;
   onPlannedJobsClick?: () => void;
+ 
+  onHeldJobsClick: () => void;
 }
 
 const StatisticsGrid: React.FC<StatisticsGridProps> = ({
@@ -27,11 +30,14 @@ const StatisticsGrid: React.FC<StatisticsGridProps> = ({
   // completedSteps,
   activeUsers,
   // efficiency,
+  heldJobs,
   className = '',
   onTotalJobsClick,
   onCompletedJobsClick,
   onInProgressJobsClick,
-  onPlannedJobsClick
+  onPlannedJobsClick,
+  onHeldJobsClick
+  
 }) => {
   const stats = [
     {
@@ -46,13 +52,13 @@ const StatisticsGrid: React.FC<StatisticsGridProps> = ({
     },
     {
       title: 'Held Job Cards',
-      value: totalJobs,
+      value: heldJobs,
       icon: PauseCircle,
       iconColor: 'text-[#7C3AED]',
       iconBgColor: 'bg-purple-100',
       borderColor: 'border-[#7C3AED]',
-      onClick: onTotalJobsClick,
-      isClickable: !!onTotalJobsClick
+      onClick: onHeldJobsClick,
+      isClickable: !!onHeldJobsClick
     },
      {
       title: 'Active Users',

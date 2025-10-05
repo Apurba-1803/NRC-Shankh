@@ -274,6 +274,74 @@ class ProductionService {
     }
   }
 
+  // Add these methods to your ProductionService class
+
+// Get jobs by step and status
+async getJobsByStepAndStatus(stepName: string, status: string): Promise<Array<{
+  jobPlan: JobPlan;
+  step: ProductionStep;
+}>> {
+  try {
+    const allJobPlans = await this.getAllJobPlans();
+    const filteredJobs: Array<{ jobPlan: JobPlan; step: ProductionStep }> = [];
+    
+    // Map step names to match the data
+    const stepNameMapping: { [key: string]: string } = {
+      'corrugation': 'Corrugation',
+      'fluteLamination': 'FluteLaminateBoardConversion',
+      'punching': 'Punching',
+      'flapPasting': 'SideFlapPasting'
+    };
+    
+    const targetStepName = stepNameMapping[stepName];
+    if (!targetStepName) return [];
+    
+    allJobPlans.forEach(jobPlan => {
+      const matchingSteps = jobPlan.steps.filter(step => 
+        step.stepName === targetStepName && step.status === status
+      );
+      
+      matchingSteps.forEach(step => {
+        filteredJobs.push({ jobPlan, step });
+      });
+    });
+    
+    return filteredJobs;
+  } catch (error) {
+    console.error('Error fetching jobs by step and status:', error);
+    return [];
+  }
+}
+
+// Get all steps by status across all jobs
+async getAllStepsByStatus(status: string): Promise<Array<{
+  jobPlan: JobPlan;
+  step: ProductionStep;
+}>> {
+  try {
+    const allJobPlans = await this.getAllJobPlans();
+    const filteredJobs: Array<{ jobPlan: JobPlan; step: ProductionStep }> = [];
+    
+    const productionStepNames = ['Corrugation', 'FluteLaminateBoardConversion', 'Punching', 'SideFlapPasting'];
+    
+    allJobPlans.forEach(jobPlan => {
+      const matchingSteps = jobPlan.steps.filter(step => 
+        productionStepNames.includes(step.stepName) && step.status === status
+      );
+      
+      matchingSteps.forEach(step => {
+        filteredJobs.push({ jobPlan, step });
+      });
+    });
+    
+    return filteredJobs;
+  } catch (error) {
+    console.error('Error fetching all steps by status:', error);
+    return [];
+  }
+}
+
+
   // Get production data for a specific job (4 production steps only)
   async getProductionDataByJob(nrcJobNo: string): Promise<ProductionData> {
     try {

@@ -18,70 +18,74 @@ const [inactiveVisible, setInactiveVisible] = useState(50);
 
 
   // Function to fetch all jobs
-  const fetchJobs = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const accessToken = localStorage.getItem("accessToken");
+ const fetchJobs = async () => {
+  setLoading(true);
+  setError(null);
+  try {
+    const accessToken = localStorage.getItem("accessToken");
 
-      if (!accessToken) {
-        setError("Authentication token not found. Please log in.");
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetch("https://nrprod.nrcontainers.com/api/jobs", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message ||
-            `Failed to fetch jobs: ${response.status} ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
-      if (data.success && Array.isArray(data.data)) {
-        // Ensure all jobs have the new fields initialized to null if not present from API
-        const processedJobs: Job[] = data.data.map((j: any) => ({
-          ...j,
-          poNumber: j.poNumber || null,
-          unit: j.unit || null,
-          plant: j.plant || null,
-          totalPOQuantity: j.totalPOQuantity || null,
-          dispatchQuantity: j.dispatchQuantity || null,
-          pendingQuantity: j.pendingQuantity || null,
-          noOfSheets: j.noOfSheets || null,
-          poDate: j.poDate || null,
-          deliveryDate: j.deliveryDate || null,
-          dispatchDate: j.dispatchDate || null,
-          nrcDeliveryDate: j.nrcDeliveryDate || null,
-          jobSteps: j.jobSteps || null,
-          // Ensure jobDemand and machineId are also initialized if they could be null
-          jobDemand: j.jobDemand || null,
-          machineId: j.machineId || null,
-        }));
-        setJobs(processedJobs);
-      } else {
-        setError("Unexpected API response format or data is not an array.");
-      }
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unknown error occurred.");
-      }
-      console.error("Fetch Jobs Error:", err);
-    } finally {
+    if (!accessToken) {
+      setError("Authentication token not found. Please log in.");
       setLoading(false);
+      return;
     }
-  };
+
+    const response = await fetch("https://nrprod.nrcontainers.com/api/jobs", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        // 🔥 ADD THESE CACHE-BUSTING HEADERS
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+      },
+    });
+
+    // Rest of your code remains the same...
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.message ||
+          `Failed to fetch jobs: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+    if (data.success && Array.isArray(data.data)) {
+      const processedJobs: Job[] = data.data.map((j: any) => ({
+        ...j,
+        poNumber: j.poNumber || null,
+        unit: j.unit || null,
+        plant: j.plant || null,
+        totalPOQuantity: j.totalPOQuantity || null,
+        dispatchQuantity: j.dispatchQuantity || null,
+        pendingQuantity: j.pendingQuantity || null,
+        noOfSheets: j.noOfSheets || null,
+        poDate: j.poDate || null,
+        deliveryDate: j.deliveryDate || null,
+        dispatchDate: j.dispatchDate || null,
+        nrcDeliveryDate: j.nrcDeliveryDate || null,
+        jobSteps: j.jobSteps || null,
+        jobDemand: j.jobDemand || null,
+        machineId: j.machineId || null,
+      }));
+      setJobs(processedJobs);
+    } else {
+      setError("Unexpected API response format or data is not an array.");
+    }
+  } catch (err) {
+    if (err instanceof Error) {
+      setError(err.message);
+    } else {
+      setError("An unknown error occurred.");
+    }
+    console.error("Fetch Jobs Error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // Function to handle updating job status (from JobDetailModal - "Continue with this job")
   const handleContinueJob = async (nrcJobNo: string) => {
@@ -405,13 +409,26 @@ const [inactiveVisible, setInactiveVisible] = useState(50);
         </>
       )}
 
-      {selectedJob && (
-        <JobDetailModal
-          job={selectedJob}
-          onClose={() => setSelectedJob(null)}
-          onContinueJob={handleContinueJob}
-        />
-      )}
+    
+
+{selectedJob && (
+  <JobDetailModal
+    job={selectedJob}
+    onClose={() => {
+      setSelectedJob(null);
+      // Refresh data immediately when modal closes
+      fetchJobs();
+    }}
+    onContinueJob={handleContinueJob}
+    onRefresh={async () => {
+      // Simple refresh - just update the jobs list
+      await fetchJobs();
+    }}
+  />
+)}
+
+
+
     </div>
   );
 };

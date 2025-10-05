@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Calendar, Package, User, Building, Hash, Ruler } from 'lucide-react';
+import { X, Calendar, Package, User, Building, Hash, Ruler, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
 import SingleJobPlanningModal from '../../Planner/modal/SingleJobPlanningModal';
 
 interface PurchaseOrder {
@@ -45,14 +46,15 @@ interface PODetailModalProps {
   po: PurchaseOrder | null;
   completionStatus: 'artwork_pending' | 'po_pending' | 'more_info_pending' | 'completed';
   onClose: () => void;
-  onNavigateToForm?: (po : PurchaseOrder, formType: string) => void; // Add this
-   onRefresh?: () => void;
+  onNavigateToForm?: (po : PurchaseOrder, formType: string) => void;
+  onRefresh?: () => void;
 }
 
-const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose, completionStatus, onNavigateToForm, onRefresh   }) => {
-  if (!po) return null;
+const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose, completionStatus, onNavigateToForm, onRefresh }) => {
+  const [showJobPlanningModal, setShowJobPlanningModal] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
-   const [showJobPlanningModal, setShowJobPlanningModal] = useState(false);
+  if (!po) return null;
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -64,16 +66,230 @@ const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose, completionSt
     return new Date(dateString).toLocaleString('en-GB');
   };
 
+  const generatePDF = async () => {
+    if (!po) return;
+    
+    setIsGeneratingPDF(true);
+    
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
+      let yPosition = 30;
+      
+      // Colors
+      const colors = {
+        primary: [41, 128, 185],
+        secondary: [52, 73, 94],
+        success: [39, 174, 96],
+        warning: [241, 196, 15],
+        danger: [231, 76, 60],
+        light: [249, 250, 251],
+        white: [255, 255, 255],
+        text: [44, 62, 80],
+        blue: [59, 130, 246],
+        green: [34, 197, 94],
+        purple: [147, 51, 234],
+        orange: [249, 115, 22],
+        red: [239, 68, 68],
+        indigo: [99, 102, 241],
+      };
+
+      // Helper functions
+      const drawRect = (x: number, y: number, width: number, height: number, color: number[]) => {
+        pdf.setFillColor(color[0], color[1], color[2]);
+        pdf.rect(x, y, width, height, 'F');
+      };
+
+      const drawBorder = (x: number, y: number, width: number, height: number, color: number[] = colors.light) => {
+        pdf.setDrawColor(color[0], color[1], color[2]);
+        pdf.setLineWidth(0.5);
+        pdf.rect(x, y, width, height, 'S');
+      };
+
+      // Header
+      drawRect(0, 0, pageWidth, 50, colors.primary);
+      
+      // Company logo area
+      // drawRect(15, 10, 8, 8, colors.white);
+      // pdf.setFontSize(6);
+      // pdf.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+      // pdf.text('NRC', 19, 15.5, { align: 'center' });
+      
+      // Company name
+      pdf.setFontSize(24);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(255, 255, 255);
+      pdf.text('NR Containers', pageWidth / 2, 25, { align: 'center' });
+      
+      // Subtitle
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Purchase Order Details', pageWidth / 2, 35, { align: 'center' });
+      
+      yPosition = 65;
+      
+      // PO Header
+      drawRect(15, yPosition - 5, pageWidth - 30, 25, colors.secondary);
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(255, 255, 255);
+      pdf.text(`PO Number: ${po.poNumber}`, 20, yPosition + 5);
+      
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Customer: ${po.customer}`, 20, yPosition + 15);
+      pdf.text(`Generated: ${new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      })}`, pageWidth - 20, yPosition + 15, { align: 'right' });
+      
+      yPosition += 35;
+      
+      // Section function
+      const addSection = (title: string, data: { [key: string]: any }, sectionColor: number[]) => {
+        if (yPosition > pageHeight - 80) {
+          pdf.addPage();
+          yPosition = 30;
+        }
+
+        // Section header
+        drawRect(15, yPosition - 2, pageWidth - 30, 12, sectionColor);
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 255, 255);
+        pdf.text(`${title}`, 20, yPosition + 6);
+        yPosition += 15;
+        
+        // Content background
+        const contentHeight = Object.keys(data).filter(key => 
+          data[key] !== null && data[key] !== undefined && data[key] !== 'N/A' && data[key] !== ''
+        ).length * 7 + 8;
+        
+        drawRect(15, yPosition - 2, pageWidth - 30, contentHeight, colors.white);
+        drawBorder(15, yPosition - 2, pageWidth - 30, contentHeight);
+        
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
+        
+        let itemY = yPosition + 3;
+        Object.entries(data).forEach(([key, value]) => {
+          if (value !== null && value !== undefined && value !== 'N/A' && value !== '') {
+            const displayValue = String(value);
+            
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(`${key}:`, 20, itemY);
+            
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(displayValue, 80, itemY);
+            
+            itemY += 7;
+          }
+        });
+        
+        yPosition = itemY + 8;
+      };
+
+      // Basic Information
+      addSection('Basic Information', {
+        'PO Number': po.poNumber,
+        'Status': po.status,
+        'Style': po.style || 'N/A',
+        'Unit': po.unit
+      }, colors.blue);
+
+      // Customer Information
+      addSection('Customer Information', {
+        'Customer': po.customer,
+        'Job Number': po.job?.nrcJobNo || po.jobNrcJobNo || 'N/A',
+        'Style SKU': po.job?.styleItemSKU || 'N/A'
+      }, colors.green);
+
+      // Important Dates
+      addSection('Important Dates', {
+        'PO Date': formatDate(po.poDate),
+        'Delivery Date': formatDate(po.deliveryDate),
+        'Dispatch Date': formatDate(po.dispatchDate || ''),
+        'NRC Delivery Date': formatDate(po.nrcDeliveryDate || ''),
+        'Shade Card Approval': formatDate(po.shadeCardApprovalDate || '')
+      }, colors.purple);
+
+      // Specifications
+      addSection('Specifications', {
+        'Board Size': po.boardSize || 'N/A',
+        'Flute Type': po.fluteType || 'N/A',
+        'Die Code': po.dieCode || 'N/A',
+        'No. of Ups': po.noOfUps || 'N/A',
+        'Jockey Month': po.jockeyMonth || 'N/A'
+      }, colors.orange);
+
+      // Quantities
+      addSection('Quantities', {
+        'Total PO Quantity': po.totalPOQuantity?.toLocaleString() || '0',
+        'No. of Sheets': po.noOfSheets?.toLocaleString() || '0',
+        'Dispatch Quantity': po.dispatchQuantity?.toLocaleString() || '0',
+        'Pending Quantity': po.pendingQuantity?.toLocaleString() || '0',
+        'Pending Validity': po.pendingValidity ? `${po.pendingValidity} days` : '0 days'
+      }, colors.red);
+
+      // Plant & System Information
+      addSection('Plant & System', {
+        'Plant': po.plant || 'N/A',
+        'SR No': po.srNo || 'N/A',
+        'Shared Card Diff': po.sharedCardDiffDate ? `${po.sharedCardDiffDate} days` : '0 days',
+        'Created': formatDateTime(po.createdAt),
+        'Updated': formatDateTime(po.updatedAt)
+      }, colors.indigo);
+
+      // Footer
+      const totalPages = pdf.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        
+        drawRect(0, pageHeight - 15, pageWidth, 15, colors.light);
+        
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
+        
+        pdf.text('NR Containers Pvt. Ltd.', 15, pageHeight - 7);
+        pdf.text(
+          `Generated on ${new Date().toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}`,
+          pageWidth / 2,
+          pageHeight - 7,
+          { align: 'center' }
+        );
+        pdf.text(`Page ${i} of ${totalPages}`, pageWidth - 15, pageHeight - 7, { align: 'right' });
+      }
+      
+      // Save PDF
+      pdf.save(`PO_${po.poNumber.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+      
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
   const handleFormNavigation = (po: PurchaseOrder, formType: string) => {
     if (formType === 'moreInfo') {
-      // For 'moreInfo', show the job planning modal instead of navigation
       setShowJobPlanningModal(true);
       return;
     }
     
-    // For other form types, use the existing navigation
-    onClose(); // Close the modal first
-    onNavigateToForm?.(po, formType); // Then navigate to form
+    onClose();
+    onNavigateToForm?.(po, formType);
   };
 
   const handleJobPlanningSubmit = async (jobPlanningData: any) => {
@@ -81,7 +297,6 @@ const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose, completionSt
       const accessToken = localStorage.getItem('accessToken');
       if (!accessToken) throw new Error('Authentication token not found.');
 
-      // Create the job plan payload
       const jobPlanPayload = {
         nrcJobNo: po.jobNrcJobNo || po.job?.nrcJobNo,
         jobDemand: jobPlanningData.jobDemand,
@@ -123,7 +338,6 @@ const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose, completionSt
         throw new Error(`Failed to create job plan: ${errorData.message || response.statusText}`);
       }
 
-      // Update machine statuses if needed
       if (jobPlanningData.selectedMachines?.length > 0) {
         const machineUpdatePromises = jobPlanningData.selectedMachines
           .filter((machine: any) => machine.id)
@@ -146,12 +360,9 @@ const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose, completionSt
       }
 
       setShowJobPlanningModal(false);
-      onClose(); // Close the PO detail modal
+      onClose();
       alert('Job plan created successfully!');
       
-      // You might want to trigger a refresh of the parent component here
-      // by calling a callback function passed as prop
-       // **IMPORTANT: Call the refresh callback to update the parent data**
       if (onRefresh) {
         onRefresh();
       }
@@ -161,21 +372,34 @@ const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose, completionSt
       alert(`Failed to create job plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
+
   return (
     <div className="fixed inset-0 bg-transparent backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 overflow-hidden">
       <div className="bg-white rounded-lg shadow-xl w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto mx-2">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 sm:p-4 lg:p-6 border-b border-gray-200 gap-3">
-           <div className="min-w-0 flex-1">
-        <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800">Purchase Order Details</h2>
-        <p className="text-xs sm:text-sm lg:text-base text-gray-600 truncate">PO Number: {po.poNumber}</p>
-      </div>
-      <button
-        onClick={onClose}
-        className="text-gray-400 hover:text-gray-600 transition-colors self-end sm:self-auto"
-      >
-        <X size={18} className="sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
-      </button>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800">Purchase Order Details</h2>
+            <p className="text-xs sm:text-sm lg:text-base text-gray-600 truncate">PO Number: {po.poNumber}</p>
+          </div>
+          <div className="flex items-center space-x-3">
+            {/* Download PDF Button */}
+            <button
+              onClick={generatePDF}
+              disabled={isGeneratingPDF}
+              className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              title="Download PDF"
+            >
+              <Download size={18} />
+              {isGeneratingPDF && <span className="text-sm hidden sm:inline">Generating...</span>}
+            </button>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors self-end sm:self-auto"
+            >
+              <X size={18} className="sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -370,55 +594,53 @@ const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose, completionSt
 
         {/* Footer */}
         <div className="flex justify-end p-4 sm:p-6 border-t border-gray-200">
-  {completionStatus === 'more_info_pending' && (
-          <button
-            onClick={() => handleFormNavigation(po, 'moreInfo')}
-            className="px-4 sm:px-6 py-2 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
-          >
-            Complete More Info
-          </button>
-        )}
-  
- {completionStatus === 'artwork_pending' && (
-          <button
-            onClick={() => handleFormNavigation(po, 'artwork')}
-            className="px-4 sm:px-6 py-2 sm:py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm sm:text-base"
-          >
-            Complete Artwork Details
-          </button>
-        )}
-        
-        {completionStatus === 'po_pending' && (
-          <button
-            onClick={() => handleFormNavigation(po, 'po')}
-            className="px-4 sm:px-6 py-2 sm:py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm sm:text-base"
-          >
-            Complete PO Details
-          </button>
-        )}
-  
-  {/* Default Close button if no status matches */}
-  {!['more_info_pending', 'artwork_pending', 'po_pending', 'completed'].includes(completionStatus) && (
-    <button
-      onClick={onClose}
-      className="px-4 sm:px-6 py-2 sm:py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm sm:text-base"
-    >
-      Close
-    </button>
-  )}
+          {completionStatus === 'more_info_pending' && (
+            <button
+              onClick={() => handleFormNavigation(po, 'moreInfo')}
+              className="px-4 sm:px-6 py-2 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
+            >
+              Complete More Info
+            </button>
+          )}
+          
+          {completionStatus === 'artwork_pending' && (
+            <button
+              onClick={() => handleFormNavigation(po, 'artwork')}
+              className="px-4 sm:px-6 py-2 sm:py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm sm:text-base"
+            >
+              Complete Artwork Details
+            </button>
+          )}
+          
+          {completionStatus === 'po_pending' && (
+            <button
+              onClick={() => handleFormNavigation(po, 'po')}
+              className="px-4 sm:px-6 py-2 sm:py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm sm:text-base"
+            >
+              Complete PO Details
+            </button>
+          )}
+          
+          {!['more_info_pending', 'artwork_pending', 'po_pending', 'completed'].includes(completionStatus) && (
+            <button
+              onClick={onClose}
+              className="px-4 sm:px-6 py-2 sm:py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm sm:text-base"
+            >
+              Close
+            </button>
+          )}
 
-  {showJobPlanningModal && (
-        <SingleJobPlanningModal
-          po={po}
-          onSave={handleJobPlanningSubmit}
-          onClose={() => setShowJobPlanningModal(false)}
-        />
-      )}
-</div>
-
+          {showJobPlanningModal && (
+            <SingleJobPlanningModal
+              po={po}
+              onSave={handleJobPlanningSubmit}
+              onClose={() => setShowJobPlanningModal(false)}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-export default PODetailModal; 
+export default PODetailModal;

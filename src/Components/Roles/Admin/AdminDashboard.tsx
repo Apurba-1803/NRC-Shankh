@@ -120,6 +120,7 @@ interface AdminDashboardData {
     completedSteps: number;
   }>;
   completedJobsData: CompletedJob[];
+   heldJobs: number;
  
 }
 
@@ -195,6 +196,37 @@ const handleTotalJobsClick = () => {
   });
 };
 
+// Add this handler alongside your existing handlers
+const handleHeldJobsClick = () => {
+  console.log("Held Jobs card clicked - navigating to held jobs view");
+  
+  // Filter jobs that have steps with "hold" status
+  const heldJobPlans = filteredData?.jobPlans?.filter(jobPlan => {
+    let jobOnHold = false;
+
+    // Check each step to determine if job is on hold
+    jobPlan.steps.forEach(step => {
+      if (
+        step.stepDetails?.data?.status === "hold" ||
+        step.stepDetails?.status === "hold"
+      ) {
+        jobOnHold = true;
+      }
+    });
+
+    return jobOnHold;
+  }) || [];
+
+  navigate("/dashboard/held-jobs", {
+    state: {
+      heldJobs: heldJobPlans,
+      dateFilter: dateFilter,
+      customDateRange: customDateRange
+    }
+  });
+};
+
+
 // Handle Completed Jobs card click
 const handleCompletedJobsClick = () => {
   console.log("Completed Jobs card clicked - navigating to completed jobs view");
@@ -206,6 +238,8 @@ const handleCompletedJobsClick = () => {
     }
   });
 };
+
+
 
 // Handle In Progress Jobs card click
 // Handle In Progress Jobs card click
@@ -665,6 +699,7 @@ const processJobPlanData = async (
   const totalJobs = jobPlans.length;
   let inProgressJobs = 0;
   let plannedJobs = 0;
+  let heldJobs = 0;
   let totalSteps = 0;
   let completedSteps = 0;
   const uniqueUsers = new Set<string>();
@@ -731,6 +766,7 @@ const processJobPlanData = async (
   jobPlans.forEach((jobPlan) => {
     let jobCompleted = true;
     let jobInProgress = false;
+    let jobOnHold = false;
     const totalStepsInJob = jobPlan.steps.length;
     let completedStepsInJob = 0;
 
@@ -795,6 +831,14 @@ const processJobPlanData = async (
           };
         }
 
+        if (
+        step.stepDetails?.data?.status === "hold" ||
+        step.stepDetails?.status === "hold"
+      ) {
+        jobOnHold = true;
+        jobCompleted = false;
+      }
+
         // Process the unhandled step
         if (
           step.status === "stop" || 
@@ -826,7 +870,10 @@ const processJobPlanData = async (
     // Determine job status
     if (jobCompleted) {
       // This job is completed, but we're not counting it here since it comes from completed jobs API
-    } else if (jobInProgress) {
+    } 
+    else if (jobOnHold) {
+      heldJobs++;
+    }else if (jobInProgress) {
       inProgressJobs++;
     } else {
       plannedJobs++;
@@ -906,6 +953,7 @@ const processJobPlanData = async (
     machineUtilization: machineStats,
     timeSeriesData,
     completedJobsData: completedJobsData,
+    heldJobs,
   };
 };
 
@@ -1034,6 +1082,7 @@ const filteredData = useMemo(() => {
   let inProgressJobs = 0;
   let plannedJobs = 0;
   let totalSteps = 0;
+  let heldJobs = 0;
   let completedSteps = 0;
   const uniqueUsers = new Set<string>();
 
@@ -1041,6 +1090,7 @@ const filteredData = useMemo(() => {
   filteredJobPlans.forEach(jobPlan => {
     let jobCompleted = true;
     let jobInProgress = false;
+    let jobOnHold = false;
     const totalStepsInJob = jobPlan.steps.length;
     let completedStepsInJob = 0;
 
@@ -1052,6 +1102,14 @@ const filteredData = useMemo(() => {
       if (step.user) {
         uniqueUsers.add(step.user);
       }
+
+          if (
+      step.stepDetails?.data?.status === "hold" ||
+      step.stepDetails?.status === "hold"
+    ) {
+      jobOnHold = true;
+    }
+
 
       // 🔥 FIXED: Use the same categorization logic as processJobPlanData
       if (
@@ -1078,7 +1136,10 @@ const filteredData = useMemo(() => {
     if (jobCompleted) {
       // This job is completed, but we're not counting it here since it comes from completed jobs API
       // NOTE: This case should not happen for job plans
-    } else if (jobInProgress) {
+    }
+    if (jobOnHold) {
+    heldJobs++;
+  } else if (jobInProgress) {
       inProgressJobs++;
     } else {
       plannedJobs++;
@@ -1215,6 +1276,7 @@ const filteredData = useMemo(() => {
     stepCompletionStats: mergedStepStats,
     timeSeriesData: filteredTimeSeriesData,
     completedJobsData: filteredCompletedJobsData,
+    heldJobs,
   };
 }, [data, dateFilter, customDateRange]);
 
@@ -1297,11 +1359,13 @@ const filteredData = useMemo(() => {
         // completedSteps={filteredData.completedSteps}
         activeUsers={filteredData?.activeUsers || 0}
         // efficiency={filteredData?.efficiency || 0}
+        heldJobs={filteredData?.heldJobs || 0}
         className="mb-8"
         onTotalJobsClick={handleTotalJobsClick}
         onCompletedJobsClick={handleCompletedJobsClick}
         onInProgressJobsClick={handleInProgressJobsClick}
         onPlannedJobsClick={handlePlannedJobsClick}
+        onHeldJobsClick={handleHeldJobsClick}
       />
 
       {/* Completed Jobs Summary Table - Moved here below statistics grid */}
@@ -1609,21 +1673,20 @@ const filteredData = useMemo(() => {
       {/* Job Plans Table */}
       <JobPlansTable
         jobPlans={filteredData.jobPlans}
-        onViewDetails={(jobPlan) => console.log("Viewing job plan:", jobPlan)}
+        onViewDetails={(jobPlan: JobPlan) => console.log("Viewing job plan:", jobPlan)}
         className="mb-8"
       />
 
       {/* Job Demand Distribution Pie Chart */}
       {/* Quality Check and Customer Insights Section */}
-<div className="flex flex-col lg:flex-row gap-8 mb-8">
-  {/* Quality Check Cards */}
+{/* <div className="flex flex-col lg:flex-row gap-8 mb-8">
+
    <div className="flex-1">
     <div className="bg-white rounded-lg shadow-md p-6 mb-6 h-full">
       <h3 className="text-lg font-semibold text-gray-800 mb-4">
         Quality Control Overview
       </h3>
-      
-      {/* Quality Stats Cards */}
+    
      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-center">
@@ -1656,7 +1719,6 @@ const filteredData = useMemo(() => {
         </div>
       </div>
 
-      {/* Rejection Reasons */}
       <div>
         <h4 className="text-md font-semibold text-gray-700 mb-3">
           Rejection Reasons
@@ -1679,14 +1741,14 @@ const filteredData = useMemo(() => {
     </div>
   </div>
 
-  {/* Customer Insights */}
+
  <div className="flex-1">
     <div className="bg-white rounded-lg shadow-md p-6 mb-6 h-full">
       <h3 className="text-lg font-semibold text-gray-800 mb-4">
         Customer Insights
       </h3>
       
-      {/* Customer Metrics */}
+
       <div className="space-y-4 mb-6">
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
           <div className="flex items-center">
@@ -1709,7 +1771,6 @@ const filteredData = useMemo(() => {
         </div>
       </div>
 
-      {/* Top Customer Segments */}
       <div>
         <h4 className="text-md font-semibold text-gray-700 mb-3">
           Top Customer Segments
@@ -1758,7 +1819,7 @@ const filteredData = useMemo(() => {
       </div>
     </div>
   </div>
-</div>
+</div> */}
 
 {/* Job Demand Distribution Pie Chart */}
 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">

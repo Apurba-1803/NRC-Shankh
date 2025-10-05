@@ -142,11 +142,11 @@ const JobStepDetailsPopup: React.FC<JobStepDetailsPopupProps> = ({
               </div>
 
               {/* Step Details (like Paper Store details) */}
-              {stepInfo.stepDetails && (
+              {stepInfo.stepDetails?.data && (
   <div className="mt-4 p-3 bg-white rounded border">
     <h4 className="font-medium text-gray-700 mb-2">Additional Details:</h4>
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-      {Object.entries(stepInfo.stepDetails).map(([key, value]) => {
+      {Object.entries(stepInfo.stepDetails?.data).map(([key, value]) => {
         // ✅ Helper function to check if the value is a valid date
         const isDateField = (fieldName: string, fieldValue: any): boolean => {
           // Check if field name suggests it's a date

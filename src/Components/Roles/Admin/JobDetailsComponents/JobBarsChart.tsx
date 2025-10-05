@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, CheckCircle, PlayCircle, Clock } from 'lucide-react';
+import { TrendingUp, CheckCircle, PlayCircle, Clock, PauseCircle } from 'lucide-react';
 
 interface JobPlan {
   id: number;
@@ -81,8 +81,8 @@ interface CompletedJob {
 
 interface JobBarsChartProps {
   jobs: (CompletedJob | JobPlan)[];
-  category: 'completed' | 'inProgress' | 'planned';
-  onJobClick: (job: CompletedJob | JobPlan) => void
+  category: 'completed' | 'inProgress' | 'planned' | 'held';
+  onJobClick: (job: CompletedJob | JobPlan) => void;
   searchTerm: string;
 }
 
@@ -92,7 +92,6 @@ const JobBarsChart: React.FC<JobBarsChartProps> = ({
   onJobClick, 
   searchTerm 
 }) => {
-
 
   // Helper function to get company/customer name
   const getCompanyName = (job: CompletedJob | JobPlan) => {
@@ -111,6 +110,7 @@ const JobBarsChart: React.FC<JobBarsChartProps> = ({
       return job.allSteps;
     }
   };
+
   // Filter jobs based on search term
   const filteredJobs = jobs.filter(job => 
     job.nrcJobNo.toLowerCase().includes(searchTerm.toLowerCase())
@@ -139,6 +139,13 @@ const JobBarsChart: React.FC<JobBarsChartProps> = ({
           borderColor: 'border-gray-600',
           icon: <Clock className="h-4 w-4 text-white" />,
           label: 'Planned'
+        };
+      case 'held':
+        return {
+          bgColor: 'bg-orange-500 hover:bg-orange-600',
+          borderColor: 'border-orange-600',
+          icon: <PauseCircle className="h-4 w-4 text-white" />,
+          label: 'Held'
         };
       default:
         return {
@@ -194,6 +201,19 @@ const JobBarsChart: React.FC<JobBarsChartProps> = ({
                     Completed by: {job.completedBy}
                   </p>
                 )}
+                
+                {/* Show held step information for held jobs */}
+                {category === 'held' && 'steps' in job && (
+                  <p className="text-xs opacity-75 mt-1">
+                    {(() => {
+                      const heldStep = job.steps.find(step => 
+                        step.stepDetails?.data?.status === 'hold' ||
+                        step.stepDetails?.status === 'hold'
+                      );
+                      return heldStep ? `Held at: ${heldStep.stepName.replace(/([a-z])([A-Z])/g, '$1 $2')}` : 'On Hold';
+                    })()}
+                  </p>
+                )}
               </div>
               
               <div className="text-right text-xs opacity-90">
@@ -210,6 +230,7 @@ const JobBarsChart: React.FC<JobBarsChartProps> = ({
                 )}
               </div>
             </div>
+
             {/* Progress indicator for in-progress jobs */}
             {category === 'inProgress' && getSteps(job) && (
               <div className="mt-2">
@@ -227,6 +248,24 @@ const JobBarsChart: React.FC<JobBarsChartProps> = ({
                 </div>
               </div>
             )}
+
+            {/* Progress indicator for held jobs - show progress up to hold point */}
+            {category === 'held' && getSteps(job) && (
+              <div className="mt-2">
+                <div className="flex justify-between text-xs mb-1">
+                  <span>Progress (Held)</span>
+                  <span>{getSteps(job)?.filter((step: any) => step.status === 'stop' || step.status === 'completed').length || 0}/{getSteps(job)?.length || 0}</span>
+                </div>
+                <div className="w-full bg-white bg-opacity-30 rounded-full h-2">
+                  <div 
+                    className="bg-orange-300 h-2 rounded-full transition-all duration-300"
+                    style={{ 
+                      width: `${((getSteps(job)?.filter((step: any) => step.status === 'stop' || step.status === 'completed').length || 0) / (getSteps(job)?.length || 1)) * 100}%` 
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -234,4 +273,4 @@ const JobBarsChart: React.FC<JobBarsChartProps> = ({
   );
 };
 
-export default JobBarsChart; 
+export default JobBarsChart;
