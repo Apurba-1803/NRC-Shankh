@@ -126,9 +126,10 @@ const Dashboard: React.FC<DashboardProps> = ({ tabValue, setTabValue, role }) =>
           <EditWorkingDetails />
         )}
 
-        {/* 🔥 FIXED: Planner Dashboard - Show when on planner route OR actual planner user */}
-        {((actualUserRole === 'planner' && tabValue === 'planner') || 
-          (isOnPlannerDashboardRoute && tabValue === 'planner')) && (
+        {/* 🔥 FIXED: Planner Dashboard - Show when on planner route OR actual planner user OR admin user with planner tab */}
+        {((actualUserRole === 'planner' && tabValue === 'planner') ||
+          (isOnPlannerDashboardRoute && tabValue === 'planner') ||
+          (actualUserRole === 'admin' && tabValue === 'planner')) && (
           <PlannerDashboardContainer />
         )}
 

@@ -1,5 +1,6 @@
 import { Suspense, lazy, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+
 import './App.css';
 import Header from './Components/Navbar/Header/Header';
 import Login from './Pages/Login';
@@ -222,7 +223,7 @@ function AppContent() {
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/">
       <Suspense fallback={<div>Loading...</div>}>
         <AppContent />
       </Suspense>
