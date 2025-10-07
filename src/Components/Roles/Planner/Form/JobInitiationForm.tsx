@@ -681,46 +681,57 @@ const createJobPlanFromPayload = async (completedJob: Job, jobPlanningPayload: a
     console.log('jobPlanningPayload.poId:', jobPlanningPayload.poId);
     console.log('completedJob.poId:', completedJob.poId);
     console.log('completedJob.purchaseOrderId:', completedJob.purchaseOrderId);
-    console.log('completedJob object keys:', Object.keys(completedJob));
-    console.log('Full completedJob:', JSON.stringify(completedJob, null, 2));
     console.log('Full jobPlanningPayload:', JSON.stringify(jobPlanningPayload, null, 2));
 
     // Get PO ID with multiple fallback sources
     const poId = jobPlanningPayload.poId || 
                 completedJob.poId || 
                 completedJob.purchaseOrderId ||
-                (completedJob as any).id || // Try job's own id
+                (completedJob as any).id ||
                 null;
 
     console.log('📋 Final PO ID to be used:', poId);
-    console.log('🔍 PO ID type:', typeof poId);
     console.log('=== END DEBUGGING ===');
 
     const jobPlanData = {
       nrcJobNo: completedJob.nrcJobNo,
       jobDemand: jobDemand,
-      purchaseOrderId: poId, // Make sure this matches your database field
+      purchaseOrderId: poId,
       steps: selectedSteps.map((step: any, index: number) => {
-        // ... existing step mapping code ...
-        const machineDetails = [];
+        // 🔥 NEW: Handle multiple machines from the payload
+        let machineDetails = [];
         
-        if (completedJob.machineId && step.machineDetail) {
-          machineDetails.push({ 
-            id: step.machineId,
-            unit: completedJob.unit || 'Unit 1',
-            machineCode: step.machineCode,
+        if (step.machineDetails && Array.isArray(step.machineDetails)) {
+          // Use the machineDetails array from the payload (multiple machines)
+          machineDetails = step.machineDetails;
+        } else if (step.allMachineIds && Array.isArray(step.allMachineIds)) {
+          // Fallback: construct from allMachineIds if available
+          machineDetails = step.allMachineIds.map((machineId: string) => ({
+            id: machineId,
+            unit: completedJob.unit || 'Mk',
+            machineCode: step.machineCode || machineId,
+            machineType: step.machineDetail || 'Production Machine'
+          }));
+        } else if (completedJob.machineId && step.machineDetail) {
+          // Backward compatibility: single machine
+          machineDetails = [{ 
+            id: step.machineId || completedJob.machineId,
+            unit: completedJob.unit || 'Mk',
+            machineCode: step.machineCode || completedJob.machineId,
             machineType: step.machineDetail || 'Production Step'
-          });
+          }];
         } else if (jobDemand === 'medium') {
           // Regular demand requires machine assignment for all selected steps
           throw new Error(`Regular demand requires machine assignment for step: ${step.stepName}`);
         }
         
+        console.log(`🔍 Step ${step.stepName} machine details:`, machineDetails);
+        
         return {
           jobStepId: index + 1,
           stepNo: step.stepNo || index + 1,
           stepName: step.stepName,
-          machineDetails: machineDetails,
+          machineDetails: machineDetails, // 🔥 This will be stored as JSON in DB
           status: 'planned' as const,
           startDate: null,
           endDate: null,
@@ -731,7 +742,7 @@ const createJobPlanFromPayload = async (completedJob: Job, jobPlanningPayload: a
       })
     };
 
-    console.log('📤 FINAL Job Plan Data being sent:', JSON.stringify(jobPlanData, null, 2));
+    console.log('📤 FINAL Job Plan Data with Multiple Machines:', JSON.stringify(jobPlanData, null, 2));
 
     // Try to create job plan using the job-planning endpoint
     const jobPlanResponse = await fetch('https://nrprod.nrcontainers.com/api/job-planning/', {
@@ -749,7 +760,7 @@ const createJobPlanFromPayload = async (completedJob: Job, jobPlanningPayload: a
     if (jobPlanResponse.ok) {
       try {
         const jobPlanResult = JSON.parse(responseText);
-        console.log('✅ Job plan created successfully:', jobPlanResult);
+        console.log('✅ Job plan created successfully with multiple machines:', jobPlanResult);
         return jobPlanResult;
       } catch (parseError) {
         console.error('❌ Failed to parse successful response:', parseError);
@@ -772,7 +783,7 @@ const createJobPlanFromPayload = async (completedJob: Job, jobPlanningPayload: a
           status: 'ACTIVE',
           jobDemand: completedJob.jobDemand || 'medium',
           machineId: completedJob.machineId,
-          purchaseOrderId: poId, // 🎯 ADD PO ID HERE TOO
+          purchaseOrderId: poId,
         }),
       });
 
@@ -788,6 +799,7 @@ const createJobPlanFromPayload = async (completedJob: Job, jobPlanningPayload: a
     throw error;
   }
 };
+
 
 
   // Function to create job plan entry after all forms are completed

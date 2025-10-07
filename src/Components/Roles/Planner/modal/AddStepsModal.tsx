@@ -207,17 +207,28 @@ const handleSave = () => {
   // 🔥 SORT: Reorder selected steps according to predefined order
   const sortedSteps = sortStepsByPredefinedOrder(selectedSteps);
   
-  // Rest of your existing logic...
+  // 🔥 NEW: Build machines array with step associations
   const allSelectedMachineIds = Object.values(stepMachines).flat();
   const machinesArray = allSelectedMachineIds
     .map(machineId => machines.find(m => m.id === machineId))
     .filter(Boolean) as Machine[];
   
-  console.log('Original steps:', selectedSteps);
-  console.log('Sorted steps:', sortedSteps);
+  // 🔥 NEW: Add step-machine mapping to each step
+  const stepsWithMachines = sortedSteps.map(step => ({
+    ...step,
+    assignedMachineIds: stepMachines[step.stepName] || [],
+    assignedMachines: (stepMachines[step.stepName] || [])
+      .map(machineId => machines.find(m => m.id === machineId))
+      .filter(Boolean) as Machine[]
+  }));
   
-  onSelect(sortedSteps, machinesArray);
+  console.log('🔍 Original steps:', selectedSteps);
+  console.log('🔍 Sorted steps with machines:', stepsWithMachines);
+  console.log('🔍 Step-Machine mapping:', stepMachines);
+  
+  onSelect(stepsWithMachines, machinesArray);
 };
+
 
 
 

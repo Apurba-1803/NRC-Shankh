@@ -77,90 +77,106 @@ const MoreInformationForm: React.FC<MoreInformationFormProps> = ({ job, onSave, 
 
   console.log("job in more info", job);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isReadOnly) return;
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (isReadOnly) return;
 
-    setError(null);
-    setIsSubmitting(true);
+  setError(null);
+  setIsSubmitting(true);
 
-    // Basic validation
-    if (!jobDemand) {
-      setError('Please select a demand level.');
-      setIsSubmitting(false);
-      return;
+  // Basic validation
+  if (!jobDemand) {
+    setError('Please select a demand level.');
+    setIsSubmitting(false);
+    return;
+  }
+
+  if (!selectedSteps || selectedSteps.length === 0) {
+    setError('Please select at least one production step.');
+    setIsSubmitting(false);
+    return;
+  }
+
+  // Demand-specific validation
+  if (jobDemand === 'medium' && selectedSteps.length === 0) {
+    setError('Regular demand requires at least one production step to be selected.');
+    setIsSubmitting(false);
+    return;
+  }
+
+  if (jobDemand === 'medium' && (!selectedMachines || selectedMachines.length === 0)) {
+    setError('Regular demand requires machine assignment for all selected steps.');
+    setIsSubmitting(false);
+    return;
+  }
+
+  try {
+    // 🎯 FIX: Add the missing updatedJobFields
+    const updatedJobFields: Partial<Job> = {
+      jobDemand: jobDemand,
+      machineId: selectedMachines.length > 0 ? selectedMachines[0].id : null,
+    };
+
+    const poId = job.poId || job.purchaseOrderId || null;
+    
+    if (!poId) {
+      console.warn('⚠️ No PO ID found in job object!');
+    } else {
+      console.log('✅ Using PO ID for job planning:', poId);
     }
 
-    if (!selectedSteps || selectedSteps.length === 0) {
-      setError('Please select at least one production step.');
-      setIsSubmitting(false);
-      return;
-    }
+    const jobPlanningPayload = {
+      nrcJobNo: job.nrcJobNo,
+      jobDemand: jobDemand,
+      poId: poId, 
+      steps: selectedSteps.map(step => {
+        // 🔥 NEW: Find ALL machines for this step, not just the first one
+        const machineTypesForStep = STEP_TO_MACHINE_MAPPING[step.stepName];
+        let assignedMachines: Machine[] = [];
+        
+        if (machineTypesForStep && machineTypesForStep.length > 0) {
+          // Find all machines that match the step requirements
+          assignedMachines = selectedMachines.filter(m => 
+            machineTypesForStep.some(type => 
+              m.machineType.toLowerCase().includes(type.toLowerCase())
+            )
+          );
+        }
 
-    // Demand-specific validation
-    if (jobDemand === 'medium' && selectedSteps.length === 0) {
-      setError('Regular demand requires at least one production step to be selected.');
-      setIsSubmitting(false);
-      return;
-    }
+        // 🔥 NEW: Create machineDetails array for multiple machines
+        const machineDetails = assignedMachines.map(machine => ({
+          id: machine.id,
+          unit: machine.unit || 'Mk', // Use machine's unit or default
+          machineCode: machine.machineCode,
+          machineType: machine.machineType
+        }));
 
-    if (jobDemand === 'medium' && (!selectedMachines || selectedMachines.length === 0)) {
-      setError('Regular demand requires machine assignment for all selected steps.');
-      setIsSubmitting(false);
-      return;
-    }
+        return {
+          stepNo: step.stepNo,
+          stepName: step.stepName,
+          // Keep single machine detail for backward compatibility (use first machine)
+          machineDetail: assignedMachines.length > 0 
+            ? assignedMachines[0].machineType || assignedMachines[0].machineCode
+            : 'Not Assigned',
+          machineId: assignedMachines.length > 0 ? assignedMachines[0].id : null,
+          machineCode: assignedMachines.length > 0 ? assignedMachines[0].machineCode : null,
+          // 🔥 NEW: Add array of all machines for this step
+          machineDetails: machineDetails,
+          allMachineIds: assignedMachines.map(m => m.id) // Array of all machine IDs
+        };
+      }),
+    };
 
-    try {
-      // 🎯 FIX: Add the missing updatedJobFields
-      const updatedJobFields: Partial<Job> = {
-        jobDemand: jobDemand,
-        machineId: selectedMachines.length > 0 ? selectedMachines[0].id : null,
-      };
+    console.log('🔍 Updated Job Planning Payload with Multiple Machines:', JSON.stringify(jobPlanningPayload, null, 2));
 
-      const poId = job.poId || job.purchaseOrderId || null;
-      
-      if (!poId) {
-        console.warn('⚠️ No PO ID found in job object!');
-      } else {
-        console.log('✅ Using PO ID for job planning:', poId);
-      }
+    await onSave(updatedJobFields, jobPlanningPayload);
+  } catch (err) {
+    setError(`Failed to save More Information: ${err instanceof Error ? err.message : 'Unknown error'}`);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
-      const jobPlanningPayload = {
-        nrcJobNo: job.nrcJobNo,
-        jobDemand: jobDemand,
-        poId: poId, 
-        steps: selectedSteps.map(step => {
-          // Use the mapping to find the correct machine for this step
-          const machineTypesForStep = STEP_TO_MACHINE_MAPPING[step.stepName];
-          let assignedMachine = null;
-          
-          if (machineTypesForStep && machineTypesForStep.length > 0) {
-            assignedMachine = selectedMachines.find(m => 
-              machineTypesForStep.some(type => 
-                m.machineType.toLowerCase().includes(type.toLowerCase())
-              )
-            );
-          }
-
-          return {
-            stepNo: step.stepNo,
-            stepName: step.stepName,
-            machineDetail: assignedMachine
-              ? assignedMachine.machineType || assignedMachine.machineCode
-              : 'Not Assigned',
-            machineId: assignedMachine ? assignedMachine.id : null,
-            machineCode: assignedMachine ? assignedMachine.machineCode : null,
-          };
-        }),
-      };
-
-      await onSave(updatedJobFields, jobPlanningPayload);
-    } catch (err) {
-      setError(`Failed to save More Information: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   console.log("selected Machine", selectedMachines);
 
