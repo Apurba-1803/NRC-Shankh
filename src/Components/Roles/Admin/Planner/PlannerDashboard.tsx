@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ChartBarIcon, 
   ClockIcon, 
@@ -6,12 +6,13 @@ import {
   ExclamationTriangleIcon,
   DocumentTextIcon,
   ClipboardDocumentListIcon,
-  EyeIcon
+  EyeIcon,
+  PlayIcon,
+  CogIcon
 } from '@heroicons/react/24/outline';
 import { PieChart, Pie, Cell,  Tooltip, ResponsiveContainer } from 'recharts';
 import JobAssigned from '../../Planner/job_assigned'; // IMPORTED: New component
 import JobModal from './JobModal';
-
 
 interface PlannerJob {
   nrcJobNo: string;
@@ -37,12 +38,15 @@ interface PlannerSummary {
   fullyCompleted: number;
   partiallyCompleted: number;
   notStarted: number;
-   totalActiveJobs: number;
+  totalActiveJobs: number;
+  totalCompletedJobs: number; // Added this field
 }
 
 interface PlannerDashboardData {
   summary: PlannerSummary;
   allJobs: PlannerJob[];
+  activeJobs: PlannerJob[];
+  completedJobs: PlannerJob[]; // Added this field
 }
 
 interface PlannerDashboardProps {
@@ -62,9 +66,54 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
   });
 
   const [selectedJob, setSelectedJob] = useState<PlannerJob | null>(null);
+  const [showJobAssigned, setShowJobAssigned] = useState(false);
+  
+  // State for tracking assigned jobs count
+  const [assignedJobsCount, setAssignedJobsCount] = useState<number>(0);
+  const [isLoadingAssignedJobs, setIsLoadingAssignedJobs] = useState<boolean>(true);
 
+  // Fetch the count of assigned jobs from the job planning API
+  useEffect(() => {
+    const fetchAssignedJobsCount = async () => {
+      try {
+        setIsLoadingAssignedJobs(true);
+        const accessToken = localStorage.getItem('accessToken');
 
- 
+        if (!accessToken) {
+          console.error('Authentication token not found');
+          setAssignedJobsCount(0);
+          return;
+        }
+
+        const response = await fetch('https://nrprod.nrcontainers.com/api/job-planning/', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch job plans: ${response.status} ${response.statusText}`);
+        }
+
+        const assignedJobsData = await response.json();
+        if (assignedJobsData.success && Array.isArray(assignedJobsData.data)) {
+          setAssignedJobsCount(assignedJobsData.data.length);
+        } else {
+          setAssignedJobsCount(0);
+        }
+      } catch (error) {
+        console.error('Error fetching assigned jobs count:', error);
+        setAssignedJobsCount(0);
+      } finally {
+        setIsLoadingAssignedJobs(false);
+      }
+    };
+
+    fetchAssignedJobsCount();
+  }, []);
+
   // Chart data preparation
   const chartData = useMemo(() => {
     // Pie chart data for completion status
@@ -83,8 +132,6 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
 
     return { completionData, comparisonData };
   }, [data.summary]);
-
-   //console.log("processed jobs", data)
 
   // Apply filters and sorting
   const processedJobs = useMemo(() => {
@@ -130,8 +177,6 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
 
     return recentJobs;
   }, [data.allJobs, filters, sortConfig]);
-
- 
 
   // Handle sorting
   const handleSort = (key: keyof PlannerJob) => {
@@ -210,41 +255,11 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
     });
   };
 
-  // Filter jobs based on their completion status
-  const getJobsByStatus = (status: 'total' | 'completed' | 'partial' | 'notStarted') => {
-    switch (status) {
-      case 'total':
-        return data.allJobs;
-      case 'completed':
-        return data.allJobs.filter(job => 
-          job.poStatus === 'completed' && 
-          job.artworkStatus === 'completed' && 
-          job.machineDetailsStatus === 'completed'&&
-          job.status !== "COMPLETED"
-        );
-      case 'partial':
-        return data.allJobs.filter(job => {
-          const completedSteps = [
-            job.poStatus === 'completed',
-            job.artworkStatus === 'completed', 
-            job.machineDetailsStatus === 'completed'
-          ].filter(Boolean).length;
-          return completedSteps > 0 && completedSteps < 3;
-        });
-      case 'notStarted':
-        return data.allJobs.filter(job => 
-          job.poStatus === 'pending' && 
-          job.artworkStatus === 'pending' && 
-          job.machineDetailsStatus === 'pending'
-        );
-      default:
-        return [];
-    }
-  };
+  console.log("processed job", data);
+  console.log("assigned jobs count", assignedJobsCount);
 
-   console.log("processed job", data)
   return (
-    <div className="min-h-screen  p-6">
+    <div className="min-h-screen p-6">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center space-x-4 mb-2">
@@ -252,7 +267,6 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
             <ClipboardDocumentListIcon className="h-8 w-8 text-white" />
           </div>
           <div>
-            
             <p className="text-gray-600 text-2xl">Job planning overview and progress tracking</p>
           </div>
         </div>
@@ -267,72 +281,94 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
         </p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Total Jobs Card */}
+      {/* New Summary Cards - Only 2 Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        {/* Completed Jobs Card */}
         <div 
-          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => openModal('All Jobs', getJobsByStatus('total'))}
+          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 cursor-pointer hover:shadow-md transition-all duration-200 transform hover:-translate-y-1"
+          onClick={() => openModal('Completed Jobs', data.completedJobs || [])}
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Active Jobs </p>
-              <p className="text-3xl font-bold text-blue-600">{data.summary.totalActiveJobs}</p>
+              <p className="text-lg font-medium text-gray-600 mb-2">Completed Jobs</p>
+              <p className="text-4xl font-bold text-green-600 mb-2">{data.summary.totalCompletedJobs || 0}</p>
+              <p className="text-sm text-gray-500">
+                Jobs that have been fully completed and processed
+              </p>
             </div>
-            <div className="bg-blue-100 p-3 rounded-xl">
-              <DocumentTextIcon className="h-8 w-8 text-blue-600" />
+            <div className="bg-green-100 p-4 rounded-xl">
+              <CheckCircleIcon className="h-10 w-10 text-green-600" />
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center text-sm text-green-600">
+              <span className="font-medium">View all completed jobs</span>
+              <ChartBarIcon className="h-4 w-4 ml-2" />
             </div>
           </div>
         </div>
 
-        {/* Fully Completed Card */}
+        {/* Planned/In Progress Jobs Card - Updated to show assigned jobs count */}
         <div 
-          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => openModal('Fully Completed Jobs', getJobsByStatus('completed'))}
+          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 cursor-pointer hover:shadow-md transition-all duration-200 transform hover:-translate-y-1"
+          onClick={() => setShowJobAssigned(!showJobAssigned)}
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Fully Completed</p>
-              <p className="text-3xl font-bold text-green-600">{data.summary.fullyCompleted}</p>
+              <p className="text-lg font-medium text-gray-600 mb-2">Planned & In Progress</p>
+              {/* Show assigned jobs count instead of totalActiveJobs */}
+              <p className="text-4xl font-bold text-blue-600 mb-2">
+                {isLoadingAssignedJobs ? (
+                  <span className="animate-pulse text-gray-400">...</span>
+                ) : (
+                  assignedJobsCount
+                )}
+              </p>
+              <p className="text-sm text-gray-500">
+                Jobs currently assigned and being planned for production
+              </p>
             </div>
-            <div className="bg-green-100 p-3 rounded-xl">
-              <CheckCircleIcon className="h-8 w-8 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        {/* Partially Completed Card */}
-        <div 
-          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => openModal('Partially Completed Jobs', getJobsByStatus('partial'))}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Partially Completed</p>
-              <p className="text-3xl font-bold text-yellow-600">{data.summary.partiallyCompleted}</p>
-            </div>
-            <div className="bg-yellow-100 p-3 rounded-xl">
-              <ClockIcon className="h-8 w-8 text-yellow-600" />
+            <div className="bg-blue-100 p-4 rounded-xl">
+              <div className="relative">
+                <CogIcon className="h-10 w-10 text-blue-600" />
+                <PlayIcon className="h-4 w-4 text-blue-800 absolute -bottom-1 -right-1" />
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Not Started Card */}
-        <div 
-          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => openModal('Not Started Jobs', getJobsByStatus('notStarted'))}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Not Started</p>
-              <p className="text-3xl font-bold text-red-600">{data.summary.notStarted}</p>
-            </div>
-            <div className="bg-red-100 p-3 rounded-xl">
-              <ExclamationTriangleIcon className="h-8 w-8 text-red-600" />
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="flex items-center text-sm text-blue-600">
+              <span className="font-medium">
+                {showJobAssigned ? 'Hide planning details' : 'View planning details'}
+              </span>
+              <ChartBarIcon className="h-4 w-4 ml-2" />
             </div>
           </div>
+          {/* Show loading indicator */}
+          {isLoadingAssignedJobs && (
+            <div className="mt-2">
+              <div className="text-xs text-gray-400 animate-pulse">Loading assigned jobs...</div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Conditionally render JobAssigned Component */}
+      {showJobAssigned && (
+        <div className="mb-8">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-gray-900">Job Planning Details</h3>
+              <button
+                onClick={() => setShowJobAssigned(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <span className="text-sm">Close</span>
+              </button>
+            </div>
+            <JobAssigned />
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       <JobModal
@@ -342,7 +378,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
         jobs={modalState.jobs}
       />
 
-            {/* Filters */}
+      {/* Filters */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Filters</h3>
        
@@ -415,18 +451,16 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
                       {getSortIndicator(key as keyof PlannerJob)}
                     </div>
                   </th>
-                  
                 ))}
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-  View
-</th>
-
+                  View
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {processedJobs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                     <div className="flex flex-col items-center space-y-2">
                       <DocumentTextIcon className="h-8 w-8 text-gray-300" />
                       <p>No jobs found matching the current filters</p>
@@ -439,7 +473,6 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div>
                         <p className="text-sm font-medium text-gray-900 font-mono">{job.styleItemSKU}</p>
-                        {/* <p className="text-xs text-gray-500">{job.styleItemSKU}</p> */}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate" title={job.customerName}>
@@ -477,16 +510,14 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
                       {formatDate(job.updatedAt)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-  <button
-    onClick={() => setSelectedJob(job)}
-    className="flex items-center space-x-1 text-indigo-600 hover:text-indigo-900 font-medium"
-  >
-    <EyeIcon className="h-5 w-5" />
-    <span>View</span>
-  </button>
-</td>
-
-
+                      <button
+                        onClick={() => setSelectedJob(job)}
+                        className="flex items-center space-x-1 text-indigo-600 hover:text-indigo-900 font-medium"
+                      >
+                        <EyeIcon className="h-5 w-5" />
+                        <span>View</span>
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -525,130 +556,125 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
 
         {/* Bar Chart - Completion Comparison */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-  <h3 className="text-lg font-semibold text-gray-900 mb-4">Task Completion Progress</h3>
-  <div className="space-y-6">
-    {chartData.comparisonData.map((item, index) => {
-      const completionRate = (item.completed / item.total) * 100;
-      return (
-        <div key={index} className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="font-medium text-gray-900">{item.name}</span>
-            <span className="text-sm text-gray-600">
-              {item.completed}/{item.total} ({Math.round(completionRate)}%)
-            </span>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Task Completion Progress</h3>
+          <div className="space-y-6">
+            {chartData.comparisonData.map((item, index) => {
+              const completionRate = (item.completed / item.total) * 100;
+              return (
+                <div key={index} className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-900">{item.name}</span>
+                    <span className="text-sm text-gray-600">
+                      {item.completed}/{item.total} ({Math.round(completionRate)}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${completionRate}%` }}
+                    ></div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div 
-              className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-300"
-              style={{ width: `${completionRate}%` }}
-            ></div>
+          
+          {/* Overall summary */}
+          <div className="mt-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-lg p-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">
+                {Math.round(
+                  (chartData.comparisonData.reduce((sum, item) => sum + item.completed, 0) /
+                   chartData.comparisonData.reduce((sum, item) => sum + item.total, 0)) * 100
+                )}%
+              </div>
+              <div className="text-sm text-gray-600">Overall Completion Rate</div>
+            </div>
           </div>
         </div>
-      );
-    })}
-  </div>
-  
-  {/* Overall summary */}
-  <div className="mt-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-lg p-4">
-    <div className="text-center">
-      <div className="text-2xl font-bold text-gray-900">
-        {Math.round(
-          (chartData.comparisonData.reduce((sum, item) => sum + item.completed, 0) /
-           chartData.comparisonData.reduce((sum, item) => sum + item.total, 0)) * 100
-        )}%
       </div>
-      <div className="text-sm text-gray-600">Overall Completion Rate</div>
-    </div>
-  </div>
-</div>
-
-      </div>
-
 
       {selectedJob && (
-  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 relative">
-      {/* Close Button */}
-      <button
-        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-        onClick={() => setSelectedJob(null)}
-      >
-        ✕
-      </button>
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 relative">
+            {/* Close Button */}
+            <button
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              onClick={() => setSelectedJob(null)}
+            >
+              ✕
+            </button>
 
-      {/* Header */}
-      <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b pb-3">
-        Job Details – <span className="font-mono">{selectedJob.nrcJobNo}</span>
-      </h2>
+            {/* Header */}
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 border-b pb-3">
+              Job Details – <span className="font-mono">{selectedJob.nrcJobNo}</span>
+            </h2>
 
-      {/* Content */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-        <div>
-          <p className="text-gray-500">Customer</p>
-          <p className="font-medium text-gray-900">{selectedJob.customerName}</p>
-        </div>
+            {/* Content */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-500">Customer</p>
+                <p className="font-medium text-gray-900">{selectedJob.customerName}</p>
+              </div>
 
-        <div>
-          <p className="text-gray-500">Style SKU</p>
-          <p className="font-mono text-gray-900">{selectedJob.styleItemSKU}</p>
-        </div>
+              <div>
+                <p className="text-gray-500">Style SKU</p>
+                <p className="font-mono text-gray-900">{selectedJob.styleItemSKU}</p>
+              </div>
 
-        <div>
-          <p className="text-gray-500">PO Status</p>
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(selectedJob.poStatus)}`}>
-            {selectedJob.poStatus}
-          </span>
-          <span className="ml-2 text-gray-600">({selectedJob.poCount} POs)</span>
-        </div>
+              <div>
+                <p className="text-gray-500">PO Status</p>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(selectedJob.poStatus)}`}>
+                  {selectedJob.poStatus}
+                </span>
+                <span className="ml-2 text-gray-600">({selectedJob.poCount} POs)</span>
+              </div>
 
-        <div>
-          <p className="text-gray-500">Machine Details</p>
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(selectedJob.machineDetailsStatus)}`}>
-            {selectedJob.machineDetailsStatus}
-          </span>
-        </div>
+              <div>
+                <p className="text-gray-500">Machine Details</p>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(selectedJob.machineDetailsStatus)}`}>
+                  {selectedJob.machineDetailsStatus}
+                </span>
+              </div>
 
-        <div>
-          <p className="text-gray-500">Artwork</p>
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(selectedJob.artworkStatus)}`}>
-            {selectedJob.artworkStatus}
-          </span>
-          <span className="ml-2 text-gray-600">({selectedJob.artworkCount} artworks)</span>
-        </div>
+              <div>
+                <p className="text-gray-500">Artwork</p>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(selectedJob.artworkStatus)}`}>
+                  {selectedJob.artworkStatus}
+                </span>
+                <span className="ml-2 text-gray-600">({selectedJob.artworkCount} artworks)</span>
+              </div>
 
-        <div>
-          <p className="text-gray-500">Status</p>
-          <p className="font-medium text-gray-900">{selectedJob.status}</p>
-        </div>
+              <div>
+                <p className="text-gray-500">Status</p>
+                <p className="font-medium text-gray-900">{selectedJob.status}</p>
+              </div>
 
-        <div className="col-span-1 sm:col-span-2">
-          <p className="text-gray-500 mb-1">Overall Progress</p>
-          <div className="flex items-center space-x-2">
-            <div className="flex-1 bg-gray-200 rounded-full h-2">
-              <div
-                className={`h-2 rounded-full ${getProgressColor(selectedJob.overallProgress)}`}
-                style={{ width: `${selectedJob.overallProgress}%` }}
-              ></div>
+              <div className="col-span-1 sm:col-span-2">
+                <p className="text-gray-500 mb-1">Overall Progress</p>
+                <div className="flex items-center space-x-2">
+                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${getProgressColor(selectedJob.overallProgress)}`}
+                      style={{ width: `${selectedJob.overallProgress}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">
+                    {selectedJob.overallProgress}%
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-gray-500">Last Updated</p>
+                <p className="text-gray-900">{formatDate(selectedJob.updatedAt)}</p>
+              </div>
             </div>
-            <span className="text-sm font-medium text-gray-900">
-              {selectedJob.overallProgress}%
-            </span>
           </div>
         </div>
-
-        <div>
-          <p className="text-gray-500">Last Updated</p>
-          <p className="text-gray-900">{formatDate(selectedJob.updatedAt)}</p>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-
- {/* <JobAssigned /> */}
-
+      )}
     </div>
   );
 };
 
-export default PlannerDashboard; 
+export default PlannerDashboard;

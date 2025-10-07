@@ -442,56 +442,78 @@ const [jobOptions, setJobOptions] = useState<Job[]>([]);
     }
   };
 
-  const handlePOSave = async (poDetails: PoDetailsPayload) => {
-    setError(null);
-    if (!job) return;
+const handlePOSave = async (poDetails: PoDetailsPayload) => {
+  setError(null);
+  if (!job) return;
 
-    console.log('🔍 DEBUG - job object:', job);
-    console.log('🔍 DEBUG - job.nrcJobNo:', job.nrcJobNo);
-    console.log('🔍 DEBUG - poDetails received:', poDetails)
+  console.log('🔍 DEBUG - job object:', job);
+  console.log('🔍 DEBUG - job.nrcJobNo:', job.nrcJobNo);
+  console.log('🔍 DEBUG - poDetails received:', poDetails);
 
-    try {
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) throw new Error('Authentication token not found.');
+  try {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) throw new Error('Authentication token not found.');
 
-      const payloadWithJobNo = { ...poDetails, jobNrcJobNo: job.nrcJobNo };
+    const payloadWithJobNo = { ...poDetails, jobNrcJobNo: job.nrcJobNo };
 
-      const response = await fetch('https://nrprod.nrcontainers.com/api/purchase-orders/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(payloadWithJobNo),
-      });
+    const response = await fetch('https://nrprod.nrcontainers.com/api/purchase-orders/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payloadWithJobNo),
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create P.O. details.');
-      }
-      const result = await response.json();
-      if (result.success) {
-        const updatedJob = { ...job, ...poDetails, updatedAt: result.data.updatedAt };
-        setJob(updatedJob);
-        onJobUpdated(updatedJob);
-        
-        // Show success message
-        setError(null);
-        setSuccessMessage('PO details saved successfully! Moving to More Information...');
-        
-        // Auto-progress to next step after a short delay
-        setTimeout(() => {
-          setCurrentStep('moreInfo');
-          setSuccessMessage(null);
-        }, 1500);
-      } else {
-        throw new Error(result.message || 'Failed to save P.O. details.');
-      }
-    } catch (err) {
-      setError(`P.O. Save Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      throw err;
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to create P.O. details.');
     }
-  };
+    
+    const result = await response.json();
+    
+    // 🎯 DEBUG: Log the full response to see the structure
+    console.log('🔍 FULL PO Creation Response:', result);
+    console.log('🔍 Response data:', result.data);
+    
+    if (result.success) {
+      // 🎯 GET THE AUTO-GENERATED PO ID FROM THE RESPONSE
+      const createdPOId = result.data?.id || result.data?.poId || result.data?.purchaseOrderId || result.id;
+      
+      console.log('✅ Purchase Order created with ID:', createdPOId);
+      
+      // 🎯 UPDATE JOB OBJECT WITH PO ID AND OTHER DETAILS
+      const updatedJob = { 
+        ...job, 
+        ...poDetails, 
+        poId: createdPOId, // Store PO ID in job
+        purchaseOrderId: createdPOId, // Alternative field name
+        updatedAt: result.data?.updatedAt || new Date().toISOString()
+      };
+      
+      console.log('📝 Updated job object with PO ID:', updatedJob);
+      
+      setJob(updatedJob);
+      onJobUpdated(updatedJob);
+      
+      // Show success message
+      setError(null);
+      setSuccessMessage('PO details saved successfully! Moving to More Information...');
+      
+      // Auto-progress to next step after a short delay
+      setTimeout(() => {
+        setCurrentStep('moreInfo');
+        setSuccessMessage(null);
+      }, 1500);
+    } else {
+      throw new Error(result.message || 'Failed to save P.O. details.');
+    }
+  } catch (err) {
+    setError(`P.O. Save Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    throw err;
+  }
+};
+
 
  const handleMoreInfoSave = async (updatedFields: Partial<Job>, jobPlanningPayload?: any) => {
   setError(null);
@@ -500,6 +522,12 @@ const [jobOptions, setJobOptions] = useState<Job[]>([]);
   try {
     const accessToken = localStorage.getItem('accessToken');
     if (!accessToken) throw new Error('Authentication token not found.');
+
+    console.log('🔍 === HANDLE MORE INFO SAVE DEBUGGING ===');
+    console.log('Original job object:', JSON.stringify(job, null, 2));
+    console.log('Updated fields:', JSON.stringify(updatedFields, null, 2));
+    console.log('Job planning payload:', JSON.stringify(jobPlanningPayload, null, 2));
+    console.log('=== END DEBUGGING ===');
 
     const response = await fetch(`https://nrprod.nrcontainers.com/api/jobs/${job.nrcJobNo}`, {
       method: 'PUT',
@@ -633,104 +661,134 @@ const updateSingleMachineStatus = async (machineId: string, accessToken: string)
 
 
   // Function to create job plan from the actual selected steps
-  const createJobPlanFromPayload = async (completedJob: Job, jobPlanningPayload: any, accessToken: string) => {
-    try {
-      // Validate demand-based requirements
-      const jobDemand = completedJob.jobDemand || 'medium';
-      const selectedSteps = jobPlanningPayload.steps || [];
-      
-      // Demand-specific validation
-      if (jobDemand === 'medium' && selectedSteps.length === 0) {
-        throw new Error('Regular demand requires at least one production step to be selected');
+const createJobPlanFromPayload = async (completedJob: Job, jobPlanningPayload: any, accessToken: string) => {
+  try {
+    // Validate demand-based requirements
+    const jobDemand = completedJob.jobDemand || 'medium';
+    const selectedSteps = jobPlanningPayload.steps || [];
+    
+    // Demand-specific validation
+    if (jobDemand === 'medium' && selectedSteps.length === 0) {
+      throw new Error('Regular demand requires at least one production step to be selected');
+    }
+    
+    if (jobDemand === 'medium' && !completedJob.machineId) {
+      throw new Error('Regular demand requires machine assignment for all selected steps');
+    }
+
+    // 🎯 EXTENSIVE DEBUGGING FOR PO ID
+    console.log('🔍 === PO ID DEBUGGING ===');
+    console.log('jobPlanningPayload.poId:', jobPlanningPayload.poId);
+    console.log('completedJob.poId:', completedJob.poId);
+    console.log('completedJob.purchaseOrderId:', completedJob.purchaseOrderId);
+    console.log('completedJob object keys:', Object.keys(completedJob));
+    console.log('Full completedJob:', JSON.stringify(completedJob, null, 2));
+    console.log('Full jobPlanningPayload:', JSON.stringify(jobPlanningPayload, null, 2));
+
+    // Get PO ID with multiple fallback sources
+    const poId = jobPlanningPayload.poId || 
+                completedJob.poId || 
+                completedJob.purchaseOrderId ||
+                (completedJob as any).id || // Try job's own id
+                null;
+
+    console.log('📋 Final PO ID to be used:', poId);
+    console.log('🔍 PO ID type:', typeof poId);
+    console.log('=== END DEBUGGING ===');
+
+    const jobPlanData = {
+      nrcJobNo: completedJob.nrcJobNo,
+      jobDemand: jobDemand,
+      purchaseOrderId: poId, // Make sure this matches your database field
+      steps: selectedSteps.map((step: any, index: number) => {
+        // ... existing step mapping code ...
+        const machineDetails = [];
+        
+        if (completedJob.machineId && step.machineDetail) {
+          machineDetails.push({ 
+            id: step.machineId,
+            unit: completedJob.unit || 'Unit 1',
+            machineCode: step.machineCode,
+            machineType: step.machineDetail || 'Production Step'
+          });
+        } else if (jobDemand === 'medium') {
+          // Regular demand requires machine assignment for all selected steps
+          throw new Error(`Regular demand requires machine assignment for step: ${step.stepName}`);
+        }
+        
+        return {
+          jobStepId: index + 1,
+          stepNo: step.stepNo || index + 1,
+          stepName: step.stepName,
+          machineDetails: machineDetails,
+          status: 'planned' as const,
+          startDate: null,
+          endDate: null,
+          user: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+      })
+    };
+
+    console.log('📤 FINAL Job Plan Data being sent:', JSON.stringify(jobPlanData, null, 2));
+
+    // Try to create job plan using the job-planning endpoint
+    const jobPlanResponse = await fetch('https://nrprod.nrcontainers.com/api/job-planning/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(jobPlanData),
+    });
+
+    const responseText = await jobPlanResponse.text();
+    console.log('🔍 Raw API Response:', responseText);
+
+    if (jobPlanResponse.ok) {
+      try {
+        const jobPlanResult = JSON.parse(responseText);
+        console.log('✅ Job plan created successfully:', jobPlanResult);
+        return jobPlanResult;
+      } catch (parseError) {
+        console.error('❌ Failed to parse successful response:', parseError);
+        throw new Error('Invalid response format from server');
       }
+    } else {
+      console.error('❌ Job plan creation failed. Status:', jobPlanResponse.status);
+      console.error('❌ Response:', responseText);
       
-      if (jobDemand === 'medium' && !completedJob.machineId) {
-        throw new Error('Regular demand requires machine assignment for all selected steps');
-      }
-
-      // Create a job plan with only the selected production steps
-      const jobPlanData = {
-        nrcJobNo: completedJob.nrcJobNo,
-        jobDemand: jobDemand,
-        steps: selectedSteps.map((step: any, index: number) => {
-          // For Regular demand, ensure all selected steps have machine details
-          // For Urgent demand, machine details are optional
-          const machineDetails = [];
-          
-          if (completedJob.machineId && step.machineDetail) {
-            machineDetails.push({ 
-              id: step.machineId,
-              unit: completedJob.unit || 'Unit 1',
-              machineCode: step.machineCode,
-              machineType: step.machineDetail || 'Production Step'
-            });
-          } else if (jobDemand === 'medium') {
-            // Regular demand requires machine assignment for all selected steps
-            throw new Error(`Regular demand requires machine assignment for step: ${step.stepName}`);
-          }
-          
-          return {
-            jobStepId: index + 1, // Sequential ID for new steps
-            stepNo: step.stepNo || index + 1,
-            stepName: step.stepName,
-            machineDetails: machineDetails,
-            status: 'planned' as const,
-            startDate: null,
-            endDate: null,
-            user: null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-        })
-      };
-
-      console.log('Creating job plan with selected steps:', jobPlanData);
-
-      // Try to create job plan using the job-planning endpoint
-      const jobPlanResponse = await fetch('https://nrprod.nrcontainers.com/api/job-planning/', {
-        method: 'POST',
+      // Try the fallback approach
+      console.log('🔄 Trying alternative approach...');
+      
+      const statusUpdateResponse = await fetch(`https://nrprod.nrcontainers.com/api/jobs/${completedJob.nrcJobNo}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${accessToken}`,
         },
-        body: JSON.stringify(jobPlanData),
+        body: JSON.stringify({
+          status: 'ACTIVE',
+          jobDemand: completedJob.jobDemand || 'medium',
+          machineId: completedJob.machineId,
+          purchaseOrderId: poId, // 🎯 ADD PO ID HERE TOO
+        }),
       });
 
-      if (jobPlanResponse.ok) {
-        const jobPlanResult = await jobPlanResponse.json();
-        console.log('Job plan created successfully with selected steps:', jobPlanResult);
-        return jobPlanResult;
+      if (statusUpdateResponse.ok) {
+        console.log('✅ Job status updated with PO ID');
+        return { success: true, message: 'Job plan creation triggered' };
       } else {
-        // If POST doesn't work, try to update existing job to trigger job plan creation
-        console.log('Job plan creation failed, trying alternative approach...');
-        
-        // Update job status to trigger job plan creation
-        const statusUpdateResponse = await fetch(`https://nrprod.nrcontainers.com/api/jobs/${completedJob.nrcJobNo}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            status: 'ACTIVE',
-            jobDemand: completedJob.jobDemand || 'medium',
-            machineId: completedJob.machineId,
-            // Add any other fields that might trigger job plan creation
-          }),
-        });
-
-        if (statusUpdateResponse.ok) {
-          console.log('Job status updated to trigger job plan creation');
-          return { success: true, message: 'Job plan creation triggered' };
-        } else {
-          throw new Error('Failed to create job plan or update job status');
-        }
+        throw new Error('Failed to create job plan or update job status');
       }
-    } catch (error) {
-      console.error('Error creating job plan from payload:', error);
-      throw error;
     }
-  };
+  } catch (error) {
+    console.error('❌ Error in createJobPlanFromPayload:', error);
+    throw error;
+  }
+};
+
 
   // Function to create job plan entry after all forms are completed
   const createJobPlan = async (completedJob: Job, accessToken: string) => {
@@ -744,9 +802,22 @@ const updateSingleMachineStatus = async (machineId: string, accessToken: string)
       }
 
       // Create a job plan with basic production steps
-      const jobPlanData = {
-        nrcJobNo: completedJob.nrcJobNo,
-        jobDemand: jobDemand,
+    console.log('🔍 === DEFAULT JOB PLAN PO ID DEBUGGING ===');
+    console.log('completedJob.poId:', completedJob.poId);
+    console.log('completedJob.purchaseOrderId:', completedJob.purchaseOrderId);
+    console.log('completedJob keys:', Object.keys(completedJob));
+    console.log('Full completedJob for default plan:', JSON.stringify(completedJob, null, 2));
+
+    const poId = completedJob.poId || completedJob.purchaseOrderId || null;
+    
+    console.log('📋 DEFAULT Job Plan PO ID:', poId);
+    console.log('🔍 PO ID type:', typeof poId);
+    console.log('=== END DEFAULT DEBUGGING ===');
+
+    const jobPlanData = {
+      nrcJobNo: completedJob.nrcJobNo,
+      jobDemand: jobDemand,
+      purchaseOrderId: poId, 
         steps: [
           {
             jobStepId: 1, // Temporary ID for new step
@@ -1006,6 +1077,8 @@ const updateSingleMachineStatus = async (machineId: string, accessToken: string)
       deliveryDate: null,
       dispatchDate: null,
       nrcDeliveryDate: null,
+      poId: null,           // Initialize as null
+    purchaseOrderId: null, // Initialize as null
       jobSteps: []
     };
 

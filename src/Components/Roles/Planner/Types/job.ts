@@ -261,6 +261,7 @@ export interface Job {
   userId: string | null;
   machineId: string | null;
 
+  // PO related fields
   poNumber: string | null;
   unit: string | null;
   plant: string | null;
@@ -272,6 +273,11 @@ export interface Job {
   deliveryDate: string | null;
   dispatchDate: string | null;
   nrcDeliveryDate: string | null;
+  
+  // 🎯 ADD THESE LINES FOR PO ID
+  poId: number | null;           // Purchase Order ID
+  purchaseOrderId: number | null; // Alternative field name
 
   jobSteps: JobStep[] | null;
 }
+

@@ -26,11 +26,14 @@ export interface PlannerSummary {
   notStarted: number;
   totalActiveJobs: number;
 totalCompletedJobs: number;
+
 }
 
 export interface PlannerDashboardData {
   summary: PlannerSummary;
   allJobs: PlannerJob[];
+   activeJobs: PlannerJob[];      // Add this
+  completedJobs: PlannerJob[];   // Add this
 }
 
 export interface ApiResponse<T> {

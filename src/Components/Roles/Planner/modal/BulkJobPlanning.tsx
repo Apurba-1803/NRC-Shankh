@@ -39,11 +39,8 @@ interface PurchaseOrder {
     styleItemSKU: string;
   } | null;
   user: any | null;
-  // Extended fields from job data
   boxDimensions: string | null;
-  
   processColors?: string;
-
   jobBoardSize: string | null;
 }
 
@@ -53,7 +50,6 @@ interface BulkJobPlanningModalProps {
   onClose: () => void;
 }
 
-// Add these imports at the top of your file
 const STEP_TO_MACHINE_MAPPING: Record<string, string[]> = {
   'SideFlapPasting': ['auto flap', 'manual fi'],
   'Punching': ['auto pund', 'manual pu'],
@@ -64,7 +60,6 @@ const STEP_TO_MACHINE_MAPPING: Record<string, string[]> = {
   'QualityDept': [],
   'DispatchProcess': [],
 };
-
 
 export const BulkJobPlanningModal: React.FC<BulkJobPlanningModalProps> = ({ 
   filteredPOs, 
@@ -121,7 +116,46 @@ export const BulkJobPlanningModal: React.FC<BulkJobPlanningModalProps> = ({
     }
 
     try {
+      // 🎯 UPDATED: Create individual job plans with PO IDs
       const bulkJobPlanningData = {
+        // 🎯 CREATE INDIVIDUAL JOB PLANS FOR EACH PO
+        jobPlans: filteredPOs.map(po => ({
+          nrcJobNo: po.jobNrcJobNo || po.job?.nrcJobNo,
+          poId: po.id, // 🎯 INCLUDE PO ID FOR EACH JOB PLAN
+          jobDemand: jobDemand,
+          steps: selectedSteps.map((step, stepIndex) => {
+            const machineTypesForStep = STEP_TO_MACHINE_MAPPING[step.stepName];
+            let assignedMachine = null;
+            
+            if (machineTypesForStep && machineTypesForStep.length > 0) {
+              assignedMachine = selectedMachines.find(m => 
+                machineTypesForStep.some(type => 
+                  m.machineType.toLowerCase().includes(type.toLowerCase())
+                )
+              );
+            }
+
+            return {
+              jobStepId: stepIndex + 1,
+              stepNo: step.stepNo || stepIndex + 1,
+              stepName: step.stepName,
+              machineDetails: assignedMachine ? [{
+                id: assignedMachine.id,
+                unit: po.unit || 'Unit 1',
+                machineCode: assignedMachine.machineCode,
+                machineType: assignedMachine.machineType || 'Production Step'
+              }] : [],
+              status: 'planned' as const,
+              startDate: null,
+              endDate: null,
+              user: null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+          })
+        })),
+        
+        // 🎯 LEGACY SUPPORT: Keep original structure for backward compatibility
         poIds: filteredPOs.map(po => po.id),
         nrcJobNos: filteredPOs.map(po => po.jobNrcJobNo).filter(Boolean),
         jobDemand: jobDemand,
@@ -147,6 +181,10 @@ export const BulkJobPlanningModal: React.FC<BulkJobPlanningModalProps> = ({
         }),
         selectedMachines: selectedMachines
       };
+
+      // 🎯 DEBUG LOG
+      console.log('📤 Bulk job planning data with PO IDs:', bulkJobPlanningData);
+      console.log('📋 Individual job plans:', bulkJobPlanningData.jobPlans);
 
       await onSave(bulkJobPlanningData);
     } catch (err) {
