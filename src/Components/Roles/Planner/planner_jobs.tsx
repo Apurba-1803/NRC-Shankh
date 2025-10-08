@@ -156,8 +156,10 @@ const PlannerJobs: React.FC = () => {
   const [availableNoOfColors, setAvailableNoOfColors] = useState<string[]>([]);
   const [availableBoardSizes, setAvailableBoardSizes] = useState<string[]>([]);
   const [showBulkPlanningModal, setShowBulkPlanningModal] = useState(false);
+  const [noOfColorsSearch, setNoOfColorsSearch] = useState("");
+  const [dimensionsSearch, setDimensionsSearch] = useState("");
 
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
 
   // Add this helper function for list view
   const getStatusColor = (status: string) => {
@@ -797,6 +799,48 @@ const PlannerJobs: React.FC = () => {
 
       worksheet["!cols"] = columnWidths;
 
+      // Style the header row with yellow background and bold text
+      const headerColumns = [
+        "A1",
+        "B1",
+        "C1",
+        "D1",
+        "E1",
+        "F1",
+        "G1",
+        "H1",
+        "I1",
+        "J1",
+        "K1",
+        "L1",
+        "M1",
+        "N1",
+        "O1",
+        "P1",
+        "Q1",
+        "R1",
+        "S1",
+        "T1",
+      ];
+
+      headerColumns.forEach((cell) => {
+        if (worksheet[cell]) {
+          worksheet[cell].s = {
+            fill: {
+              fgColor: { rgb: "FFFF00" }, // Yellow background
+            },
+            font: {
+              bold: true, // Bold text
+              sz: 11, // Font size
+            },
+            alignment: {
+              horizontal: "center",
+              vertical: "center",
+            },
+          };
+        }
+      });
+
       // Add worksheet to workbook
       XLSX.utils.book_append_sheet(workbook, worksheet, "Purchase Orders");
 
@@ -893,39 +937,162 @@ const PlannerJobs: React.FC = () => {
 
         let nextId = maxIdData?.[0]?.id ? maxIdData[0].id + 1 : 1;
 
-        // Fetch all jobs to match styleItemSKU with style
-        const { data: jobsData, error: jobsError } = await supabase
-          .from("Job")
-          .select("nrcJobNo, styleItemSKU");
+        // Fetch all jobs from API to match styleItemSKU with style
+        const accessToken = localStorage.getItem("accessToken");
 
-        if (jobsError) {
-          console.error("Error fetching jobs:", jobsError);
+        if (!accessToken) {
+          alert("Authentication token not found. Please log in.");
+          return;
+        }
+
+        const jobsResponse = await fetch(
+          "https://nrprod.nrcontainers.com/api/jobs",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (!jobsResponse.ok) {
+          console.error("Error fetching jobs from API:", jobsResponse.status);
           alert("Failed to fetch job data for matching.");
           return;
         }
 
+        const jobsApiData = await jobsResponse.json();
+        const jobsData = jobsApiData.success ? jobsApiData.data : [];
+
+        // Debug: Log raw API response for PKBB-1302-0105-N4
+        console.log("🔍 Raw API response for jobs:", jobsApiData);
+        if (jobsData && Array.isArray(jobsData)) {
+          const pkbbJobs = jobsData.filter(
+            (job: any) =>
+              job.styleItemSKU && job.styleItemSKU.includes("PKBB-1302-0105")
+          );
+          console.log("🔍 Jobs containing PKBB-1302-0105:", pkbbJobs);
+        }
+
         // Create a map for quick lookup: styleItemSKU -> nrcJobNo
+        // Use case-insensitive and trimmed keys for better matching
         const jobMap = new Map();
-        if (jobsData) {
+        const jobMapDebug: { [key: string]: string } = {};
+
+        if (jobsData && Array.isArray(jobsData)) {
           jobsData.forEach((job: any) => {
             if (job.styleItemSKU && job.nrcJobNo) {
-              jobMap.set(job.styleItemSKU, job.nrcJobNo);
+              const normalizedStyle = job.styleItemSKU.trim().toUpperCase();
+              jobMap.set(normalizedStyle, job.nrcJobNo);
+              jobMapDebug[normalizedStyle] = job.nrcJobNo;
             }
           });
         }
 
-        console.log("Job mapping created:", jobMap);
+        console.log(
+          "Job mapping created from API:",
+          jobMapDebug,
+          `(${jobMap.size} jobs)`
+        );
 
+        // Debug: Log all available job styles for comparison
+        console.log(
+          "🔍 All available job styles from API:",
+          Array.from(jobMap.keys())
+        );
+
+        // First pass: check if ALL styles can be matched
+        const unmatchedStyles: string[] = [];
+        const styleMatchResults: {
+          row: number;
+          style: string;
+          matched: boolean;
+          jobNo: string | null;
+        }[] = [];
+
+        parsedData.forEach((row: any, idx: number) => {
+          if (!row["Customer"]) return;
+
+          const styleValue = row["Style"];
+          if (!styleValue) {
+            unmatchedStyles.push(`Row ${idx + 1}: [EMPTY STYLE]`);
+            styleMatchResults.push({
+              row: idx + 1,
+              style: "[EMPTY]",
+              matched: false,
+              jobNo: null,
+            });
+            return;
+          }
+
+          const normalizedStyle = styleValue.trim().toUpperCase();
+          const matchedJobNo = jobMap.get(normalizedStyle);
+
+          // Debug: Log detailed matching info for this specific style
+          if (styleValue === "PKBB-1302-0105-N4") {
+            console.log("🔍 DEBUG for PKBB-1302-0105-N4:");
+            console.log("  Original style:", styleValue);
+            console.log("  Normalized style:", normalizedStyle);
+            console.log("  Found in jobMap:", jobMap.has(normalizedStyle));
+            console.log("  Matched jobNo:", matchedJobNo);
+            console.log(
+              "  All similar styles in jobMap:",
+              Array.from(jobMap.keys()).filter((key) =>
+                key.includes("PKBB-1302-0105")
+              )
+            );
+          }
+
+          if (!matchedJobNo) {
+            unmatchedStyles.push(`Row ${idx + 1}: "${styleValue}"`);
+            styleMatchResults.push({
+              row: idx + 1,
+              style: styleValue,
+              matched: false,
+              jobNo: null,
+            });
+          } else {
+            styleMatchResults.push({
+              row: idx + 1,
+              style: styleValue,
+              matched: true,
+              jobNo: matchedJobNo,
+            });
+          }
+        });
+
+        // Log all matching results for debugging
+        console.log("Style matching results:", styleMatchResults);
+
+        // If there are unmatched styles, stop and show error
+        if (unmatchedStyles.length > 0) {
+          const errorMessage = `❌ Upload stopped! ${
+            unmatchedStyles.length
+          } style(s) could not be matched with any job:\n\n${unmatchedStyles.join(
+            "\n"
+          )}\n\nPlease ensure all styles in the Excel file match exactly with the styleItemSKU in the Job table.\n\nNote: Matching is case-insensitive and ignores leading/trailing spaces.`;
+          alert(errorMessage);
+          console.error("Unmatched styles:", unmatchedStyles);
+          console.log("Available job styles:", Array.from(jobMap.keys()));
+          return;
+        }
+
+        // All styles matched, proceed with formatting
         const formattedData = parsedData
           .map((row: any, idx: number) => {
             if (!row["Customer"]) return null;
 
-            // Find matching job by Style (which maps to styleItemSKU in Job table)
             const styleValue = row["Style"];
-            const matchedJobNo = styleValue ? jobMap.get(styleValue) : null;
+            if (!styleValue) return null;
+
+            const normalizedStyle = styleValue.trim().toUpperCase();
+            const matchedJobNo = jobMap.get(normalizedStyle);
 
             console.log(
-              `Row ${idx}: style="${styleValue}" -> jobNo="${matchedJobNo}"`
+              `Row ${
+                idx + 1
+              }: style="${styleValue}" (normalized: "${normalizedStyle}") -> jobNo="${matchedJobNo}"`
             );
 
             return {
@@ -973,7 +1140,7 @@ const PlannerJobs: React.FC = () => {
               status: "created",
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
-              jobNrcJobNo: matchedJobNo || null,
+              jobNrcJobNo: matchedJobNo, // This will always have a value now
               userId: null,
             };
           })
@@ -983,6 +1150,10 @@ const PlannerJobs: React.FC = () => {
           alert("No valid rows with customer found!");
           return;
         }
+
+        console.log(
+          `✅ All ${formattedData.length} POs matched successfully with jobs. Proceeding with upload...`
+        );
 
         const { error } = await supabase
           .from("PurchaseOrder")
@@ -1177,25 +1348,47 @@ const PlannerJobs: React.FC = () => {
                 <h4 className="text-sm font-medium text-gray-700 mb-3">
                   Number of Colors
                 </h4>
+                {/* Search bar for colors */}
+                <div className="mb-2">
+                  <input
+                    type="text"
+                    placeholder="Search colors..."
+                    value={noOfColorsSearch}
+                    onChange={(e) => setNoOfColorsSearch(e.target.value)}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {availableNoOfColors.map((color) => (
-                    <label
-                      key={color}
-                      className="flex items-center space-x-2 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={filters.noOfColors.includes(color)}
-                        onChange={() => toggleNoOfColorFilter(color)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-600 truncate">
-                        {color}
-                      </span>
-                    </label>
-                  ))}
-                  {availableNoOfColors.length === 0 && (
-                    <p className="text-sm text-gray-400">No colors available</p>
+                  {availableNoOfColors
+                    .filter((color) =>
+                      color
+                        .toLowerCase()
+                        .includes(noOfColorsSearch.toLowerCase())
+                    )
+                    .map((color) => (
+                      <label
+                        key={color}
+                        className="flex items-center space-x-2 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={filters.noOfColors.includes(color)}
+                          onChange={() => toggleNoOfColorFilter(color)}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-600 truncate">
+                          {color}
+                        </span>
+                      </label>
+                    ))}
+                  {availableNoOfColors.filter((color) =>
+                    color.toLowerCase().includes(noOfColorsSearch.toLowerCase())
+                  ).length === 0 && (
+                    <p className="text-sm text-gray-400">
+                      {noOfColorsSearch
+                        ? "No matching colors"
+                        : "No colors available"}
+                    </p>
                   )}
                 </div>
               </div>
@@ -1205,26 +1398,48 @@ const PlannerJobs: React.FC = () => {
                 <h4 className="text-sm font-medium text-gray-700 mb-3">
                   Dimensions
                 </h4>
+                {/* Search bar for dimensions */}
+                <div className="mb-2">
+                  <input
+                    type="text"
+                    placeholder="Search dimensions..."
+                    value={dimensionsSearch}
+                    onChange={(e) => setDimensionsSearch(e.target.value)}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {availableBoardSizes.map((boardSize) => (
-                    <label
-                      key={boardSize}
-                      className="flex items-center space-x-2 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={filters.boardSizes.includes(boardSize)}
-                        onChange={() => toggleBoardSizeFilter(boardSize)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-600 truncate">
-                        {boardSize}
-                      </span>
-                    </label>
-                  ))}
-                  {availableBoardSizes.length === 0 && (
+                  {availableBoardSizes
+                    .filter((boardSize) =>
+                      boardSize
+                        .toLowerCase()
+                        .includes(dimensionsSearch.toLowerCase())
+                    )
+                    .map((boardSize) => (
+                      <label
+                        key={boardSize}
+                        className="flex items-center space-x-2 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={filters.boardSizes.includes(boardSize)}
+                          onChange={() => toggleBoardSizeFilter(boardSize)}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-600 truncate">
+                          {boardSize}
+                        </span>
+                      </label>
+                    ))}
+                  {availableBoardSizes.filter((boardSize) =>
+                    boardSize
+                      .toLowerCase()
+                      .includes(dimensionsSearch.toLowerCase())
+                  ).length === 0 && (
                     <p className="text-sm text-gray-400">
-                      No board sizes available
+                      {dimensionsSearch
+                        ? "No matching dimensions"
+                        : "No board sizes available"}
                     </p>
                   )}
                 </div>
