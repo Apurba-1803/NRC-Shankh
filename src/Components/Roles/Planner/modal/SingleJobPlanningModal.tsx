@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import AddStepsModal from './AddStepsModal';
-import SelectDemandModal from './SelectDemandModal';
-import { type JobStep, type Machine } from '../Types/job.ts';
-import { X } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import AddStepsModal from "./AddStepsModal";
+import SelectDemandModal from "./SelectDemandModal";
+import { type JobStep, type Machine } from "../Types/job.ts";
 
 interface PurchaseOrder {
   id: number;
@@ -52,46 +51,106 @@ interface SingleJobPlanningModalProps {
 
 // Add the same mapping as bulk modal
 const STEP_TO_MACHINE_MAPPING: Record<string, string[]> = {
-  'SideFlapPasting': ['auto flap', 'manual fi'],
-  'Punching': ['auto pund', 'manual pu'],
-  'FluteLaminateBoardConversion': ['flute lam'],
-  'Corrugation': ['corrugatic'],
-  'PrintingDetails': ['printing'],
-  'PaperStore': [],
-  'QualityDept': [],
-  'DispatchProcess': [],
+  SideFlapPasting: ["auto flap", "manual fi"],
+  Punching: ["auto pund", "manual pu"],
+  FluteLaminateBoardConversion: ["flute lam"],
+  Corrugation: ["corrugatic"],
+  PrintingDetails: ["printing"],
+  PaperStore: [],
+  QualityDept: [],
+  DispatchProcess: [],
 };
 
 const SingleJobPlanningModal: React.FC<SingleJobPlanningModalProps> = ({
   po,
   onSave,
-  onClose
+  onClose,
 }) => {
-  const [jobDemand, setJobDemand] = useState<'high' | 'medium' | 'low' | null>(null);
+  const [jobDemand, setJobDemand] = useState<"high" | "medium" | "low" | null>(
+    null
+  );
   const [selectedSteps, setSelectedSteps] = useState<JobStep[]>([]);
   const [selectedMachines, setSelectedMachines] = useState<Machine[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 🔥 NEW: State for tracking step-machine mappings (multiple machines per step)
+  const [stepMachines, setStepMachines] = useState<Record<string, string[]>>(
+    {}
+  );
+  const [allMachines, setAllMachines] = useState<Machine[]>([]);
+
   const [showDemandModal, setShowDemandModal] = useState(false);
   const [showStepsModal, setShowStepsModal] = useState(false);
 
-  const getDemandDisplayLabel = (demand: 'high' | 'medium' | 'low' | null) => {
-    switch (demand) {
-      case 'high': return 'Urgent';
-      case 'medium': return 'Regular';
-      case 'low': return 'Low Priority';
-      default: return 'Choose Demand Level';
+  // 🔥 NEW: Fetch machines on component mount
+  useEffect(() => {
+    fetchMachines();
+  }, []);
+
+  const fetchMachines = async () => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      const response = await fetch(
+        "https://nrprod.nrcontainers.com/api/machines?",
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+      const data = await response.json();
+      if (data.success && Array.isArray(data.data)) {
+        setAllMachines(data.data);
+      }
+    } catch (err) {
+      console.error("Machine fetch error:", err);
     }
   };
 
-  const getDemandStyling = (demand: 'high' | 'medium' | 'low' | null) => {
+  const getDemandDisplayLabel = (demand: "high" | "medium" | "low" | null) => {
     switch (demand) {
-      case 'high': return 'border-red-400 bg-red-50 text-red-700';
-      case 'medium': return 'border-[#00AEEF] bg-[#00AEEF]/10 text-[#00AEEF]';
-      case 'low': return 'border-green-400 bg-green-50 text-green-700';
-      default: return 'border-gray-300 bg-white text-gray-500';
+      case "high":
+        return "Urgent";
+      case "medium":
+        return "Regular";
+      case "low":
+        return "Low Priority";
+      default:
+        return "Choose Demand Level";
     }
+  };
+
+  const getDemandStyling = (demand: "high" | "medium" | "low" | null) => {
+    switch (demand) {
+      case "high":
+        return "border-red-400 bg-red-50 text-red-700";
+      case "medium":
+        return "border-[#00AEEF] bg-[#00AEEF]/10 text-[#00AEEF]";
+      case "low":
+        return "border-green-400 bg-green-50 text-green-700";
+      default:
+        return "border-gray-300 bg-white text-gray-500";
+    }
+  };
+
+  // 🔥 FIXED: Enhanced steps selection handler
+  const handleStepsSelect = (
+    steps: JobStep[],
+    machines: Machine[],
+    stepMachineMapping: Record<string, string[]>
+  ) => {
+    console.log("🔍 handleStepsSelect called with:");
+    console.log("📋 Steps:", steps);
+    console.log("🏭 Machines:", machines);
+    console.log("🔧 Step-Machine mapping:", stepMachineMapping);
+
+    setSelectedSteps(steps);
+    setSelectedMachines(machines);
+
+    // 🔥 CRITICAL: Always update step-machine mapping
+    console.log("✅ Updating stepMachines with:", stepMachineMapping);
+    setStepMachines(stepMachineMapping);
+
+    setShowStepsModal(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,53 +160,117 @@ const SingleJobPlanningModal: React.FC<SingleJobPlanningModalProps> = ({
 
     // Validation
     if (!jobDemand) {
-      setError('Please select a demand level.');
+      setError("Please select a demand level.");
       setIsSubmitting(false);
       return;
     }
 
     if (!selectedSteps || selectedSteps.length === 0) {
-      setError('Please select at least one production step.');
+      setError("Please select at least one production step.");
       setIsSubmitting(false);
       return;
     }
 
-    if (jobDemand === 'medium' && (!selectedMachines || selectedMachines.length === 0)) {
-      setError('Regular demand requires machine assignment for all selected steps.');
-      setIsSubmitting(false);
-      return;
+    // 🔥 FIXED: Better validation for step-specific machine assignments
+    if (jobDemand === "medium") {
+      const stepsRequiringMachines = selectedSteps.filter((step) => {
+        const machineTypes = STEP_TO_MACHINE_MAPPING[step.stepName];
+        return machineTypes && machineTypes.length > 0;
+      });
+
+      const stepsWithoutMachines = stepsRequiringMachines.filter((step) => {
+        const assignedMachineIds = stepMachines[step.stepName] || [];
+        return assignedMachineIds.length === 0;
+      });
+
+      if (stepsWithoutMachines.length > 0) {
+        setError(
+          `Regular demand requires machine assignment for steps: ${stepsWithoutMachines
+            .map((s) => s.stepName)
+            .join(", ")}`
+        );
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     try {
+      // 🔥 FIXED: Create job planning data in the correct format expected by the API
       const jobPlanningData = {
         nrcJobNo: po.jobNrcJobNo || po.job?.nrcJobNo,
         jobDemand: jobDemand,
-        steps: selectedSteps.map(step => {
-          const machineTypesForStep = STEP_TO_MACHINE_MAPPING[step.stepName];
-          let assignedMachine = null;
-          
-          if (machineTypesForStep && machineTypesForStep.length > 0) {
-            assignedMachine = selectedMachines.find(m => 
-              machineTypesForStep.some(type => 
-                m.machineType.toLowerCase().includes(type.toLowerCase())
-              )
-            );
+        purchaseOrderId: po.id, // Include PO ID
+
+        // 🔥 CRITICAL: This is the steps array the API expects at root level
+        steps: selectedSteps.map((step, stepIndex) => {
+          // Get ALL machines assigned to this step
+          const assignedMachineIds = stepMachines[step.stepName] || [];
+          const assignedMachines = assignedMachineIds
+            .map((machineId) => allMachines.find((m) => m.id === machineId))
+            .filter(Boolean) as Machine[];
+
+          // Create machineDetails array for multiple machines
+          let machineDetails;
+          if (assignedMachines.length > 0) {
+            machineDetails = assignedMachines.map((machine) => ({
+              id: machine.id,
+              unit: po.unit || machine.unit || "Unit 1",
+              machineCode: machine.machineCode,
+              machineType: machine.machineType,
+            }));
+          } else {
+            // No machines assigned - provide default structure
+            machineDetails = [
+              {
+                unit: po.unit || "Mk",
+                machineCode: null,
+                machineType: "Not Assigned",
+              },
+            ];
           }
 
           return {
-            stepNo: step.stepNo,
+            jobStepId: stepIndex + 1,
+            stepNo: step.stepNo || stepIndex + 1,
             stepName: step.stepName,
-            machineDetail: assignedMachine ? assignedMachine.machineType || assignedMachine.machineCode : 'Not Assigned',
-            machineId: assignedMachine ? assignedMachine.id : null,
-            machineCode: assignedMachine ? assignedMachine.machineCode : null,
+            machineDetails: machineDetails, // 🔥 This gets stored as JSON in DB
+            status: "planned" as const,
+            startDate: null,
+            endDate: null,
+            user: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
           };
         }),
-        selectedMachines: selectedMachines
       };
 
+      console.log(
+        "📤 Single job planning API payload:",
+        JSON.stringify(jobPlanningData, null, 2)
+      );
+
+      // 🔥 NEW: Validate the payload before sending
+      if (!jobPlanningData.nrcJobNo) {
+        throw new Error("NRC Job Number is missing");
+      }
+      if (!jobPlanningData.jobDemand) {
+        throw new Error("Job Demand is missing");
+      }
+      if (!jobPlanningData.steps || jobPlanningData.steps.length === 0) {
+        throw new Error("Steps array is missing or empty");
+      }
+
+      console.log("✅ Payload validation passed");
+
       await onSave(jobPlanningData);
+      onClose();
     } catch (err) {
-      setError(`Failed to save job planning: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      console.error("❌ Error saving job plan:", err);
+      setError(
+        `Failed to save job planning: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -163,17 +286,20 @@ const SingleJobPlanningModal: React.FC<SingleJobPlanningModalProps> = ({
         >
           &times;
         </button>
-        
+
         <div className="w-full px-8 pt-10 pb-8 flex flex-col items-center overflow-y-auto max-h-[85vh]">
-          <h2 className="text-2xl font-bold mb-2 text-center text-gray-900">Job Planning</h2>
+          <h2 className="text-2xl font-bold mb-2 text-center text-gray-900">
+            Job Planning
+          </h2>
           <p className="text-gray-500 text-center mb-2">
             Create job plan for {po.jobNrcJobNo || po.job?.nrcJobNo}
           </p>
-          
+
           {/* Show PO details */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6 w-full">
             <p className="text-sm text-blue-800 text-center">
-              <strong>Customer:</strong> {po.customer} | <strong>PO:</strong> {po.poNumber}
+              <strong>Customer:</strong> {po.customer} | <strong>PO:</strong>{" "}
+              {po.poNumber}
             </p>
           </div>
 
@@ -186,18 +312,25 @@ const SingleJobPlanningModal: React.FC<SingleJobPlanningModalProps> = ({
 
             {/* Select Demand */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Select Demand</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Select Demand
+              </label>
               <div
-                className={`w-full px-3 py-2 border-2 rounded-md flex justify-between items-center transition-all duration-200 cursor-pointer hover:scale-105 ${getDemandStyling(jobDemand)}`}
+                className={`w-full px-3 py-2 border-2 rounded-md flex justify-between items-center transition-all duration-200 cursor-pointer hover:scale-105 ${getDemandStyling(
+                  jobDemand
+                )}`}
                 onClick={() => setShowDemandModal(true)}
               >
-                <span className="font-medium">{getDemandDisplayLabel(jobDemand)}</span>
+                <span className="font-medium">
+                  {getDemandDisplayLabel(jobDemand)}
+                </span>
                 <span>&#9660;</span>
               </div>
-              
-              {jobDemand === 'medium' && (
+
+              {jobDemand === "medium" && (
                 <div className="mt-2 p-2 bg-[#00AEEF]/20 border border-[#00AEEF]/30 rounded text-xs text-[#00AEEF]">
-                  <strong>Regular:</strong> Machine assignment is mandatory for all selected steps
+                  <strong>Regular:</strong> Machine assignment is mandatory for
+                  all selected steps
                 </div>
               )}
             </div>
@@ -205,44 +338,80 @@ const SingleJobPlanningModal: React.FC<SingleJobPlanningModalProps> = ({
             {/* Add Steps */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Add Steps {jobDemand === 'medium' && <span className="text-red-500">*</span>}
+                Add Steps{" "}
+                {jobDemand === "medium" && (
+                  <span className="text-red-500">*</span>
+                )}
               </label>
               <div
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white flex justify-between items-center cursor-pointer"
                 onClick={() => setShowStepsModal(true)}
               >
-                <span>{selectedSteps.length > 0 ? `${selectedSteps.length} step(s) selected` : 'Choose the steps of the job'}</span>
+                <span>
+                  {selectedSteps.length > 0
+                    ? `${selectedSteps.length} step(s) selected`
+                    : "Choose the steps of the job"}
+                </span>
                 <span>&#9660;</span>
               </div>
-              
-              {jobDemand === 'medium' && (
+
+              {jobDemand === "medium" && (
                 <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
-                  <strong>Required:</strong> All selected steps must have machine assignments for Regular demand
+                  <strong>Required:</strong> All selected steps must have
+                  machine assignments for Regular demand
                 </div>
               )}
-              
-              <div className="flex flex-wrap gap-2 mt-2">
-                {selectedSteps.map(step => (
-                  <span key={step.stepName} className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
-                    {step.stepName}
-                  </span>
-                ))}
-              </div>
-            </div>
 
-            {/* Show selected machines if any */}
-            {selectedMachines.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Selected Machines</label>
-                <div className="flex flex-wrap gap-2">
-                  {selectedMachines.map(machine => (
-                    <span key={machine.id} className="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
-                      {machine.machineCode} - {machine.machineType}
-                    </span>
-                  ))}
+              {/* Show selected steps with their assigned machines */}
+              {selectedSteps.length > 0 && (
+                <div className="mt-3 space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-gray-50">
+                  {selectedSteps.map((step) => {
+                    const assignedMachineIds =
+                      stepMachines[step.stepName] || [];
+                    const assignedMachines = assignedMachineIds
+                      .map((machineId) =>
+                        allMachines.find((m) => m.id === machineId)
+                      )
+                      .filter(Boolean) as Machine[];
+
+                    return (
+                      <div
+                        key={step.stepName}
+                        className="bg-white rounded p-2 border border-gray-200"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-800">
+                            {step.stepName.replace(/([A-Z])/g, " $1").trim()}
+                          </span>
+                          {assignedMachines.length > 0 && (
+                            <span className="text-xs text-[#00AEEF] font-semibold">
+                              {assignedMachines.length} machine
+                              {assignedMachines.length > 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </div>
+                        {assignedMachines.length > 0 ? (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {assignedMachines.map((machine) => (
+                              <span
+                                key={machine.id}
+                                className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full"
+                              >
+                                {machine.machineCode}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-500 mt-1 block">
+                            No machines assigned
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             <button
               type="submit"
@@ -250,12 +419,28 @@ const SingleJobPlanningModal: React.FC<SingleJobPlanningModalProps> = ({
               disabled={isSubmitting}
             >
               {isSubmitting && (
-                <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                <svg
+                  className="animate-spin h-5 w-5 mr-2 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8H4z"
+                  ></path>
                 </svg>
               )}
-              {isSubmitting ? 'Creating Job Plan...' : 'Create Job Plan'}
+              {isSubmitting ? "Creating Job Plan..." : "Create Job Plan"}
             </button>
           </form>
         </div>
@@ -264,7 +449,10 @@ const SingleJobPlanningModal: React.FC<SingleJobPlanningModalProps> = ({
         {showDemandModal && (
           <SelectDemandModal
             currentDemand={jobDemand}
-            onSelect={(demand) => { setJobDemand(demand); setShowDemandModal(false); }}
+            onSelect={(demand) => {
+              setJobDemand(demand);
+              setShowDemandModal(false);
+            }}
             onClose={() => setShowDemandModal(false)}
           />
         )}
@@ -272,11 +460,9 @@ const SingleJobPlanningModal: React.FC<SingleJobPlanningModalProps> = ({
           <AddStepsModal
             currentSteps={selectedSteps}
             selectedMachines={selectedMachines}
-            onSelect={(steps, machines) => { 
-              setSelectedSteps(steps); 
-              setSelectedMachines(machines);
-              setShowStepsModal(false); 
-            }}
+            stepMachines={stepMachines} // 🔥 NEW: Pass current step-machine mapping
+            allMachines={allMachines} // 🔥 NEW: Pass fetched machines
+            onSelect={handleStepsSelect}
             onClose={() => setShowStepsModal(false)}
           />
         )}

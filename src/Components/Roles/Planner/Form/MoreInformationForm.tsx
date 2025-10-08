@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { type Job, type JobStep, type Machine } from '../Types/job.ts';
-import SelectDemandModal from '../modal/SelectDemandModal.tsx';
-import AddStepsModal from '../modal/AddStepsModal.tsx';
+import React, { useState, useEffect } from "react";
+import { type Job, type JobStep, type Machine } from "../Types/job.ts";
+import SelectDemandModal from "../modal/SelectDemandModal.tsx";
+import AddStepsModal from "../modal/AddStepsModal.tsx";
 
 interface MoreInformationFormProps {
   job: Job;
@@ -10,24 +10,22 @@ interface MoreInformationFormProps {
   isReadOnly: boolean;
 }
 
-const STEP_TO_MACHINE_MAPPING: Record<string, string[]> = {
-  // Steps with machines
-  'SideFlapPasting': ['auto flap', 'manual fi'],
-  'Punching': ['auto pund', 'manual pu'],
-  'FluteLaminateBoardConversion': ['flute lam'],
-  'Corrugation': ['corrugatic'],
-  'PrintingDetails': ['printing'],
-  
-  // Steps without machines (no machine assignment needed)
-  'PaperStore': [],
-  'QualityDept': [],
-  'DispatchProcess': [],
-};
-
-const MoreInformationForm: React.FC<MoreInformationFormProps> = ({ job, onSave, onClose, isReadOnly }) => {
-  const [jobDemand, setJobDemand] = useState<Job['jobDemand']>(job.jobDemand || null);
-  const [selectedSteps, setSelectedSteps] = useState<JobStep[]>(job.jobSteps || []);
+const MoreInformationForm: React.FC<MoreInformationFormProps> = ({
+  job,
+  onSave,
+  onClose,
+  isReadOnly,
+}) => {
+  const [jobDemand, setJobDemand] = useState<Job["jobDemand"]>(
+    job.jobDemand || null
+  );
+  const [selectedSteps, setSelectedSteps] = useState<JobStep[]>(
+    job.jobSteps || []
+  );
   const [selectedMachines, setSelectedMachines] = useState<Machine[]>([]);
+  const [stepMachines, setStepMachines] = useState<Record<string, string[]>>(
+    {}
+  ); // 🔥 NEW: Track step-machine mapping
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,144 +37,183 @@ const MoreInformationForm: React.FC<MoreInformationFormProps> = ({ job, onSave, 
       // Attempt to find the full machine object if job.machineId is already set
       // In a real app, you might fetch this from a list of all machines
       // For now, we'll create a placeholder if the full object isn't available
-      setSelectedMachines(prev => prev.length > 0 ? prev : [{ // FIXED: Check if array is empty
-        id: job.machineId || '',
-        machineType: 'inside Machine' as const,
-        description: job.machineId || '',
-        unit: '',
-        machineCode: '',
-        type: '',
-        capacity: 0,
-        remarks: null,
-        status: '',
-        isActive: true,
-        createdAt: '',
-        updatedAt: '',
-        jobs: []
-      }]);
+      setSelectedMachines((prev) =>
+        prev.length > 0
+          ? prev
+          : [
+              {
+                // FIXED: Check if array is empty
+                id: job.machineId || "",
+                machineType: "inside Machine" as const,
+                description: job.machineId || "",
+                unit: "",
+                machineCode: "",
+                type: "",
+                capacity: 0,
+                remarks: null,
+                status: "",
+                isActive: true,
+                createdAt: "",
+                updatedAt: "",
+                jobs: [],
+              },
+            ]
+      );
     }
   }, [job.machineId]);
 
   // Get demand display label
-  const getDemandDisplayLabel = (demand: Job['jobDemand']) => {
+  const getDemandDisplayLabel = (demand: Job["jobDemand"]) => {
     switch (demand) {
-      case 'high': return 'Urgent';
-      case 'medium': return 'Regular';
-      default: return 'Choose Demand Level';
+      case "high":
+        return "Urgent";
+      case "medium":
+        return "Regular";
+      default:
+        return "Choose Demand Level";
     }
   };
 
   // Get demand styling
-  const getDemandStyling = (demand: Job['jobDemand']) => {
+  const getDemandStyling = (demand: Job["jobDemand"]) => {
     switch (demand) {
-      case 'high': return 'border-red-400 bg-red-50 text-red-700';
-      case 'medium': return 'border-[#00AEEF] bg-[#00AEEF]/10 text-[#00AEEF]';
-      default: return 'border-gray-300 bg-white text-gray-500';
+      case "high":
+        return "border-red-400 bg-red-50 text-red-700";
+      case "medium":
+        return "border-[#00AEEF] bg-[#00AEEF]/10 text-[#00AEEF]";
+      default:
+        return "border-gray-300 bg-white text-gray-500";
     }
   };
 
   console.log("job in more info", job);
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (isReadOnly) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isReadOnly) return;
 
-  setError(null);
-  setIsSubmitting(true);
+    setError(null);
+    setIsSubmitting(true);
 
-  // Basic validation
-  if (!jobDemand) {
-    setError('Please select a demand level.');
-    setIsSubmitting(false);
-    return;
-  }
-
-  if (!selectedSteps || selectedSteps.length === 0) {
-    setError('Please select at least one production step.');
-    setIsSubmitting(false);
-    return;
-  }
-
-  // Demand-specific validation
-  if (jobDemand === 'medium' && selectedSteps.length === 0) {
-    setError('Regular demand requires at least one production step to be selected.');
-    setIsSubmitting(false);
-    return;
-  }
-
-  if (jobDemand === 'medium' && (!selectedMachines || selectedMachines.length === 0)) {
-    setError('Regular demand requires machine assignment for all selected steps.');
-    setIsSubmitting(false);
-    return;
-  }
-
-  try {
-    // 🎯 FIX: Add the missing updatedJobFields
-    const updatedJobFields: Partial<Job> = {
-      jobDemand: jobDemand,
-      machineId: selectedMachines.length > 0 ? selectedMachines[0].id : null,
-    };
-
-    const poId = job.poId || job.purchaseOrderId || null;
-    
-    if (!poId) {
-      console.warn('⚠️ No PO ID found in job object!');
-    } else {
-      console.log('✅ Using PO ID for job planning:', poId);
+    // Basic validation
+    if (!jobDemand) {
+      setError("Please select a demand level.");
+      setIsSubmitting(false);
+      return;
     }
 
-    const jobPlanningPayload = {
-      nrcJobNo: job.nrcJobNo,
-      jobDemand: jobDemand,
-      poId: poId, 
-      steps: selectedSteps.map(step => {
-        // 🔥 NEW: Find ALL machines for this step, not just the first one
-        const machineTypesForStep = STEP_TO_MACHINE_MAPPING[step.stepName];
-        let assignedMachines: Machine[] = [];
-        
-        if (machineTypesForStep && machineTypesForStep.length > 0) {
-          // Find all machines that match the step requirements
-          assignedMachines = selectedMachines.filter(m => 
-            machineTypesForStep.some(type => 
-              m.machineType.toLowerCase().includes(type.toLowerCase())
+    if (!selectedSteps || selectedSteps.length === 0) {
+      setError("Please select at least one production step.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Demand-specific validation
+    if (jobDemand === "medium" && selectedSteps.length === 0) {
+      setError(
+        "Regular demand requires at least one production step to be selected."
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (
+      jobDemand === "medium" &&
+      (!selectedMachines || selectedMachines.length === 0)
+    ) {
+      setError(
+        "Regular demand requires machine assignment for all selected steps."
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      // 🎯 FIX: Add the missing updatedJobFields
+      const updatedJobFields: Partial<Job> = {
+        jobDemand: jobDemand,
+        machineId: selectedMachines.length > 0 ? selectedMachines[0].id : null,
+      };
+
+      const poId = job.poId || job.purchaseOrderId || null;
+
+      if (!poId) {
+        console.warn("⚠️ No PO ID found in job object!");
+      } else {
+        console.log("✅ Using PO ID for job planning:", poId);
+      }
+
+      const jobPlanningPayload = {
+        nrcJobNo: job.nrcJobNo,
+        jobDemand: jobDemand,
+        poId: poId,
+        steps: selectedSteps.map((step) => {
+          // 🔥 UPDATED: Use stepMachines mapping to get assigned machines
+          const machineIdsForStep = stepMachines[step.stepName] || [];
+          const assignedMachines = machineIdsForStep
+            .map((machineId) =>
+              selectedMachines.find((m) => m.id === machineId)
             )
-          );
-        }
+            .filter(Boolean) as Machine[];
 
-        // 🔥 NEW: Create machineDetails array for multiple machines
-        const machineDetails = assignedMachines.map(machine => ({
-          id: machine.id,
-          unit: machine.unit || 'Mk', // Use machine's unit or default
-          machineCode: machine.machineCode,
-          machineType: machine.machineType
-        }));
+          // 🔥 FIXED: Get unit from job, not from machine
+          const jobUnit = job.unit || "Mk"; // Fallback to "Mk" if job.unit is not available
 
-        return {
-          stepNo: step.stepNo,
-          stepName: step.stepName,
-          // Keep single machine detail for backward compatibility (use first machine)
-          machineDetail: assignedMachines.length > 0 
-            ? assignedMachines[0].machineType || assignedMachines[0].machineCode
-            : 'Not Assigned',
-          machineId: assignedMachines.length > 0 ? assignedMachines[0].id : null,
-          machineCode: assignedMachines.length > 0 ? assignedMachines[0].machineCode : null,
-          // 🔥 NEW: Add array of all machines for this step
-          machineDetails: machineDetails,
-          allMachineIds: assignedMachines.map(m => m.id) // Array of all machine IDs
-        };
-      }),
-    };
+          // 🔥 NEW: Create machineDetails array for multiple machines or default "Not Assigned"
+          const machineDetails =
+            assignedMachines.length > 0
+              ? assignedMachines.map((machine) => ({
+                  id: machine.id,
+                  unit: jobUnit, // 🔥 FIXED: Use job unit instead of machine unit
+                  machineCode: machine.machineCode,
+                  machineType: machine.machineType,
+                }))
+              : [
+                  {
+                    unit: jobUnit, // 🔥 FIXED: Use job unit instead of hardcoded "Mk"
+                    machineCode: null,
+                    machineType: "Not Assigned",
+                  },
+                ];
 
-    console.log('🔍 Updated Job Planning Payload with Multiple Machines:', JSON.stringify(jobPlanningPayload, null, 2));
+          return {
+            stepNo: step.stepNo,
+            stepName: step.stepName,
+            // Keep single machine detail for backward compatibility (use first machine)
+            machineDetail:
+              assignedMachines.length > 0
+                ? assignedMachines[0].machineType ||
+                  assignedMachines[0].machineCode
+                : "Not Assigned",
+            machineId:
+              assignedMachines.length > 0 ? assignedMachines[0].id : null,
+            machineCode:
+              assignedMachines.length > 0
+                ? assignedMachines[0].machineCode
+                : null,
+            // 🔥 NEW: Add array of all machines for this step
+            machineDetails: machineDetails,
+            allMachineIds: assignedMachines.map((m) => m.id), // Array of all machine IDs
+          };
+        }),
+      };
 
-    await onSave(updatedJobFields, jobPlanningPayload);
-  } catch (err) {
-    setError(`Failed to save More Information: ${err instanceof Error ? err.message : 'Unknown error'}`);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+      console.log(
+        "🔍 Updated Job Planning Payload with Multiple Machines:",
+        JSON.stringify(jobPlanningPayload, null, 2)
+      );
 
+      await onSave(updatedJobFields, jobPlanningPayload);
+    } catch (err) {
+      setError(
+        `Failed to save More Information: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   console.log("selected Machine", selectedMachines);
 
@@ -190,34 +227,49 @@ const handleSubmit = async (e: React.FormEvent) => {
         &times;
       </button>
       <div className="w-full px-8 pt-10 pb-8 flex flex-col items-center overflow-y-auto max-h-[85vh]">
-        <h2 className="text-2xl font-bold mb-2 text-center text-gray-900">More Information</h2>
-        <p className="text-gray-500 text-center mb-6">Provide additional details for Job: {job.nrcJobNo}</p>
+        <h2 className="text-2xl font-bold mb-2 text-center text-gray-900">
+          More Information
+        </h2>
+        <p className="text-gray-500 text-center mb-6">
+          Provide additional details for Job: {job.nrcJobNo}
+        </p>
 
         <form onSubmit={handleSubmit} className="w-full space-y-4">
-          {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm mb-4">{error}</div>}
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm mb-4">
+              {error}
+            </div>
+          )}
 
           {/* Select Demand */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select Demand</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Select Demand
+            </label>
             <div
               className={`w-full px-3 py-2 border-2 rounded-md flex justify-between items-center transition-all duration-200 ${
-                isReadOnly ? 'bg-gray-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'
+                isReadOnly
+                  ? "bg-gray-50 cursor-not-allowed"
+                  : "cursor-pointer hover:scale-105"
               } ${getDemandStyling(jobDemand)}`}
               onClick={() => !isReadOnly && setShowDemandModal(true)}
             >
-              <span className="font-medium">{getDemandDisplayLabel(jobDemand)}</span>
+              <span className="font-medium">
+                {getDemandDisplayLabel(jobDemand)}
+              </span>
               <span>&#9660;</span>
             </div>
-            
+
             {/* Demand-specific info */}
             {/* {jobDemand === 'high' && (
               <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
                 <strong>Urgent:</strong> Flexible machine assignment - not all machines required
               </div>
             )} */}
-            {jobDemand === 'medium' && (
+            {jobDemand === "medium" && (
               <div className="mt-2 p-2 bg-[#00AEEF]/20 border border-[#00AEEF]/30 rounded text-xs text-[#00AEEF]">
-                <strong>Regular:</strong> Machine assignment is mandatory for all selected steps
+                <strong>Regular:</strong> Machine assignment is mandatory for
+                all selected steps
               </div>
             )}
           </div>
@@ -225,28 +277,39 @@ const handleSubmit = async (e: React.FormEvent) => {
           {/* Add Steps */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Add Steps {jobDemand === 'medium' && <span className="text-red-500">*</span>}
+              Add Steps{" "}
+              {jobDemand === "medium" && (
+                <span className="text-red-500">*</span>
+              )}
             </label>
             <div
               className={`w-full px-3 py-2 border border-gray-300 rounded-md bg-white flex justify-between items-center ${
-                isReadOnly ? 'bg-gray-50 cursor-not-allowed' : 'cursor-pointer'
+                isReadOnly ? "bg-gray-50 cursor-not-allowed" : "cursor-pointer"
               }`}
               onClick={() => !isReadOnly && setShowStepsModal(true)}
             >
-              <span>{selectedSteps.length > 0 ? `${selectedSteps.length} step(s) selected` : 'Choose the steps of the job'}</span>
+              <span>
+                {selectedSteps.length > 0
+                  ? `${selectedSteps.length} step(s) selected`
+                  : "Choose the steps of the job"}
+              </span>
               <span>&#9660;</span>
             </div>
-            
+
             {/* Steps requirement info */}
-            {jobDemand === 'medium' && (
+            {jobDemand === "medium" && (
               <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
-                <strong>Required:</strong> All selected steps must have machine assignments for Regular demand
+                <strong>Required:</strong> All selected steps must have machine
+                assignments for Regular demand
               </div>
             )}
-            
+
             <div className="flex flex-wrap gap-2 mt-2">
-              {selectedSteps.map(step => (
-                <span key={step.stepName} className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+              {selectedSteps.map((step) => (
+                <span
+                  key={step.stepName}
+                  className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                >
                   {step.stepName}
                 </span>
               ))}
@@ -287,12 +350,28 @@ const handleSubmit = async (e: React.FormEvent) => {
             disabled={isSubmitting || isReadOnly}
           >
             {isSubmitting && (
-              <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              <svg
+                className="animate-spin h-5 w-5 mr-2 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v8H4z"
+                ></path>
               </svg>
             )}
-            {isSubmitting ? 'Submitting...' : 'Submit'}
+            {isSubmitting ? "Submitting..." : "Submit"}
           </button>
         </form>
       </div>
@@ -301,22 +380,27 @@ const handleSubmit = async (e: React.FormEvent) => {
       {showDemandModal && (
         <SelectDemandModal
           currentDemand={jobDemand}
-          onSelect={(demand) => { setJobDemand(demand); setShowDemandModal(false); }}
+          onSelect={(demand) => {
+            setJobDemand(demand);
+            setShowDemandModal(false);
+          }}
           onClose={() => setShowDemandModal(false)}
         />
       )}
       {showStepsModal && (
-  <AddStepsModal
-    currentSteps={selectedSteps}
-    selectedMachines={selectedMachines} // Pass current machines
-    onSelect={(steps, machines) => { 
-      setSelectedSteps(steps); 
-      setSelectedMachines(machines); // Update both
-      setShowStepsModal(false); 
-    }}
-    onClose={() => setShowStepsModal(false)}
-  />
-)}
+        <AddStepsModal
+          currentSteps={selectedSteps}
+          selectedMachines={selectedMachines} // Pass current machines
+          onSelect={(steps, machines, stepMachineMapping) => {
+            // 🔥 FIXED: Accept third parameter
+            setSelectedSteps(steps);
+            setSelectedMachines(machines);
+            setStepMachines(stepMachineMapping); // 🔥 NEW: Store step-machine mapping
+            setShowStepsModal(false);
+          }}
+          onClose={() => setShowStepsModal(false)}
+        />
+      )}
       {/* {showMachineModal && (
   <MachineAssignedModal
     currentMachine={selectedMachines} // ✅ pass array instead of single
@@ -327,7 +411,6 @@ const handleSubmit = async (e: React.FormEvent) => {
     onClose={() => setShowMachineModal(false)}
   />
 )} */}
-
     </div>
   );
 };

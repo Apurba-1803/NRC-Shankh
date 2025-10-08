@@ -292,86 +292,158 @@ const PODetailModal: React.FC<PODetailModalProps> = ({ po, onClose, completionSt
     onNavigateToForm?.(po, formType);
   };
 
-  const handleJobPlanningSubmit = async (jobPlanningData: any) => {
-    try {
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) throw new Error('Authentication token not found.');
+const handleJobPlanningSubmit = async (jobPlanningData: any) => {
+  try {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) throw new Error('Authentication token not found.');
 
-      const jobPlanPayload = {
-        nrcJobNo: po.jobNrcJobNo || po.job?.nrcJobNo,
-        jobDemand: jobPlanningData.jobDemand,
-        steps: jobPlanningData.steps.map((step: any, index: number) => ({
-          jobStepId: index + 1,
-          stepNo: index + 1,
-          stepName: step.stepName,
-          machineDetails: step.machineId ? [{
+    console.log('🔍 Received job planning data:', jobPlanningData);
+
+    // 🔥 UPDATED: Handle multiple machines per step
+    const jobPlanPayload = {
+      nrcJobNo: po.jobNrcJobNo || po.job?.nrcJobNo,
+      jobDemand: jobPlanningData.jobDemand,
+      purchaseOrderId: po.id, // Include PO ID if available
+      steps: jobPlanningData.steps.map((step: any, index: number) => {
+        console.log(`🔍 Processing step ${step.stepName}:`, step);
+
+        // 🔥 NEW: Handle multiple machines from the new modal structure
+        let machineDetails = [];
+
+        if (step.machineDetails && Array.isArray(step.machineDetails) && step.machineDetails.length > 0) {
+          // New format: already has machineDetails array
+          machineDetails = step.machineDetails;
+        } else if (step.machineId) {
+          // Old format: single machine (backward compatibility)
+          machineDetails = [{
             id: step.machineId,
             unit: po.unit || 'Unit 1',
             machineCode: step.machineCode,
             machineType: step.machineDetail || 'Production Step'
-          }] : [{
+          }];
+        } else {
+          // No machines assigned
+          machineDetails = [{
             unit: po.unit || 'Unit 1',
             machineId: null,
             machineCode: null,
             machineType: "Not Assigned"
-          }],
-          status: 'planned' as const,
-          startDate: null,
-          endDate: null,
-          user: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }))
-      };
+          }];
+        }
 
-      const response = await fetch('https://nrprod.nrcontainers.com/api/job-planning/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(jobPlanPayload),
-      });
+        console.log(`🔍 Final machineDetails for ${step.stepName}:`, machineDetails);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Failed to create job plan: ${errorData.message || response.statusText}`);
+        return {
+          jobStepId: step.jobStepId || index + 1,
+          stepNo: step.stepNo || index + 1,
+          stepName: step.stepName,
+          machineDetails: machineDetails, // 🔥 This will be stored as JSON in DB
+          status: step.status || 'planned' as const,
+          startDate: step.startDate || null,
+          endDate: step.endDate || null,
+          user: step.user || null,
+          createdAt: step.createdAt || new Date().toISOString(),
+          updatedAt: step.updatedAt || new Date().toISOString()
+        };
+      })
+    };
+
+    console.log('📤 Final job plan payload:', JSON.stringify(jobPlanPayload, null, 2));
+
+    const response = await fetch('https://nrprod.nrcontainers.com/api/job-planning/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(jobPlanPayload),
+    });
+
+    const responseText = await response.text();
+    console.log('🔍 API Response:', responseText);
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to create job plan';
+      try {
+        const errorData = JSON.parse(responseText);
+        errorMessage = errorData.error || errorData.message || errorMessage;
+        console.error('❌ API Error:', errorData);
+      } catch (e) {
+        errorMessage = responseText || errorMessage;
       }
+      throw new Error(errorMessage);
+    }
 
-      if (jobPlanningData.selectedMachines?.length > 0) {
-        const machineUpdatePromises = jobPlanningData.selectedMachines
-          .filter((machine: any) => machine.id)
-          .map(async (machine: any) => {
-            try {
-              await fetch(`https://nrprod.nrcontainers.com/api/machines/${machine.id}/status`, {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${accessToken}`,
-                },
-                body: JSON.stringify({ status: 'busy' }),
+    // 🔥 UPDATED: Handle machine status updates for multiple machines
+    const allMachines = [];
+    
+    // Collect all machines from the new structure
+    if (jobPlanningData.selectedMachines && Array.isArray(jobPlanningData.selectedMachines)) {
+      allMachines.push(...jobPlanningData.selectedMachines);
+    } else {
+      // Fallback: collect machines from steps
+      jobPlanningData.steps.forEach((step: any) => {
+        if (step.machineDetails && Array.isArray(step.machineDetails)) {
+          step.machineDetails.forEach((machine: any) => {
+            if (machine.id) {
+              allMachines.push({
+                id: machine.id,
+                machineCode: machine.machineCode,
+                machineType: machine.machineType
               });
-            } catch (error) {
-              console.warn(`Error updating machine ${machine.id} status:`, error);
             }
           });
-
-        await Promise.all(machineUpdatePromises);
-      }
-
-      setShowJobPlanningModal(false);
-      onClose();
-      alert('Job plan created successfully!');
-      
-      if (onRefresh) {
-        onRefresh();
-      }
-      
-    } catch (error) {
-      console.error('Job planning error:', error);
-      alert(`Failed to create job plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      });
     }
-  };
+
+    console.log('🏭 All machines to update status:', allMachines);
+
+    // Update machine statuses
+    if (allMachines.length > 0) {
+      const machineUpdatePromises = allMachines
+        .filter((machine: any) => machine.id)
+        .map(async (machine: any) => {
+          try {
+            console.log(`🔧 Updating machine ${machine.id} (${machine.machineCode}) status to busy`);
+            const machineResponse = await fetch(`https://nrprod.nrcontainers.com/api/machines/${machine.id}/status`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({ status: 'busy' }),
+            });
+
+            if (!machineResponse.ok) {
+              console.warn(`Failed to update machine ${machine.id} status`);
+            } else {
+              console.log(`✅ Successfully updated machine ${machine.id} status`);
+            }
+          } catch (error) {
+            console.warn(`Error updating machine ${machine.id} status:`, error);
+          }
+        });
+
+      await Promise.all(machineUpdatePromises);
+      console.log('✅ All machine status updates completed');
+    }
+
+    console.log('✅ Job plan created successfully');
+    setShowJobPlanningModal(false);
+    onClose();
+    alert('Job plan created successfully!');
+    
+    if (onRefresh) {
+      onRefresh();
+    }
+    
+  } catch (error) {
+    console.error('❌ Job planning error:', error);
+    alert(`Failed to create job plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
 
   return (
     <div className="fixed inset-0 bg-transparent backdrop-blur-md bg-opacity-50 flex items-center justify-center z-50 overflow-hidden">

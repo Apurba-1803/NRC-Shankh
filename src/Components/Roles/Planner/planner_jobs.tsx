@@ -1,7 +1,15 @@
 // src/Components/Roles/Planner/planner_jobs.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Upload, Filter, X, Settings } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Upload,
+  Filter,
+  X,
+  Settings,
+  Download,
+} from "lucide-react";
 import POdetailCard from "./jobCard/POdetailCard";
 import PODetailModal from "./jobCard/PODetailModal";
 import { supabase } from "../../../lib/supabaseClient";
@@ -49,6 +57,7 @@ interface PurchaseOrder {
   boxDimensions: string | null;
 
   processColors?: string;
+  noOfColor?: string | null;
 
   jobBoardSize: string | null;
 }
@@ -108,7 +117,7 @@ interface Job {
 }
 
 interface FilterState {
-  colors: string[];
+  noOfColors: string[];
   boardSizes: string[];
   deliveryDateFrom: string;
   deliveryDateTo: string;
@@ -119,10 +128,9 @@ const PlannerJobs: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message] = useState<string | null>(null);
 
   // State for PO data
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
@@ -138,14 +146,14 @@ const PlannerJobs: React.FC = () => {
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
-    colors: [],
+    noOfColors: [],
     boardSizes: [],
     deliveryDateFrom: "",
     deliveryDateTo: "",
   });
 
   // Available filter options (extracted from data)
-  const [availableColors, setAvailableColors] = useState<string[]>([]);
+  const [availableNoOfColors, setAvailableNoOfColors] = useState<string[]>([]);
   const [availableBoardSizes, setAvailableBoardSizes] = useState<string[]>([]);
   const [showBulkPlanningModal, setShowBulkPlanningModal] = useState(false);
 
@@ -176,19 +184,7 @@ const PlannerJobs: React.FC = () => {
       return "artwork_pending";
     }
 
-    if (
-      !po.poNumber ||
-      !po.unit ||
-      !po.plant ||
-      po.totalPOQuantity === null ||
-      po.dispatchQuantity === null ||
-      po.pendingQuantity === null ||
-      po.noOfSheets === null ||
-      !po.poDate ||
-      !po.deliveryDate ||
-      !po.dispatchDate ||
-      !po.nrcDeliveryDate
-    ) {
+    if (!po.poNumber || !po.poDate) {
       return "po_pending";
     }
 
@@ -215,18 +211,74 @@ const PlannerJobs: React.FC = () => {
     jobs: any[]
   ) => {
     return purchaseOrders.map((po) => {
-      // Find matching job planning by nrcJobNo
-      const matchingJobPlan = jobPlannings.find(
-        (jp) => jp.nrcJobNo === po.jobNrcJobNo || jp.nrcJobNo === po.nrcJobNo
-      );
+      // Debug logging for the specific PO
+      if (
+        po.jobNrcJobNo === "NON-1 KG X 10 PKT-5 PLAY" ||
+        po.poNumber === "test1234" ||
+        po.poNumber === "12345" ||
+        po.id === 3558
+      ) {
+        console.log("🔍 DEBUGGING PO:", {
+          poNumber: po.poNumber,
+          jobNrcJobNo: po.jobNrcJobNo,
+          nrcJobNo: po.nrcJobNo,
+          customer: po.customer,
+        });
+        console.log(
+          "🔍 Available job plannings:",
+          jobPlannings.map((jp) => ({
+            nrcJobNo: jp.nrcJobNo,
+            purchaseOrderId: jp.purchaseOrderId,
+          }))
+        );
+      }
+
+      // Find matching job planning by nrcJobNo (prioritize nrcJobNo matching)
+      const matchingJobPlan = jobPlannings.find((jp) => {
+        const matchesJobNrcJobNo = jp.nrcJobNo === po.jobNrcJobNo;
+        const matchesNrcJobNo = jp.nrcJobNo === po.nrcJobNo;
+        const matchesPurchaseOrderId = jp.purchaseOrderId === po.id;
+
+        if (
+          po.jobNrcJobNo === "NON-1 KG X 10 PKT-5 PLAY" ||
+          po.poNumber === "12345" ||
+          po.id === 3558
+        ) {
+          console.log("🔍 Job Planning Match Check:", {
+            jpNrcJobNo: jp.nrcJobNo,
+            poJobNrcJobNo: po.jobNrcJobNo,
+            poNrcJobNo: po.nrcJobNo,
+            jpPurchaseOrderId: jp.purchaseOrderId,
+            poId: po.id,
+            matchesJobNrcJobNo,
+            matchesNrcJobNo,
+            matchesPurchaseOrderId,
+            finalMatch: matchesJobNrcJobNo || matchesNrcJobNo,
+          });
+        }
+
+        // Prioritize nrcJobNo matching over purchaseOrderId matching
+        // This handles cases where purchaseOrderId is null but nrcJobNo matches
+        return matchesJobNrcJobNo || matchesNrcJobNo;
+      });
 
       // Find matching job details by nrcJobNo
       const matchingJob = jobs.find(
         (job) => job.nrcJobNo === po.jobNrcJobNo || job.nrcJobNo === po.nrcJobNo
       );
 
-      console.log("matching job plan", matchingJobPlan);
-      console.log("matching job", matchingJob);
+      if (
+        po.jobNrcJobNo === "NON-1 KG X 10 PKT-5 PLAY" ||
+        po.poNumber === "test1234" ||
+        po.poNumber === "12345" ||
+        po.id === 3558
+      ) {
+        console.log("🔍 Matching job plan:", matchingJobPlan);
+        console.log("🔍 Matching job plan steps:", matchingJobPlan?.steps);
+        console.log("🔍 Matching job:", matchingJob);
+        console.log("🔍 Has job plan:", !!matchingJobPlan);
+        console.log("🔍 Job plan jobDemand:", matchingJobPlan?.jobDemand);
+      }
 
       // Merge all the data
       return {
@@ -271,15 +323,22 @@ const PlannerJobs: React.FC = () => {
         return; // Skip this PO if it doesn't need job planning
       }
 
-      // Extract colors from merged job data
-      if (po.processColors) colors.add(po.processColors);
+      // Extract number of colors from merged job data
+      // If no job data exists for the PO, still include "0" as a selectable option
+      if (po.noOfColor !== undefined && po.noOfColor !== null) {
+        colors.add(String(po.noOfColor));
+      } else {
+        colors.add("0");
+      }
 
       // Extract board sizes/dimensions
       if (po.jobBoardSize) boardSizes.add(po.jobBoardSize);
     });
 
-    setAvailableColors(
-      Array.from(colors).filter((color) => color && color.trim())
+    setAvailableNoOfColors(
+      Array.from(colors).filter(
+        (color) => color !== undefined && color !== null
+      )
     );
     setAvailableBoardSizes(
       Array.from(boardSizes).filter((size) => size && size.trim())
@@ -292,7 +351,7 @@ const PlannerJobs: React.FC = () => {
     return pos.filter((po) => {
       // Check if any filters are active
       const hasActiveFilters =
-        filters.colors.length > 0 ||
+        filters.noOfColors.length > 0 ||
         filters.boardSizes.length > 0 ||
         filters.deliveryDateFrom ||
         filters.deliveryDateTo;
@@ -305,17 +364,14 @@ const PlannerJobs: React.FC = () => {
         }
       }
 
-      // Color filter
-      if (filters.colors.length > 0) {
-        const poColors = [po.processColors].filter(
-          (color) => color && color.trim()
-        );
+      // Number of colors filter
+      if (filters.noOfColors.length > 0) {
+        const poNoOfColor =
+          po.noOfColor !== undefined && po.noOfColor !== null
+            ? String(po.noOfColor)
+            : "0";
 
-        const hasMatchingColor = filters.colors.some((filterColor) =>
-          poColors.some((poColor) =>
-            poColor?.toLowerCase().includes(filterColor.toLowerCase())
-          )
-        );
+        const hasMatchingColor = filters.noOfColors.includes(poNoOfColor);
 
         if (!hasMatchingColor) return false;
       }
@@ -364,12 +420,12 @@ const PlannerJobs: React.FC = () => {
   };
 
   // Handle color filter toggle
-  const toggleColorFilter = (color: string) => {
+  const toggleNoOfColorFilter = (color: string) => {
     setFilters((prev) => ({
       ...prev,
-      colors: prev.colors.includes(color)
-        ? prev.colors.filter((c) => c !== color)
-        : [...prev.colors, color],
+      noOfColors: prev.noOfColors.includes(color)
+        ? prev.noOfColors.filter((c) => c !== color)
+        : [...prev.noOfColors, color],
     }));
   };
 
@@ -386,7 +442,7 @@ const PlannerJobs: React.FC = () => {
   // Clear all filters
   const clearAllFilters = () => {
     setFilters({
-      colors: [],
+      noOfColors: [],
       boardSizes: [],
       deliveryDateFrom: "",
       deliveryDateTo: "",
@@ -395,7 +451,7 @@ const PlannerJobs: React.FC = () => {
 
   // Count active filters
   const activeFilterCount =
-    filters.colors.length +
+    filters.noOfColors.length +
     filters.boardSizes.length +
     (filters.deliveryDateFrom ? 1 : 0) +
     (filters.deliveryDateTo ? 1 : 0);
@@ -416,148 +472,87 @@ const PlannerJobs: React.FC = () => {
     setFilteredPOs(filtered);
   }, [filters, purchaseOrders, searchedJob]);
 
-  const handleBulkJobPlanning = async (bulkJobPlanningData: any) => {
+  const handleBulkJobPlanning = async (jobPlanningData: any) => {
     try {
       const accessToken = localStorage.getItem("accessToken");
       if (!accessToken) throw new Error("Authentication token not found.");
 
-      // Create job plans for all filtered POs
-      const jobPlanPromises = bulkJobPlanningData.nrcJobNos.map(
-        async (nrcJobNo: string, poIndex: number) => {
-          // Find the corresponding PO to get the unit
-          const correspondingPO = filteredPOs.find(
-            (po) => po.jobNrcJobNo === nrcJobNo
-          );
-          const poUnit = correspondingPO?.unit || "Unit 1"; // Fallback to 'Unit 1' if not found
+      // 🔥 FIXED: Now receives individual job planning data (same as single job planning)
+      // Just forward it to the API
+      console.log(
+        `Creating job plan for ${jobPlanningData.nrcJobNo}`,
+        jobPlanningData
+      );
 
-          const jobPlanPayload = {
-            nrcJobNo: nrcJobNo,
-            jobDemand: bulkJobPlanningData.jobDemand,
-            // FIXED: Sort steps by predefined order and ensure consecutive step numbers
-            steps: bulkJobPlanningData.steps
-              .sort((a: any, b: any) => a.stepNo - b.stepNo) // Sort by stepNo first
-              .map((step: any, index: number) => {
-                // FIXED: Always provide machineDetails array, even for steps without machines
-                const machineDetails = [];
-
-                if (step.machineId && step.machineCode) {
-                  // Step has machine assignment
-                  machineDetails.push({
-                    id: step.machineId,
-                    unit: poUnit, // FIXED: Use PO's unit instead of hardcoded 'Unit 1'
-                    machineCode: step.machineCode,
-                    machineType: step.machineDetail || "Production Step",
-                  });
-                } else {
-                  // FIXED: Step has no machine (like PaperStore, QualityDept, DispatchProcess)
-                  machineDetails.push({
-                    unit: poUnit, // FIXED: Use PO's unit
-                    machineId: null,
-                    machineCode: null,
-                    machineType: "Not Assigned",
-                  });
-                }
-
-                return {
-                  jobStepId: index + 1, // FIXED: Use consecutive index for jobStepId
-                  stepNo: index + 1, // FIXED: Use consecutive index for stepNo
-                  stepName: step.stepName,
-                  machineDetails: machineDetails, // Always an array with at least one entry
-                  status: "planned" as const,
-                  startDate: null,
-                  endDate: null,
-                  user: null,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                };
-              }),
-          };
-
-          console.log(
-            `Creating job plan for ${nrcJobNo} with unit: ${poUnit}`,
-            jobPlanPayload
-          );
-
-          const response = await fetch(
-            "https://nrprod.nrcontainers.com/api/job-planning/",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
-              },
-              body: JSON.stringify(jobPlanPayload),
-            }
-          );
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(
-              `Failed to create job plan for ${nrcJobNo}: ${
-                errorData.message || response.statusText
-              }`
-            );
-          }
-
-          return response.json();
+      const response = await fetch(
+        "https://nrprod.nrcontainers.com/api/job-planning/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(jobPlanningData),
         }
       );
 
-      // Wait for all job plans to be created
-      const results = await Promise.all(jobPlanPromises);
-      console.log("All job plans created successfully:", results);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          `Failed to create job plan for ${jobPlanningData.nrcJobNo}: ${
+            errorData.message || response.statusText
+          }`
+        );
+      }
 
-      // Update machine statuses to busy (only for machines that were actually assigned)
-      if (
-        bulkJobPlanningData.selectedMachines &&
-        bulkJobPlanningData.selectedMachines.length > 0
-      ) {
-        const machineUpdatePromises = bulkJobPlanningData.selectedMachines
-          .filter((machine: any) => machine.id) // Only update machines with actual IDs
-          .map(async (machine: any) => {
-            try {
-              const response = await fetch(
-                `https://nrprod.nrcontainers.com/api/machines/${machine.id}/status`,
-                {
-                  method: "PUT",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`,
-                  },
-                  body: JSON.stringify({ status: "busy" }),
-                }
-              );
+      const result = await response.json();
+      console.log("Job plan created successfully:", result);
 
-              if (!response.ok) {
-                console.warn(`Failed to update machine ${machine.id} status`);
-              } else {
-                console.log(`✅ Machine ${machine.id} status updated to busy`);
-              }
-            } catch (error) {
-              console.warn(
-                `Error updating machine ${machine.id} status:`,
-                error
-              );
+      // 🔥 FIXED: Update machine statuses to busy (extract from machineDetails)
+      const allMachines: any[] = [];
+      jobPlanningData.steps?.forEach((step: any) => {
+        if (step.machineDetails && Array.isArray(step.machineDetails)) {
+          step.machineDetails.forEach((md: any) => {
+            if (md.id) {
+              allMachines.push(md);
             }
           });
+        }
+      });
+
+      // Update machine statuses
+      if (allMachines.length > 0) {
+        const machineUpdatePromises = allMachines.map(async (machine: any) => {
+          try {
+            const response = await fetch(
+              `https://nrprod.nrcontainers.com/api/machines/${machine.id}/status`,
+              {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({ status: "busy" }),
+              }
+            );
+
+            if (!response.ok) {
+              console.warn(`Failed to update machine ${machine.id} status`);
+            } else {
+              console.log(`✅ Machine ${machine.id} status updated to busy`);
+            }
+          } catch (error) {
+            console.warn(`Error updating machine ${machine.id} status:`, error);
+          }
+        });
 
         await Promise.all(machineUpdatePromises);
       }
 
-      setShowBulkPlanningModal(false);
-      alert(
-        `Successfully created job plans for ${bulkJobPlanningData.nrcJobNos.length} POs!`
-      );
-
-      // Refresh the data
-      fetchPurchaseOrders();
+      // Note: Modal close and refresh are handled by BulkJobPlanningModal after all POs are processed
     } catch (err) {
-      console.error("Bulk job planning error:", err);
-      alert(
-        `Failed to create bulk job plans: ${
-          err instanceof Error ? err.message : "Unknown error"
-        }`
-      );
+      console.error("Job planning error:", err);
+      throw err; // Re-throw to let BulkJobPlanningModal handle the error
     }
   };
 
@@ -641,6 +636,8 @@ const PlannerJobs: React.FC = () => {
         extractFilterOptions(mergedData);
 
         console.log("✅ Merged PO, Job Planning, and Job data:", mergedData);
+        console.log("🔍 Raw Job Planning Data:", jobPlanData.data);
+        console.log("🔍 Raw Jobs Data:", jobsData.data);
       } else {
         setError("Unexpected API response format or data is not an array.");
       }
@@ -710,12 +707,117 @@ const PlannerJobs: React.FC = () => {
   // Handle PO card click
   const handlePOClick = (po: PurchaseOrder) => {
     setSelectedPO(po);
-    setIsModalOpen(true);
+    // Modal will be opened by setting selectedPO
   };
 
   // Handle Add PO button click
   const handleAddPO = () => {
     navigate("/dashboard/planner/initiate-job/new");
+  };
+
+  // Handle bulk download of PO data
+  const handleBulkDownload = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch all PO data from the database
+      const { data: poData, error } = await supabase
+        .from("PurchaseOrder")
+        .select("*")
+        .order("id", { ascending: true });
+
+      if (error) {
+        throw new Error(`Failed to fetch PO data: ${error.message}`);
+      }
+
+      if (!poData || poData.length === 0) {
+        alert("No PO data found to download.");
+        return;
+      }
+
+      // Prepare data for Excel export in the specified order
+      const excelData = poData.map((po) => ({
+        "Sr #": po.srNo || "",
+        Style: po.style || "",
+        Unit: po.unit || "",
+        "Flute Type": po.fluteType || "",
+        "Shade Card Approval Date": po.shadeCardApprovalDate
+          ? new Date(po.shadeCardApprovalDate).toLocaleDateString("en-GB")
+          : "",
+        "Pending Validity": po.pendingValidity || 0,
+        "PO.NUMBER": po.poNumber || "",
+        Plant: po.plant || "",
+        "PO Date": po.poDate
+          ? new Date(po.poDate).toLocaleDateString("en-GB")
+          : "",
+        "Jockey Month": po.jockeyMonth || "",
+        "Delivery Date": po.deliveryDate
+          ? new Date(po.deliveryDate).toLocaleDateString("en-GB")
+          : "",
+        "Total PO Quantity": po.totalPOQuantity || 0,
+        "Dispatch Quantity": po.dispatchQuantity || 0,
+        "Dispatch Date": po.dispatchDate
+          ? new Date(po.dispatchDate).toLocaleDateString("en-GB")
+          : "",
+        "Pending Quantity": po.pendingQuantity || 0,
+        Customer: po.customer || "",
+        "NO.of ups": po.noOfUps || 0,
+        "No. Of Sheets": po.noOfSheets || 0,
+        "Board Size": po.boardSize || "",
+        "Die Code": po.dieCode || "",
+      }));
+
+      // Create workbook and worksheet
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths for better visibility
+      const columnWidths = [
+        { wch: 8 }, // Sr #
+        { wch: 20 }, // Style
+        { wch: 8 }, // Unit
+        { wch: 15 }, // Flute Type
+        { wch: 20 }, // Shade Card Approval Date
+        { wch: 15 }, // Pending Validity
+        { wch: 12 }, // PO.NUMBER
+        { wch: 12 }, // Plant
+        { wch: 12 }, // PO Date
+        { wch: 12 }, // Jockey Month
+        { wch: 12 }, // Delivery Date
+        { wch: 15 }, // Total PO Quantity
+        { wch: 15 }, // Dispatch Quantity
+        { wch: 12 }, // Dispatch Date
+        { wch: 15 }, // Pending Quantity
+        { wch: 25 }, // Customer
+        { wch: 10 }, // NO.of ups
+        { wch: 12 }, // No. Of Sheets
+        { wch: 15 }, // Board Size
+        { wch: 10 }, // Die Code
+      ];
+
+      worksheet["!cols"] = columnWidths;
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Purchase Orders");
+
+      // Generate filename with current date
+      const currentDate = new Date().toISOString().split("T")[0];
+      const filename = `Purchase_Orders_${currentDate}.xlsx`;
+
+      // Download the file
+      XLSX.writeFile(workbook, filename);
+
+      alert(`Successfully downloaded ${poData.length} PO records!`);
+    } catch (err) {
+      console.error("Download failed:", err);
+      alert(
+        `Download failed: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -791,59 +893,88 @@ const PlannerJobs: React.FC = () => {
 
         let nextId = maxIdData?.[0]?.id ? maxIdData[0].id + 1 : 1;
 
+        // Fetch all jobs to match styleItemSKU with style
+        const { data: jobsData, error: jobsError } = await supabase
+          .from("Job")
+          .select("nrcJobNo, styleItemSKU");
+
+        if (jobsError) {
+          console.error("Error fetching jobs:", jobsError);
+          alert("Failed to fetch job data for matching.");
+          return;
+        }
+
+        // Create a map for quick lookup: styleItemSKU -> nrcJobNo
+        const jobMap = new Map();
+        if (jobsData) {
+          jobsData.forEach((job: any) => {
+            if (job.styleItemSKU && job.nrcJobNo) {
+              jobMap.set(job.styleItemSKU, job.nrcJobNo);
+            }
+          });
+        }
+
+        console.log("Job mapping created:", jobMap);
+
         const formattedData = parsedData
           .map((row: any, idx: number) => {
-            if (!row.customer) return null;
+            if (!row["Customer"]) return null;
+
+            // Find matching job by Style (which maps to styleItemSKU in Job table)
+            const styleValue = row["Style"];
+            const matchedJobNo = styleValue ? jobMap.get(styleValue) : null;
+
+            console.log(
+              `Row ${idx}: style="${styleValue}" -> jobNo="${matchedJobNo}"`
+            );
 
             return {
               id: nextId + idx,
-              boardSize: row.boardSize || null,
-              customer: row.customer || null,
-              deliveryDate: row.deliveryDate
-                ? parseDate(row.deliveryDate)
+              // Map Excel columns to database fields according to the specified order
+              srNo: row["Sr #"] ? parseInt(row["Sr #"]) : null,
+              style: row["Style"] || null,
+              unit: row["Unit"] || null,
+              fluteType: row["Flute Type"] || null,
+              shadeCardApprovalDate: row["Shade Card Approval Date"]
+                ? parseDate(row["Shade Card Approval Date"])
                 : null,
-              dieCode: row.dieCode || null,
-              dispatchDate: row.dispatchDate
-                ? parseDate(row.dispatchDate)
+              pendingValidity: row["Pending Validity"]
+                ? parseInt(row["Pending Validity"])
                 : null,
-              dispatchQuantity: row.dispatchQuantity
-                ? parseInt(row.dispatchQuantity)
+              poNumber: row["PO.NUMBER"] || null,
+              plant: row["Plant"] || null,
+              poDate: row["PO Date"] ? parseDate(row["PO Date"]) : null,
+              jockeyMonth: row["Jockey Month"] || null,
+              deliveryDate: row["Delivery Date"]
+                ? parseDate(row["Delivery Date"])
                 : null,
-              fluteType: row.fluteType || null,
-              jockeyMonth: row.jockeyMonth || null,
-              noOfUps: row.noOfUps ? parseInt(row.noOfUps) : null,
-              nrcDeliveryDate: row.nrcDeliveryDate
-                ? parseDate(row.nrcDeliveryDate)
+              totalPOQuantity: row["Total PO Quantity"]
+                ? parseInt(row["Total PO Quantity"])
                 : null,
-              noOfSheets: row.noOfSheets ? parseInt(row.noOfSheets) : null,
-              poDate: row.poDate ? parseDate(row.poDate) : null,
-              poNumber: row.poNumber || null,
-              pendingQuantity: row.pendingQuantity
-                ? parseInt(row.pendingQuantity)
+              dispatchQuantity: row["Dispatch Quantity"]
+                ? parseInt(row["Dispatch Quantity"])
                 : null,
-              pendingValidity: row.pendingValidity || null,
-              plant: row.plant || null,
-              shadeCardApprovalDate: row.shadeCardApprovalDate
-                ? parseDate(row.shadeCardApprovalDate)
+              dispatchDate: row["Dispatch Date"]
+                ? parseDate(row["Dispatch Date"])
                 : null,
-              sharedCardDiffDate: row.sharedCardDiffDate
-                ? parseInt(row.sharedCardDiffDate)
+              pendingQuantity: row["Pending Quantity"]
+                ? parseInt(row["Pending Quantity"])
                 : null,
-              srNo: row.srNo || null,
-              style: row.style || null,
-              totalPOQuantity: row.totalPOQuantity
-                ? parseInt(row.totalPOQuantity)
+              customer: row["Customer"] || null,
+              noOfUps: row["NO.of ups"] ? parseInt(row["NO.of ups"]) : null,
+              noOfSheets: row["No. Of Sheets"]
+                ? parseInt(row["No. Of Sheets"])
                 : null,
-              unit: row.unit || null,
-              status: row.status || null,
-              createdAt: row.createdAt
-                ? parseDate(row.createdAt)
-                : new Date().toISOString(),
-              updatedAt: row.updatedAt
-                ? parseDate(row.updatedAt)
-                : new Date().toISOString(),
-              jobNrcJobNo: row.jobNrcJobNo || null,
-              userId: row.userId || null,
+              boardSize: row["Board Size"] || null,
+              dieCode: row["Die Code"] ? parseInt(row["Die Code"]) : null,
+              // Additional fields with defaults
+              nrcDeliveryDate: null,
+              sharedCardDiffDate: null,
+              status: "created",
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              jobNrcJobNo: matchedJobNo || null,
+              userId: null,
             };
           })
           .filter((row) => row !== null);
@@ -913,6 +1044,15 @@ const PlannerJobs: React.FC = () => {
           >
             <Upload size={18} className="sm:w-5 sm:h-5" />
             <span>Bulk PO Upload</span>
+          </button>
+
+          <button
+            onClick={handleBulkDownload}
+            disabled={loading}
+            className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-medium transition-colors flex items-center space-x-2 text-sm sm:text-base w-full sm:w-auto justify-center"
+          >
+            <Download size={18} className="sm:w-5 sm:h-5" />
+            <span>{loading ? "Downloading..." : "Download PO Data"}</span>
           </button>
         </div>
       </div>
@@ -1035,18 +1175,18 @@ const PlannerJobs: React.FC = () => {
               {/* Color Filter */}
               <div>
                 <h4 className="text-sm font-medium text-gray-700 mb-3">
-                  Colors
+                  Number of Colors
                 </h4>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {availableColors.map((color) => (
+                  {availableNoOfColors.map((color) => (
                     <label
                       key={color}
                       className="flex items-center space-x-2 cursor-pointer"
                     >
                       <input
                         type="checkbox"
-                        checked={filters.colors.includes(color)}
-                        onChange={() => toggleColorFilter(color)}
+                        checked={filters.noOfColors.includes(color)}
+                        onChange={() => toggleNoOfColorFilter(color)}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
                       <span className="text-sm text-gray-600 truncate">
@@ -1054,7 +1194,7 @@ const PlannerJobs: React.FC = () => {
                       </span>
                     </label>
                   ))}
-                  {availableColors.length === 0 && (
+                  {availableNoOfColors.length === 0 && (
                     <p className="text-sm text-gray-400">No colors available</p>
                   )}
                 </div>
@@ -1133,14 +1273,14 @@ const PlannerJobs: React.FC = () => {
                   Active Filters:
                 </h4>
                 <div className="flex flex-wrap gap-2">
-                  {filters.colors.map((color) => (
+                  {filters.noOfColors.map((color) => (
                     <span
                       key={`color-${color}`}
                       className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
                     >
-                      Color: {color}
+                      No. of Colors: {color}
                       <button
-                        onClick={() => toggleColorFilter(color)}
+                        onClick={() => toggleNoOfColorFilter(color)}
                         className="ml-1 hover:text-blue-600"
                       >
                         <X size={12} />
@@ -1228,6 +1368,7 @@ const PlannerJobs: React.FC = () => {
           filteredPOs={filteredPOs}
           onSave={handleBulkJobPlanning}
           onClose={() => setShowBulkPlanningModal(false)}
+          onRefresh={fetchPurchaseOrders}
         />
       )}
 
@@ -1500,10 +1641,9 @@ const PlannerJobs: React.FC = () => {
           po={selectedPO}
           completionStatus={checkPOCompletionStatus(selectedPO)}
           onClose={() => {
-            setIsModalOpen(false);
             setSelectedPO(null);
           }}
-          onNavigateToForm={(po, formType) =>
+          onNavigateToForm={(_po, formType) =>
             handleNavigateToJobForm(selectedPO, formType)
           }
           onRefresh={fetchPurchaseOrders}
