@@ -1,7 +1,13 @@
-import React from 'react';
-import { X, CheckCircle, Clock, Calendar, TrendingUp, Download } from 'lucide-react';
-import jsPDF from 'jspdf';
-
+import React from "react";
+import {
+  X,
+  CheckCircle,
+  Clock,
+  Calendar,
+  TrendingUp,
+  Download,
+} from "lucide-react";
+import jsPDF from "jspdf";
 
 interface Job {
   id: number;
@@ -27,7 +33,7 @@ interface Job {
     qualityDept?: any[];
     dispatchProcess?: any[];
   };
-  
+
   steps?: any[];
 }
 
@@ -37,486 +43,653 @@ interface DetailedJobModalProps {
   job: Job | null;
 }
 
-const DetailedJobModal: React.FC<DetailedJobModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  job 
+const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
+  isOpen,
+  onClose,
+  job,
 }) => {
   const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
 
   if (!isOpen || !job) return null;
 
-const generatePDF = async () => {
-  if (!job) return;
-  
-  setIsGeneratingPDF(true);
-  
-  try {
-    // Create PDF instance
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    let yPosition = 30;
-    
-    // Colors
-    const colors = {
-      primary: [41, 128, 185], // Blue
-      secondary: [52, 73, 94], // Dark Blue
-      accent: [231, 76, 60], // Red
-      success: [39, 174, 96], // Green
-      warning: [241, 196, 15], // Yellow
-      light: [236, 240, 241], // Light Gray
-      white: [255, 255, 255],
-      text: [44, 62, 80], // Dark Gray
-      darkGreen: [22, 160, 133], // Better green for STOP status
-    };
+  const generatePDF = async () => {
+    if (!job) return;
 
-    // Helper function to draw a colored rectangle
-    const drawRect = (x: number, y: number, width: number, height: number, color: number[]) => {
-      pdf.setFillColor(color[0], color[1], color[2]);
-      pdf.rect(x, y, width, height, 'F');
-    };
+    setIsGeneratingPDF(true);
 
-    // Helper function to draw a border
-    const drawBorder = (x: number, y: number, width: number, height: number, color: number[] = colors.light) => {
-      pdf.setDrawColor(color[0], color[1], color[2]);
-      pdf.setLineWidth(0.5);
-      pdf.rect(x, y, width, height);
-    };
+    try {
+      // Create PDF instance
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      let yPosition = 20;
 
-    // Header Section with gradient-like effect
-    drawRect(0, 0, pageWidth, 50, colors.primary);
-    
-    // Company Logo/Icon area
-    // drawRect(15, 10, 8, 8, colors.white);
-    // pdf.setFontSize(6);
-    // pdf.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-    // pdf.text('NRC', 19, 15.5, { align: 'center' });
-    
-    // Company Name
-    pdf.setFontSize(24);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(255, 255, 255);
-    pdf.text('NR Containers', pageWidth / 2, 25, { align: 'center' });
-    
-    // Subtitle
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text('Job Details Report', pageWidth / 2, 35, { align: 'center' });
-    
-    yPosition = 65;
-    
-    // Job Header Card
-    drawRect(15, yPosition - 5, pageWidth - 30, 25, colors.secondary);
-    pdf.setFontSize(18);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(255, 255, 255);
-    pdf.text(`${job.nrcJobNo}`, 20, yPosition + 5);
-    
-    pdf.setFontSize(11);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(`Customer: ${job.company || job.customerName || 'N/A'}`, 20, yPosition + 12);
-    pdf.text(`Generated: ${new Date().toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    })}`, pageWidth - 20, yPosition + 12, { align: 'right' });
-    
-    yPosition += 35;
-    
-    // Reset text color for content
-    pdf.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
-    
-    // Enhanced section function
-    const addSection = (title: string, data: { [key: string]: any }, sectionColor: number[] = colors.primary) => {
-      // Check if we need a new page
-      if (yPosition > pageHeight - 60) {
-        pdf.addPage();
-        addPageHeader();
-        yPosition = 30;
-      }
-      
-      // Section Header
-      drawRect(15, yPosition - 2, pageWidth - 30, 12, sectionColor);
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(255, 255, 255);
-      pdf.text(title, 20, yPosition + 6);
-      yPosition += 15;
-      
-      // Section Content Background
-      const contentHeight = Object.keys(data).filter(key => 
-        data[key] !== null && data[key] !== undefined && data[key] !== 'N/A' && data[key] !== ''
-      ).length * 7 + 8;
-      
-      drawRect(15, yPosition - 2, pageWidth - 30, contentHeight, colors.white);
-      drawBorder(15, yPosition - 2, pageWidth - 30, contentHeight);
-      
+      // Colors - Job Card Style
+      const colors = {
+        primary: [0, 102, 204], // Blue for headers
+        white: [255, 255, 255],
+        black: [0, 0, 0],
+        lightGray: [240, 240, 240],
+        darkGray: [64, 64, 64],
+      };
+
+      // Helper function to draw a colored rectangle
+      const drawRect = (
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+        color: number[]
+      ) => {
+        pdf.setFillColor(color[0], color[1], color[2]);
+        pdf.rect(x, y, width, height, "F");
+      };
+
+      // Helper function to draw a border
+      const drawBorder = (
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+        lineWidth: number = 0.5
+      ) => {
+        pdf.setDrawColor(colors.black[0], colors.black[1], colors.black[2]);
+        pdf.setLineWidth(lineWidth);
+        pdf.rect(x, y, width, height);
+      };
+
+      // Draw thick blue borders on left and right
+      drawRect(0, 0, 3, pageHeight, colors.primary);
+      drawRect(pageWidth - 3, 0, 3, pageHeight, colors.primary);
+
+      // Draw thin blue borders on top and bottom
+      drawRect(0, 0, pageWidth, 2, colors.primary);
+      drawRect(0, pageHeight - 2, pageWidth, 2, colors.primary);
+
+      // Header Section - Company Logo and Name
+      drawRect(15, yPosition, 25, 15, colors.primary);
+      drawBorder(15, yPosition, 25, 15, 1);
+
+      // NRC Logo area
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
+      pdf.text("NRC", 27.5, yPosition + 8, { align: "center" });
+
+      // Company Name
       pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
-      
-      let itemY = yPosition + 3;
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== null && value !== undefined && value !== 'N/A' && value !== '') {
-          const displayValue = typeof value === 'object' ? 
-            (value instanceof Date ? value.toLocaleDateString() : JSON.stringify(value)) : 
-            String(value);
-          
-          // Key in bold
-          pdf.setFont('helvetica', 'bold');
-          pdf.text(`${key}:`, 20, itemY);
-          
-          // Value in normal
-          pdf.setFont('helvetica', 'normal');
-          pdf.text(displayValue, 80, itemY);
-          
-          itemY += 7;
-        }
-      });
-      
-      yPosition = itemY + 8;
-    };
-    
-    // Function to add page header for continuation pages
-    const addPageHeader = () => {
-      drawRect(0, 0, pageWidth, 20, colors.light);
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
-      pdf.text(`${job.nrcJobNo} - Continued`, pageWidth / 2, 12, { align: 'center' });
-    };
-    
-    // Job Details Section - REMOVED SPECIAL CHARACTERS
-    if (job.jobDetails) {
-      addSection('Job Specifications', {
-        'Style ID': job.jobDetails.styleId,
-        'Box Dimensions': job.jobDetails.boxDimensions,
-        'Board Size': job.jobDetails.boardSize,
-        'Process Colors': job.jobDetails.processColors,
-        'Number of Ups': job.jobDetails.noUps,
-        'Width (mm)': job.jobDetails.width,
-        'Height (mm)': job.jobDetails.height,
-        'Length (mm)': job.jobDetails.length,
-        'Rate': job.jobDetails.preRate ? `Rs. ${job.jobDetails.preRate}` : null,
-      }, colors.success);
-    }
-    
-    // Purchase Order Details Section - REMOVED SPECIAL CHARACTERS
-    if (job.purchaseOrderDetails) {
-      addSection('Purchase Order Information', {
-        'PO Number': job.purchaseOrderDetails.poNumber,
-        'Customer Name': job.purchaseOrderDetails.customer,
-        'Production Unit': job.purchaseOrderDetails.unit,
-        'Total Quantity': job.purchaseOrderDetails.totalPOQuantity?.toLocaleString(),
-        'Number of Sheets': job.purchaseOrderDetails.noOfSheets?.toLocaleString(),
-        'Order Date': job.purchaseOrderDetails.poDate ? new Date(job.purchaseOrderDetails.poDate).toLocaleDateString('en-US', { 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
-        }) : null,
-        'Delivery Date': job.purchaseOrderDetails.deliveryDate ? new Date(job.purchaseOrderDetails.deliveryDate).toLocaleDateString('en-US', { 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
-        }) : null,
-        'Current Status': job.purchaseOrderDetails.status?.toUpperCase(),
-      }, colors.warning);
-    }
-    
-    // Timeline & Status Section - REMOVED SPECIAL CHARACTERS
-    addSection('Timeline & Status', {
-      'Created On': job.createdAt ? new Date(job.createdAt).toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }) : null,
-      'Completed On': job.completedAt ? new Date(job.completedAt).toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }) : 'In Progress',
-      'Completed By': job.completedBy || 'Pending',
-      'Total Duration': job.totalDuration ? `${job.totalDuration} days` : 'Ongoing',
-      'Current Status': job.status?.toUpperCase() || 'ACTIVE',
-    }, colors.accent);
-    
-    // Steps Section
-    const availableSteps = job.allSteps || job.steps || [];
-    if (availableSteps.length > 0) {
-      const stepOrder = [
-        'PaperStore',
-        'PrintingDetails', 
-        'Corrugation',
-        'FluteLaminateBoardConversion',
-        'Punching',
-        'SideFlapPasting',
-        'QualityDept',
-        'DispatchProcess'
-      ];
-      
-      const sortedSteps = [...availableSteps].sort((a, b) => {
-        const aIndex = stepOrder.indexOf(a.stepName);
-        const bIndex = stepOrder.indexOf(b.stepName);
-        return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
-      });
-      
-      // Check if we need a new page for steps
-      if (yPosition > pageHeight - 80) {
-        pdf.addPage();
-        addPageHeader();
-        yPosition = 30;
-      }
-      
-      // Steps Header - REMOVED SPECIAL CHARACTERS
-      drawRect(15, yPosition - 2, pageWidth - 30, 12, [142, 68, 173]); // Purple
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(255, 255, 255);
-      pdf.text(`Production Steps (${sortedSteps.length})`, 20, yPosition + 6);
-      yPosition += 20;
-      
-      sortedSteps.forEach((step: any, stepIndex: number) => {
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
+      pdf.text("NRCONTAINERS PRIVATE LIMITED", 50, yPosition + 5);
+      pdf.setFontSize(6);
+      pdf.setFont("helvetica", "normal");
+      pdf.text("INTELLIGENT PACKAGING", 50, yPosition + 10);
+
+      // Job Card Title
+      pdf.setFontSize(20);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+      pdf.text("JOB CARD", pageWidth - 20, yPosition + 10, { align: "right" });
+
+      yPosition += 25;
+
+      // Main Information Section
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+
+      // Left Column
+      pdf.text(
+        `Client's Name : ${String(job.company || job.customerName || "N/A")}`,
+        20,
+        yPosition
+      );
+      pdf.text(`Job Name : ${String(job.nrcJobNo)}`, 20, yPosition + 6);
+      pdf.text(
+        `Date : ${new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })}`,
+        20,
+        yPosition + 12
+      );
+
+      // Right Column
+      pdf.text(
+        `Job Card No. : ${String(job.id || "N/A")}`,
+        pageWidth / 2 + 20,
+        yPosition
+      );
+      pdf.text(
+        `Quantity : ${String(
+          job.purchaseOrderDetails?.totalPOQuantity || "N/A"
+        )}`,
+        pageWidth / 2 + 20,
+        yPosition + 6
+      );
+
+      // Bottom Row
+      pdf.text(
+        `PO No. : ${String(job.purchaseOrderDetails?.poNumber || "N/A")}`,
+        20,
+        yPosition + 18
+      );
+      pdf.text(
+        `No of Sheets: ${String(
+          job.purchaseOrderDetails?.noOfSheets || "N/A"
+        )}`,
+        pageWidth / 2 + 20,
+        yPosition + 18
+      );
+
+      yPosition += 35;
+
+      // Job Card Style Section Function
+      const addJobCardSection = (
+        title: string,
+        stepDetails: any[],
+        hasTable: boolean = false
+      ) => {
         // Check if we need a new page
-        if (yPosition > pageHeight - 80) {
+        if (yPosition > pageHeight - 60) {
           pdf.addPage();
-          addPageHeader();
-          yPosition = 30;
+          yPosition = 20;
         }
-        
-        // Calculate step height based on content
-        const getStepDetails = (stepName: string) => {
-          if (job.allStepDetails) {
-            switch (stepName) {
-              case 'PaperStore':
-                return job.allStepDetails.paperStore || [];
-              case 'PrintingDetails':
-                return job.allStepDetails.printingDetails || [];
-              case 'Corrugation':
-                return job.allStepDetails.corrugation || [];
-              case 'FluteLaminateBoardConversion':
-                return job.allStepDetails.flutelam || [];
-              case 'Punching':
-                return job.allStepDetails.punching || [];
-              case 'SideFlapPasting':
-                return job.allStepDetails.sideFlapPasting || [];
-              case 'QualityDept':
-                return job.allStepDetails.qualityDept || [];
-              case 'DispatchProcess':
-                return job.allStepDetails.dispatchProcess || [];
-              default:
-                return [];
-            }
-          }
-          return step.stepDetails ? (Array.isArray(step.stepDetails) ? step.stepDetails : [step.stepDetails]) : [];
-        };
-        
-        const stepDetails = getStepDetails(step.stepName);
-        
-        // Calculate dynamic height based on step details
-        let stepHeight = 35; // Base height
-        if (stepDetails && stepDetails.length > 0) {
-          stepHeight += stepDetails.length * 25 + 15; // Additional height for details
-        }
-        
-        // Step Card
-        drawRect(20, yPosition - 2, pageWidth - 40, stepHeight, colors.white);
-        drawBorder(20, yPosition - 2, pageWidth - 40, stepHeight);
-        
-        // Step number circle
-        drawRect(25, yPosition + 5, 8, 8, colors.primary);
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(255, 255, 255);
-        pdf.text(`${stepIndex + 1}`, 29, yPosition + 10.5, { align: 'center' });
-        
-        // Step name
+
+        // Section Header with blue background
+        drawRect(15, yPosition, pageWidth - 30, 8, colors.primary);
         pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
-        pdf.text(step.stepName.replace(/([a-z])([A-Z])/g, '$1 $2'), 38, yPosition + 8);
-        
-        // Status badge - IMPROVED COLOR FOR STOP STATUS
-        const statusText = step.status === 'stop' ? 'STOP' : 
-                         step.status === 'start' ? 'IN PROGRESS' : 'PLANNED';
-        const statusColor = step.status === 'stop' ? colors.darkGreen : // Better dark green for STOP
-                          step.status === 'start' ? colors.warning : colors.light;
-        
-        drawRect(pageWidth - 50, yPosition + 2, 25, 8, statusColor);
-        pdf.setFontSize(8);
-        pdf.setFont('helvetica', 'bold');
-        // White text for all statuses to ensure visibility
-        pdf.setTextColor(255, 255, 255);
-        pdf.text(statusText, pageWidth - 37.5, yPosition + 7.5, { align: 'center' });
-        
-        // Step details
-        pdf.setFontSize(9);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
-        
-        let detailY = yPosition + 15;
-        if (step.startDate) {
-          pdf.text(`Started: ${new Date(step.startDate).toLocaleDateString()}`, 38, detailY);
-          detailY += 5;
-        }
-        if (step.endDate) {
-          pdf.text(`Completed: ${new Date(step.endDate).toLocaleDateString()}`, 38, detailY);
-          detailY += 5;
-        }
-        
-        // Machine info
-        if (step.machineDetails && step.machineDetails.length > 0) {
-          const machine = step.machineDetails[0];
-          pdf.text(`Machine: ${machine.machineType || 'N/A'} (${machine.unit || 'N/A'})`, 38, detailY);
-          detailY += 8;
-        }
-        
-        // ADDED STEP DETAILS
-        if (stepDetails && stepDetails.length > 0) {
-          pdf.setFontSize(9);
-          pdf.setFont('helvetica', 'bold');
-          pdf.setTextColor(colors.secondary[0], colors.secondary[1], colors.secondary[2]);
-          pdf.text('Step Details:', 38, detailY);
-          detailY += 6;
-          
-          stepDetails.forEach((detail: any, detailIndex: number) => {
-            pdf.setFontSize(8);
-            pdf.setFont('helvetica', 'normal');
-            pdf.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
-            
-            // Create detail summary based on step type
-            let detailItems: string[] = [];
-            
-            if (step.stepName === 'PaperStore') {
-              if (detail.quantity) detailItems.push(`Quantity: ${detail.quantity}`);
-              if (detail.available) detailItems.push(`Available: ${detail.available}`);
-              if (detail.sheetSize) detailItems.push(`Sheet Size: ${detail.sheetSize}`);
-              if (detail.mill) detailItems.push(`Mill: ${detail.mill}`);
-              if (detail.quality) detailItems.push(`Quality: ${detail.quality}`);
-            } else if (step.stepName === 'PrintingDetails') {
-              if (detail.quantity) detailItems.push(`Quantity: ${detail.quantity}`);
-              if (detail.coatingType) detailItems.push(`Coating: ${detail.coatingType}`);
-              if (detail.noOfColours) detailItems.push(`Colors: ${detail.noOfColours}`);
-              if (detail.inksUsed) detailItems.push(`Inks: ${detail.inksUsed}`);
-              if (detail.wastage) detailItems.push(`Wastage: ${detail.wastage}`);
-            } else if (step.stepName === 'Corrugation') {
-              if (detail.quantity) detailItems.push(`Quantity: ${detail.quantity}`);
-              if (detail.flute) detailItems.push(`Flute: ${detail.flute}`);
-              if (detail.gsm1) detailItems.push(`GSM1: ${detail.gsm1}`);
-              if (detail.gsm2) detailItems.push(`GSM2: ${detail.gsm2}`);
-              if (detail.size) detailItems.push(`Size: ${detail.size}`);
-            } else if (step.stepName === 'Punching') {
-              if (detail.quantity) detailItems.push(`Quantity: ${detail.quantity}`);
-              if (detail.die) detailItems.push(`Die: ${detail.die}`);
-              if (detail.dieNumber) detailItems.push(`Die No: ${detail.dieNumber}`);
-              if (detail.strokesPerMinute) detailItems.push(`SPM: ${detail.strokesPerMinute}`);
-              if (detail.wastage) detailItems.push(`Wastage: ${detail.wastage}`);
-            } else if (step.stepName === 'QualityDept') {
-              if (detail.quantity) detailItems.push(`Total: ${detail.quantity}`);
-              if (detail.passQuantity) detailItems.push(`Pass: ${detail.passQuantity}`);
-              if (detail.rejectedQty) detailItems.push(`Reject: ${detail.rejectedQty}`);
-              if (detail.reasonForRejection && detail.rejectedQty > 0) detailItems.push(`Reason: ${detail.reasonForRejection}`);
-              if (detail.testType) detailItems.push(`Test: ${detail.testType}`);
-            } else if (step.stepName === 'DispatchProcess') {
-              if (detail.dispatchQuantity) detailItems.push(`Qty: ${detail.dispatchQuantity}`);
-              if (detail.dispatchNo) detailItems.push(`No: ${detail.dispatchNo}`);
-              if (detail.driverName) detailItems.push(`Driver: ${detail.driverName}`);
-              if (detail.destination) detailItems.push(`To: ${detail.destination}`);
-              if (detail.balanceQty) detailItems.push(`Balance: ${detail.balanceQty}`);
-            } else {
-              // Generic details
-              if (detail.quantity) detailItems.push(`Qty: ${detail.quantity}`);
-              if (detail.oprName || detail.operatorName) detailItems.push(`Operator: ${detail.oprName || detail.operatorName}`);
-              if (detail.status) detailItems.push(`Status: ${detail.status}`);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
+        pdf.text(title, pageWidth / 2, yPosition + 5.5, { align: "center" });
+        yPosition += 12;
+
+        if (hasTable && stepDetails.length > 0) {
+          // Create table for this section
+          const tableHeaders = getTableHeaders(title);
+          const rowHeight = 6;
+          const headerHeight = 8;
+
+          // Table header
+          drawRect(
+            15,
+            yPosition,
+            pageWidth - 30,
+            headerHeight,
+            colors.lightGray
+          );
+          drawBorder(15, yPosition, pageWidth - 30, headerHeight);
+
+          // Draw header text
+          pdf.setFontSize(8);
+          pdf.setFont("helvetica", "bold");
+          pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+
+          const colWidth = (pageWidth - 30) / tableHeaders.length;
+          tableHeaders.forEach((header, index) => {
+            const xPos = 15 + index * colWidth;
+            pdf.text(header, xPos + 2, yPosition + 5);
+            // Draw vertical lines
+            if (index > 0) {
+              pdf.setDrawColor(
+                colors.black[0],
+                colors.black[1],
+                colors.black[2]
+              );
+              pdf.setLineWidth(0.3);
+              pdf.line(xPos, yPosition, xPos, yPosition + headerHeight);
             }
-            
-            // Display detail items
-            detailItems.forEach(item => {
-              pdf.text(`• ${item}`, 42, detailY);
-              detailY += 4;
+          });
+
+          yPosition += headerHeight;
+
+          // Table rows
+          stepDetails.forEach((detail) => {
+            if (yPosition > pageHeight - 40) {
+              pdf.addPage();
+              yPosition = 20;
+            }
+
+            drawBorder(15, yPosition, pageWidth - 30, rowHeight);
+
+            // Draw row data
+            pdf.setFontSize(7);
+            pdf.setFont("helvetica", "normal");
+            const rowData = getTableRowData(title, detail);
+            rowData.forEach((cellData, colIndex) => {
+              const xPos = 15 + colIndex * colWidth;
+              pdf.text(cellData || "", xPos + 2, yPosition + 4);
+              // Draw vertical lines
+              if (colIndex > 0) {
+                pdf.setDrawColor(
+                  colors.black[0],
+                  colors.black[1],
+                  colors.black[2]
+                );
+                pdf.setLineWidth(0.3);
+                pdf.line(xPos, yPosition, xPos, yPosition + rowHeight);
+              }
             });
-            
-            if (detail.remarks && detail.remarks !== '-') {
-              pdf.setFont('helvetica', 'italic');
-              pdf.setTextColor(colors.secondary[0], colors.secondary[1], colors.secondary[2]);
-              const remarksText = pdf.splitTextToSize(`Remarks: ${detail.remarks}`, pageWidth - 90);
-              pdf.text(remarksText, 42, detailY);
-              pdf.setFont('helvetica', 'normal');
-              pdf.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
-              detailY += remarksText.length * 4;
+
+            yPosition += rowHeight;
+          });
+        } else {
+          // Form-style layout for sections without tables
+          const formFields = getFormFields(title);
+          formFields.forEach((field) => {
+            if (yPosition > pageHeight - 20) {
+              pdf.addPage();
+              yPosition = 20;
             }
-            
-            if (detail.date) {
-              pdf.setTextColor(colors.secondary[0], colors.secondary[1], colors.secondary[2]);
-              pdf.text(`Date: ${new Date(detail.date).toLocaleDateString()}`, 42, detailY);
-              pdf.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
-              detailY += 4;
-            }
-            
-            detailY += 3; // Space between details
+
+            pdf.setFontSize(9);
+            pdf.setFont("helvetica", "normal");
+            pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+
+            const value = getFieldValue(field, stepDetails);
+            pdf.text(`${field} : ${value}`, 20, yPosition);
+            yPosition += 6;
           });
         }
-        
-        yPosition += stepHeight + 5;
-      });
-    }
-    
-    // Footer for all pages
-    const totalPages = pdf.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      pdf.setPage(i);
-      
-      // Footer background
-      drawRect(0, pageHeight - 15, pageWidth, 15, colors.light);
-      
-      // Footer text
-      pdf.setFontSize(8);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
-      
-      // Left side
-      pdf.text('NR Containers Pvt. Ltd.', 15, pageHeight - 7);
-      
-      // Center
-      pdf.text(
-        `Generated on ${new Date().toLocaleDateString('en-US', { 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        })}`,
-        pageWidth / 2,
-        pageHeight - 7,
-        { align: 'center' }
+
+        yPosition += 5; // Space after section
+      };
+
+      // Helper functions for job card sections
+      const getTableHeaders = (sectionTitle: string) => {
+        switch (sectionTitle) {
+          case "PAPER STORE":
+            return [
+              "SHEET SIZE",
+              "REQUIRED",
+              "AVAILABLE",
+              "ISSUED DATE",
+              "MILL",
+              "EXTRA MARGIN",
+              "GSM",
+              "QUALITY",
+            ];
+          case "CORRUGATION":
+            return [
+              "DATE",
+              "SHIFT",
+              "OPR NAME",
+              "NO OF SHEETS",
+              "SIZE",
+              "GSM 1",
+              "GSM 2",
+              "FLUTE",
+              "REMARKS",
+              "QC CHECK & SIGN BY",
+            ];
+          case "FLAP PASTING":
+            return [
+              "DATE",
+              "SHIFT",
+              "OPR NAME",
+              "ADHESIVE",
+              "QUANTITY",
+              "WASTAGE",
+              "REMARKS",
+              "QC CHECK & SIGN BY",
+            ];
+          case "QUALITY CHECK (SORTING)":
+            return [
+              "DATE",
+              "SHIFT",
+              "OPR NAME",
+              "CHECKED BY",
+              "REJECTED QTY",
+              "PASS QTY",
+              "REASON FOR REJECTION",
+              "REMARKS",
+              "QC CHECK & SIGN BY",
+            ];
+          case "DISPATCH":
+            return [
+              "DATE",
+              "SHIFT",
+              "OPR NAME",
+              "NO OF BOXES",
+              "DISPATCH NO'S",
+              "DATE",
+              "REMARKS",
+              "BALANCE QTY",
+              "QC CHECK & SIGN BY",
+            ];
+          default:
+            return [];
+        }
+      };
+
+      const getTableRowData = (sectionTitle: string, detail: any) => {
+        // Use the actual data fields that exist in the UI
+        // Convert all values to strings to avoid PDF errors
+        switch (sectionTitle) {
+          case "PAPER STORE":
+            return [
+              String(detail.sheetSize || detail.size || ""),
+              String(detail.required || detail.quantity || ""),
+              String(detail.available || ""),
+              String(detail.issuedDate || detail.date || ""),
+              String(detail.mill || ""),
+              String(detail.extraMargin || ""),
+              String(detail.gsm || ""),
+              String(detail.quality || ""),
+            ];
+          case "CORRUGATION":
+            return [
+              String(detail.date || ""),
+              String(detail.shift || ""),
+              String(
+                detail.oprName || detail.operatorName || detail.user || ""
+              ),
+              String(detail.noOfSheets || detail.quantity || ""),
+              String(detail.size || ""),
+              String(detail.gsm1 || ""),
+              String(detail.gsm2 || ""),
+              String(detail.flute || ""),
+              String(detail.remarks || ""),
+              String(detail.qcCheck || ""),
+            ];
+          case "FLAP PASTING":
+            return [
+              String(detail.date || ""),
+              String(detail.shift || ""),
+              String(
+                detail.oprName || detail.operatorName || detail.user || ""
+              ),
+              String(detail.adhesive || ""),
+              String(detail.quantity || ""),
+              String(detail.wastage || ""),
+              String(detail.remarks || ""),
+              String(detail.qcCheck || ""),
+            ];
+          case "QUALITY CHECK (SORTING)":
+            return [
+              String(detail.date || ""),
+              String(detail.shift || ""),
+              String(
+                detail.oprName || detail.operatorName || detail.user || ""
+              ),
+              String(detail.checkedBy || ""),
+              String(detail.rejectedQty || ""),
+              String(detail.passQuantity || ""),
+              String(detail.reasonForRejection || ""),
+              String(detail.remarks || ""),
+              String(detail.qcCheck || ""),
+            ];
+          case "DISPATCH":
+            return [
+              String(detail.date || ""),
+              String(detail.shift || ""),
+              String(
+                detail.oprName || detail.operatorName || detail.user || ""
+              ),
+              String(detail.noOfBoxes || ""),
+              String(detail.dispatchNo || ""),
+              String(detail.dispatchDate || ""),
+              String(detail.remarks || ""),
+              String(detail.balanceQty || ""),
+              String(detail.qcCheck || ""),
+            ];
+          default:
+            return [];
+        }
+      };
+
+      const getFormFields = (sectionTitle: string) => {
+        switch (sectionTitle) {
+          case "PRINTING DETAILS":
+            return [
+              "DATE",
+              "SHIFT",
+              "OPR NAME",
+              "NO. OF COLOURS",
+              "INKS USED",
+              "POST PRINTING FINISHING",
+              "COATING",
+              "SEPARATE SHEETS",
+              "EXTRA SHEETS",
+              "REMARKS",
+              "PRINTED BY",
+              "QC CHECK & SIGN BY",
+            ];
+          case "FLUTE LAMINATION":
+            return [
+              "DATE",
+              "SHIFT",
+              "OPR NAME",
+              "FILM",
+              "ADHESIVE",
+              "QC CHECK & SIGN BY",
+            ];
+          case "PUNCHING":
+            return [
+              "DATE",
+              "SHIFT",
+              "OPR NAME",
+              "MACHINE",
+              "DIE NO.",
+              "REMARKS",
+              "QC CHECK & SIGN BY",
+            ];
+          default:
+            return [];
+        }
+      };
+
+      const getFieldValue = (field: string, stepDetails: any[]) => {
+        if (stepDetails.length === 0) return "";
+
+        const detail = stepDetails[0]; // Use first detail for form fields
+        switch (field) {
+          case "DATE":
+            return detail.date
+              ? new Date(detail.date).toLocaleDateString()
+              : "";
+          case "SHIFT":
+            return String(detail.shift || "");
+          case "OPR NAME":
+            return String(
+              detail.oprName || detail.operatorName || detail.user || ""
+            );
+          case "NO. OF COLOURS":
+            return String(detail.noOfColours || detail.noOfColors || "");
+          case "INKS USED":
+            return String(detail.inksUsed || "");
+          case "POST PRINTING FINISHING":
+            return String(detail.postPrintingFinishing || "");
+          case "COATING":
+            return String(detail.coatingType || detail.coating || "");
+          case "SEPARATE SHEETS":
+            return String(detail.separateSheets || "");
+          case "EXTRA SHEETS":
+            return String(detail.extraSheets || "");
+          case "REMARKS":
+            return String(detail.remarks || "");
+          case "PRINTED BY":
+            return String(detail.printedBy || "");
+          case "QC CHECK & SIGN BY":
+            return String(detail.qcCheck || "");
+          case "FILM":
+            return String(detail.film || "");
+          case "ADHESIVE":
+            return String(detail.adhesive || "");
+          case "MACHINE":
+            return String(detail.machine || "");
+          case "DIE NO.":
+            return String(detail.dieNumber || detail.die || "");
+          default:
+            return "";
+        }
+      };
+
+      // Use the same data structure as the UI
+      const availableSteps = job.allSteps || job.steps || [];
+
+      if (availableSteps.length > 0) {
+        // Define step order for sorting (same as UI)
+        const stepOrder = [
+          "PaperStore",
+          "PrintingDetails",
+          "Corrugation",
+          "FluteLaminateBoardConversion",
+          "Punching",
+          "SideFlapPasting",
+          "QualityDept",
+          "DispatchProcess",
+        ];
+
+        // Sort steps according to predefined order (same as UI)
+        const sortedSteps = [...availableSteps].sort((a, b) => {
+          const aIndex = stepOrder.indexOf(a.stepName);
+          const bIndex = stepOrder.indexOf(b.stepName);
+          return (
+            (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex)
+          );
+        });
+
+        // Add each step as a job card section
+        sortedSteps.forEach((step: any) => {
+          const sectionTitle = getSectionTitle(step.stepName);
+          const stepDetails = getStepDetailsFromStep(step);
+          const hasTable = shouldUseTableFormat(step.stepName);
+
+          addJobCardSection(sectionTitle, stepDetails, hasTable);
+        });
+      }
+
+      // Helper function to get section titles
+      function getSectionTitle(stepName: string): string {
+        switch (stepName) {
+          case "PaperStore":
+            return "PAPER STORE";
+          case "PrintingDetails":
+            return "PRINTING DETAILS";
+          case "Corrugation":
+            return "CORRUGATION";
+          case "FluteLaminateBoardConversion":
+            return "FLUTE LAMINATION";
+          case "Punching":
+            return "PUNCHING";
+          case "SideFlapPasting":
+            return "FLAP PASTING";
+          case "QualityDept":
+            return "QUALITY CHECK (SORTING)";
+          case "DispatchProcess":
+            return "DISPATCH";
+          default:
+            return stepName.replace(/([a-z])([A-Z])/g, "$1 $2").toUpperCase();
+        }
+      }
+
+      // Get step details from the step object (same logic as UI)
+      function getStepDetailsFromStep(step: any) {
+        // Check multiple possible locations for step details (same as UI)
+        if (job && job.allStepDetails) {
+          switch (step.stepName) {
+            case "PaperStore":
+              return job.allStepDetails.paperStore || [];
+            case "PrintingDetails":
+              return job.allStepDetails.printingDetails || [];
+            case "Corrugation":
+              return job.allStepDetails.corrugation || [];
+            case "FluteLaminateBoardConversion":
+              return job.allStepDetails.flutelam || [];
+            case "Punching":
+              return job.allStepDetails.punching || [];
+            case "SideFlapPasting":
+              return job.allStepDetails.sideFlapPasting || [];
+            case "QualityDept":
+              return job.allStepDetails.qualityDept || [];
+            case "DispatchProcess":
+              return job.allStepDetails.dispatchProcess || [];
+            default:
+              return [];
+          }
+        }
+
+        // Handle the actual data structure from job planning
+        if (step.stepDetails) {
+          // If stepDetails has a data property (object structure)
+          if (step.stepDetails.data) {
+            return [step.stepDetails.data]; // Wrap single object in array
+          }
+          // If stepDetails is already an array
+          else if (Array.isArray(step.stepDetails)) {
+            return step.stepDetails;
+          }
+        }
+
+        // If no stepDetails, create a basic entry with available data
+        if (step.machineDetails && step.machineDetails.length > 0) {
+          return [
+            {
+              date: step.startDate
+                ? new Date(step.startDate).toLocaleDateString()
+                : "",
+              status: step.status || "planned",
+              machineDetails: step.machineDetails,
+              stepNo: step.stepNo,
+              user: step.user || "",
+            },
+          ];
+        }
+
+        return [];
+      }
+
+      // Determine if step should use table format
+      function shouldUseTableFormat(stepName: string): boolean {
+        return [
+          "PaperStore",
+          "Corrugation",
+          "SideFlapPasting",
+          "QualityDept",
+          "DispatchProcess",
+        ].includes(stepName);
+      }
+
+      // Simple footer - Job Card style doesn't need complex footer
+      const totalPages = pdf.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+
+        // Simple footer text
+        pdf.setFontSize(8);
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+
+        // Center
+        pdf.text(
+          `Generated on ${new Date().toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}`,
+          pageWidth / 2,
+          pageHeight - 10,
+          { align: "center" }
+        );
+      }
+
+      // Save the PDF
+      pdf.save(
+        `NRC_Job_${job.nrcJobNo.replace(/[^a-zA-Z0-9]/g, "_")}_${
+          new Date().toISOString().split("T")[0]
+        }.pdf`
       );
-      
-      // Right side
-      pdf.text(`Page ${i} of ${totalPages}`, pageWidth - 15, pageHeight - 7, { align: 'right' });
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Please try again.");
+    } finally {
+      setIsGeneratingPDF(false);
     }
-    
-    // Save the PDF
-    pdf.save(`NRC_Job_${job.nrcJobNo.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
-    
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    alert('Failed to generate PDF. Please try again.');
-  } finally {
-    setIsGeneratingPDF(false);
-  }
-};
+  };
 
-
-
-
-
-
-
-  console.log('Rendering DetailedJobModal with job:', job);
+  console.log("Rendering DetailedJobModal with job:", job);
 
   return (
     <div className="fixed inset-0 bg-transparent bg-opacity-20 backdrop-blur-md flex items-center justify-center z-50">
@@ -530,7 +703,7 @@ const generatePDF = async () => {
             <div>
               <h2 className="text-2xl font-bold">{job.nrcJobNo}</h2>
               <p className="text-blue-100">
-                {job.company || job.customerName || 'N/A'}
+                {job.company || job.customerName || "N/A"}
               </p>
             </div>
           </div>
@@ -543,7 +716,9 @@ const generatePDF = async () => {
               title="Download PDF"
             >
               <Download size={20} />
-              {isGeneratingPDF && <span className="text-sm">Generating...</span>}
+              {isGeneratingPDF && (
+                <span className="text-sm">Generating...</span>
+              )}
             </button>
             <button
               onClick={onClose}
@@ -557,10 +732,8 @@ const generatePDF = async () => {
         {/* Modal Content - Rest of your existing content remains unchanged */}
         <div className="p-6 overflow-y-auto max-h-[calc(95vh-120px)]">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
             {/* Left Column */}
             <div className="space-y-6">
-              
               {/* Job Details */}
               {job.jobDetails && (
                 <div className="bg-green-50 p-4 rounded-lg border border-green-200">
@@ -570,40 +743,70 @@ const generatePDF = async () => {
                   </h3>
                   <div className="grid grid-cols-1 gap-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Style ID:</span>
-                      <span className="text-gray-900">{job.jobDetails.styleId || 'N/A'}</span>
+                      <span className="font-medium text-gray-700">
+                        Style ID:
+                      </span>
+                      <span className="text-gray-900">
+                        {job.jobDetails.styleId || "N/A"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Box Dimensions:</span>
-                      <span className="text-gray-900">{job.jobDetails.boxDimensions || 'N/A'}</span>
+                      <span className="font-medium text-gray-700">
+                        Box Dimensions:
+                      </span>
+                      <span className="text-gray-900">
+                        {job.jobDetails.boxDimensions || "N/A"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Board Size:</span>
-                      <span className="text-gray-900">{job.jobDetails.boardSize || 'N/A'}</span>
+                      <span className="font-medium text-gray-700">
+                        Board Size:
+                      </span>
+                      <span className="text-gray-900">
+                        {job.jobDetails.boardSize || "N/A"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Process Colors:</span>
-                      <span className="text-gray-900">{job.jobDetails.processColors || 'N/A'}</span>
+                      <span className="font-medium text-gray-700">
+                        Process Colors:
+                      </span>
+                      <span className="text-gray-900">
+                        {job.jobDetails.processColors || "N/A"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">No. of Ups:</span>
-                      <span className="text-gray-900">{job.jobDetails.noUps || 'N/A'}</span>
+                      <span className="font-medium text-gray-700">
+                        No. of Ups:
+                      </span>
+                      <span className="text-gray-900">
+                        {job.jobDetails.noUps || "N/A"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium text-gray-700">Width:</span>
-                      <span className="text-gray-900">{job.jobDetails.width || 'N/A'}</span>
+                      <span className="text-gray-900">
+                        {job.jobDetails.width || "N/A"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium text-gray-700">Height:</span>
-                      <span className="text-gray-900">{job.jobDetails.height || 'N/A'}</span>
+                      <span className="text-gray-900">
+                        {job.jobDetails.height || "N/A"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium text-gray-700">Length:</span>
-                      <span className="text-gray-900">{job.jobDetails.length || 'N/A'}</span>
+                      <span className="text-gray-900">
+                        {job.jobDetails.length || "N/A"}
+                      </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Pre-Rate:</span>
-                      <span className="text-gray-900">₹{job.jobDetails.preRate || 'N/A'}</span>
+                      <span className="font-medium text-gray-700">
+                        Pre-Rate:
+                      </span>
+                      <span className="text-gray-900">
+                        ₹{job.jobDetails.preRate || "N/A"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -618,45 +821,79 @@ const generatePDF = async () => {
                   </h3>
                   <div className="grid grid-cols-1 gap-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">PO Number:</span>
-                      <span className="text-gray-900">{job.purchaseOrderDetails.poNumber || 'N/A'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Customer:</span>
-                      <span className="text-gray-900">{job.purchaseOrderDetails.customer || 'N/A'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Unit:</span>
-                      <span className="text-gray-900">{job.purchaseOrderDetails.unit || 'N/A'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Total Quantity:</span>
-                      <span className="text-gray-900">{job.purchaseOrderDetails.totalPOQuantity || 'N/A'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">No. of Sheets:</span>
-                      <span className="text-gray-900">{job.purchaseOrderDetails.noOfSheets || 'N/A'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">PO Date:</span>
+                      <span className="font-medium text-gray-700">
+                        PO Number:
+                      </span>
                       <span className="text-gray-900">
-                        {job.purchaseOrderDetails.poDate ? new Date(job.purchaseOrderDetails.poDate).toLocaleDateString() : 'N/A'}
+                        {job.purchaseOrderDetails.poNumber || "N/A"}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Delivery Date:</span>
+                      <span className="font-medium text-gray-700">
+                        Customer:
+                      </span>
                       <span className="text-gray-900">
-                        {job.purchaseOrderDetails.deliveryDate ? new Date(job.purchaseOrderDetails.deliveryDate).toLocaleDateString() : 'N/A'}
+                        {job.purchaseOrderDetails.customer || "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-gray-700">Unit:</span>
+                      <span className="text-gray-900">
+                        {job.purchaseOrderDetails.unit || "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-gray-700">
+                        Total Quantity:
+                      </span>
+                      <span className="text-gray-900">
+                        {job.purchaseOrderDetails.totalPOQuantity || "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-gray-700">
+                        No. of Sheets:
+                      </span>
+                      <span className="text-gray-900">
+                        {job.purchaseOrderDetails.noOfSheets || "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-gray-700">
+                        PO Date:
+                      </span>
+                      <span className="text-gray-900">
+                        {job.purchaseOrderDetails.poDate
+                          ? new Date(
+                              job.purchaseOrderDetails.poDate
+                            ).toLocaleDateString()
+                          : "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-gray-700">
+                        Delivery Date:
+                      </span>
+                      <span className="text-gray-900">
+                        {job.purchaseOrderDetails.deliveryDate
+                          ? new Date(
+                              job.purchaseOrderDetails.deliveryDate
+                            ).toLocaleDateString()
+                          : "N/A"}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium text-gray-700">Status:</span>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        job.purchaseOrderDetails.status === 'active' ? 'bg-green-100 text-green-800' :
-                        job.purchaseOrderDetails.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {job.purchaseOrderDetails.status || 'N/A'}
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-medium ${
+                          job.purchaseOrderDetails.status === "active"
+                            ? "bg-green-100 text-green-800"
+                            : job.purchaseOrderDetails.status === "pending"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {job.purchaseOrderDetails.status || "N/A"}
                       </span>
                     </div>
                   </div>
@@ -666,7 +903,6 @@ const generatePDF = async () => {
 
             {/* Right Column */}
             <div className="space-y-6">
-              
               {/* Timeline & Status */}
               <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
                 <h3 className="font-semibold text-purple-800 mb-3 flex items-center">
@@ -677,12 +913,16 @@ const generatePDF = async () => {
                   <div className="flex justify-between">
                     <span className="font-medium text-gray-700">Created:</span>
                     <span className="text-gray-900">
-                      {job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'N/A'}
+                      {job.createdAt
+                        ? new Date(job.createdAt).toLocaleDateString()
+                        : "N/A"}
                     </span>
                   </div>
                   {job.completedAt && (
                     <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Completed:</span>
+                      <span className="font-medium text-gray-700">
+                        Completed:
+                      </span>
                       <span className="text-gray-900">
                         {new Date(job.completedAt).toLocaleDateString()}
                       </span>
@@ -690,23 +930,33 @@ const generatePDF = async () => {
                   )}
                   {job.completedBy && (
                     <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Completed By:</span>
+                      <span className="font-medium text-gray-700">
+                        Completed By:
+                      </span>
                       <span className="text-gray-900">{job.completedBy}</span>
                     </div>
                   )}
                   {job.totalDuration && (
                     <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Total Duration:</span>
-                      <span className="text-gray-900">{job.totalDuration} days</span>
+                      <span className="font-medium text-gray-700">
+                        Total Duration:
+                      </span>
+                      <span className="text-gray-900">
+                        {job.totalDuration} days
+                      </span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span className="font-medium text-gray-700">Status:</span>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      job.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      job.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${
+                        job.status === "completed"
+                          ? "bg-green-100 text-green-800"
+                          : job.status === "in-progress"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
                       {job.status}
                     </span>
                   </div>
@@ -715,12 +965,14 @@ const generatePDF = async () => {
 
               {/* Rest of your existing steps section remains unchanged */}
               {/* Steps Information */}
-              {((job.allSteps && job.allSteps.length > 0) || 
+              {((job.allSteps && job.allSteps.length > 0) ||
                 (job.steps && job.steps.length > 0)) && (
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
                     <CheckCircle className="h-5 w-5 mr-2" />
-                    {(job.status || job.finalStatus) === 'completed' ? 'Completed Steps' : 'Job Steps'} 
+                    {(job.status || job.finalStatus) === "completed"
+                      ? "Completed Steps"
+                      : "Job Steps"}
                     ({job.allSteps?.length || job.steps?.length || 0})
                   </h3>
                   {/* Your existing steps content remains unchanged */}
@@ -728,14 +980,14 @@ const generatePDF = async () => {
                     {(() => {
                       // Define step order for sorting
                       const stepOrder = [
-                        'PaperStore',
-                        'PrintingDetails', 
-                        'Corrugation',
-                        'FluteLaminateBoardConversion',
-                        'Punching',
-                        'SideFlapPasting',
-                        'QualityDept',
-                        'DispatchProcess'
+                        "PaperStore",
+                        "PrintingDetails",
+                        "Corrugation",
+                        "FluteLaminateBoardConversion",
+                        "Punching",
+                        "SideFlapPasting",
+                        "QualityDept",
+                        "DispatchProcess",
                       ];
 
                       // Get the available steps data (prioritize allSteps, then steps, then stepDetails)
@@ -745,7 +997,10 @@ const generatePDF = async () => {
                       const sortedSteps = [...availableSteps].sort((a, b) => {
                         const aIndex = stepOrder.indexOf(a.stepName);
                         const bIndex = stepOrder.indexOf(b.stepName);
-                        return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+                        return (
+                          (aIndex === -1 ? 999 : aIndex) -
+                          (bIndex === -1 ? 999 : bIndex)
+                        );
                       });
 
                       return sortedSteps.map((step: any, stepIndex: number) => {
@@ -755,26 +1010,27 @@ const generatePDF = async () => {
                           if (job.allStepDetails) {
                             // Use proper type-safe access
                             switch (stepName) {
-                              case 'PaperStore':
+                              case "PaperStore":
                                 return job.allStepDetails.paperStore || [];
-                              case 'PrintingDetails':
+                              case "PrintingDetails":
                                 return job.allStepDetails.printingDetails || [];
-                              case 'Corrugation':
+                              case "Corrugation":
                                 return job.allStepDetails.corrugation || [];
-                              case 'FluteLaminateBoardConversion':
+                              case "FluteLaminateBoardConversion":
                                 return job.allStepDetails.flutelam || [];
-                              case 'Punching':
+                              case "Punching":
                                 return job.allStepDetails.punching || [];
-                              case 'SideFlapPasting':
+                              case "SideFlapPasting":
                                 return job.allStepDetails.sideFlapPasting || [];
-                              case 'QualityDept':
+                              case "QualityDept":
                                 return job.allStepDetails.qualityDept || [];
-                              case 'DispatchProcess':
+                              case "DispatchProcess":
                                 return job.allStepDetails.dispatchProcess || [];
                               default:
                                 return [];
                             }
-                          } if (step.stepDetails) {
+                          }
+                          if (step.stepDetails) {
                             // If stepDetails has a data property (object structure)
                             if (step.stepDetails.data) {
                               return [step.stepDetails.data]; // Wrap single object in array
@@ -784,76 +1040,252 @@ const generatePDF = async () => {
                               return step.stepDetails;
                             }
                           }
-                          
+
                           return [];
                         };
 
                         const stepDetails = getStepDetails(step.stepName);
 
                         return (
-                          <div key={step.id || stepIndex} className="bg-white p-3 rounded border border-gray-100">
+                          <div
+                            key={step.id || stepIndex}
+                            className="bg-white p-3 rounded border border-gray-100"
+                          >
                             <div className="flex items-center justify-between mb-2">
                               <span className="font-medium text-gray-800 text-sm">
-                                {step.stepName.replace(/([a-z])([A-Z])/g, '$1 $2')}
+                                {step.stepName.replace(
+                                  /([a-z])([A-Z])/g,
+                                  "$1 $2"
+                                )}
                               </span>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                step.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                step.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
+                              <span
+                                className={`px-2 py-1 rounded text-xs font-medium ${
+                                  step.status === "completed"
+                                    ? "bg-green-100 text-green-800"
+                                    : step.status === "in-progress"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
                                 {step.status}
                               </span>
                             </div>
-                            
+
                             {/* Step Timeline */}
                             <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 mb-2">
                               {step.startDate && (
                                 <div className="flex justify-between">
                                   <span>Start:</span>
-                                  <span>{new Date(step.startDate).toLocaleDateString()}</span>
+                                  <span>
+                                    {new Date(
+                                      step.startDate
+                                    ).toLocaleDateString()}
+                                  </span>
                                 </div>
                               )}
                               {step.endDate && (
                                 <div className="flex justify-between">
                                   <span>End:</span>
-                                  <span>{new Date(step.endDate).toLocaleDateString()}</span>
+                                  <span>
+                                    {new Date(
+                                      step.endDate
+                                    ).toLocaleDateString()}
+                                  </span>
                                 </div>
                               )}
                             </div>
-                            
-                            {/* Machine Details */}
-                            {step.machineDetails && step.machineDetails.length > 0 && (
-                              <div className="mt-2 pt-2 border-t border-gray-100">
-                                <p className="text-xs font-medium text-gray-700 mb-1">Machine Details:</p>
-                                {step.machineDetails.map((machine: any, machineIndex: number) => (
-                                  <div key={machineIndex} className="text-xs text-gray-500 ml-2 space-y-1">
-                                    <div className="flex justify-between">
-                                      <span>Unit:</span>
-                                      <span>{machine.unit || 'No unit'}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span>Machine ID:</span>
-                                      <span>{machine.machineId}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span>Machine Code:</span>
-                                      <span>{machine.machineCode || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span>Machine Type:</span>
-                                      <span>{machine.machineType}</span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
 
-                            {/* Step Details Section - Rest of the existing code */}
+                            {/* Machine Details */}
+                            {step.machineDetails &&
+                              step.machineDetails.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-gray-100">
+                                  <p className="text-xs font-medium text-gray-700 mb-1">
+                                    Machine Details:
+                                  </p>
+                                  {step.machineDetails.map(
+                                    (machine: any, machineIndex: number) => (
+                                      <div
+                                        key={machineIndex}
+                                        className="text-xs text-gray-500 ml-2 space-y-1"
+                                      >
+                                        <div className="flex justify-between">
+                                          <span>Unit:</span>
+                                          <span>
+                                            {machine.unit || "No unit"}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span>Machine ID:</span>
+                                          <span>{machine.machineId}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span>Machine Code:</span>
+                                          <span>
+                                            {machine.machineCode || "N/A"}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span>Machine Type:</span>
+                                          <span>{machine.machineType}</span>
+                                        </div>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              )}
+
+                            {/* Step Details Section */}
                             {stepDetails && stepDetails.length > 0 && (
                               <div className="mt-2 pt-2 border-t border-gray-100">
-                                <p className="text-xs font-medium text-gray-700 mb-2">Step Details:</p>
-                                {/* ... Your existing step details rendering code ... */}
-                                {/* I'm keeping this part unchanged as it's quite long and works correctly */}
+                                <p className="text-xs font-medium text-gray-700 mb-2">
+                                  Step Details:
+                                </p>
+                                {stepDetails.map(
+                                  (detail: any, detailIndex: number) => (
+                                    <div
+                                      key={detailIndex}
+                                      className="text-xs text-gray-500 ml-2 space-y-1"
+                                    >
+                                      {/* Paper Store Details */}
+                                      {step.stepName === "PaperStore" && (
+                                        <>
+                                          {detail.sheetSize && (
+                                            <div className="flex justify-between">
+                                              <span>Sheet Size:</span>
+                                              <span>{detail.sheetSize}</span>
+                                            </div>
+                                          )}
+                                          {detail.quantity && (
+                                            <div className="flex justify-between">
+                                              <span>Quantity:</span>
+                                              <span>{detail.quantity}</span>
+                                            </div>
+                                          )}
+                                          {detail.available && (
+                                            <div className="flex justify-between">
+                                              <span>Available:</span>
+                                              <span>{detail.available}</span>
+                                            </div>
+                                          )}
+                                          {detail.issuedDate && (
+                                            <div className="flex justify-between">
+                                              <span>Issued Date:</span>
+                                              <span>
+                                                {new Date(
+                                                  detail.issuedDate
+                                                ).toLocaleDateString()}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.mill && (
+                                            <div className="flex justify-between">
+                                              <span>Mill:</span>
+                                              <span>{detail.mill}</span>
+                                            </div>
+                                          )}
+                                          {detail.gsm && (
+                                            <div className="flex justify-between">
+                                              <span>GSM:</span>
+                                              <span>{detail.gsm}</span>
+                                            </div>
+                                          )}
+                                          {detail.quality && (
+                                            <div className="flex justify-between">
+                                              <span>Quality:</span>
+                                              <span>{detail.quality}</span>
+                                            </div>
+                                          )}
+                                          {detail.shift && (
+                                            <div className="flex justify-between">
+                                              <span>Shift:</span>
+                                              <span>{detail.shift}</span>
+                                            </div>
+                                          )}
+                                          {detail.operatorName && (
+                                            <div className="flex justify-between">
+                                              <span>Operator:</span>
+                                              <span>{detail.operatorName}</span>
+                                            </div>
+                                          )}
+                                          {detail.status && (
+                                            <div className="flex justify-between">
+                                              <span>Status:</span>
+                                              <span
+                                                className={`px-1 py-0.5 rounded text-xs ${
+                                                  detail.status === "hold"
+                                                    ? "bg-red-100 text-red-800"
+                                                    : detail.status === "start"
+                                                    ? "bg-yellow-100 text-yellow-800"
+                                                    : detail.status ===
+                                                      "completed"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : "bg-gray-100 text-gray-800"
+                                                }`}
+                                              >
+                                                {detail.status}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.remarks && (
+                                            <div className="flex justify-between">
+                                              <span>Remarks:</span>
+                                              <span>{detail.remarks}</span>
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+
+                                      {/* Generic Details for other steps */}
+                                      {step.stepName !== "PaperStore" && (
+                                        <>
+                                          {detail.quantity && (
+                                            <div className="flex justify-between">
+                                              <span>Quantity:</span>
+                                              <span>{detail.quantity}</span>
+                                            </div>
+                                          )}
+                                          {detail.shift && (
+                                            <div className="flex justify-between">
+                                              <span>Shift:</span>
+                                              <span>{detail.shift}</span>
+                                            </div>
+                                          )}
+                                          {detail.operatorName && (
+                                            <div className="flex justify-between">
+                                              <span>Operator:</span>
+                                              <span>{detail.operatorName}</span>
+                                            </div>
+                                          )}
+                                          {detail.status && (
+                                            <div className="flex justify-between">
+                                              <span>Status:</span>
+                                              <span
+                                                className={`px-1 py-0.5 rounded text-xs ${
+                                                  detail.status === "hold"
+                                                    ? "bg-red-100 text-red-800"
+                                                    : detail.status === "start"
+                                                    ? "bg-yellow-100 text-yellow-800"
+                                                    : detail.status ===
+                                                      "completed"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : "bg-gray-100 text-gray-800"
+                                                }`}
+                                              >
+                                                {detail.status}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.remarks && (
+                                            <div className="flex justify-between">
+                                              <span>Remarks:</span>
+                                              <span>{detail.remarks}</span>
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+                                    </div>
+                                  )
+                                )}
                               </div>
                             )}
                           </div>
@@ -863,7 +1295,6 @@ const generatePDF = async () => {
                   </div>
                 </div>
               )}
-
             </div>
           </div>
         </div>

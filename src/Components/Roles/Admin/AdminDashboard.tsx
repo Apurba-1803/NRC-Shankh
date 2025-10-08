@@ -101,9 +101,9 @@ interface AdminDashboardData {
   activeUsers: number;
   efficiency: number;
   stepCompletionStats: {
-    [key: string]: { 
-      completed: number; 
-      inProgress: number; 
+    [key: string]: {
+      completed: number;
+      inProgress: number;
       planned: number;
       // Add the actual data arrays
       completedData: JobPlan[];
@@ -120,8 +120,7 @@ interface AdminDashboardData {
     completedSteps: number;
   }>;
   completedJobsData: CompletedJob[];
-   heldJobs: number;
- 
+  heldJobs: number;
 }
 
 interface MachineDetails {
@@ -141,7 +140,10 @@ interface MachineDetails {
 }
 
 interface MachineUtilizationData {
-  machineStats: Record<string, { total: number; available: number; inUse: number }>;
+  machineStats: Record<
+    string,
+    { total: number; available: number; inUse: number }
+  >;
   machineDetails: MachineDetails[];
 }
 
@@ -177,146 +179,159 @@ const AdminDashboard: React.FC = () => {
   // stepColors removed as it's not used
 
   // Handle Total Jobs card click
- // Handle Total Jobs card click
-const handleTotalJobsClick = () => {
-  navigate("/dashboard/job-details", {
-    state: {
-      jobData: {
-        totalJobs: filteredData?.totalJobs || 0,
-        completedJobs: filteredData?.completedJobs || 0,
-        inProgressJobs: filteredData?.inProgressJobs || 0,
-        plannedJobs: filteredData?.plannedJobs || 0,
+  // Handle Total Jobs card click
+  const handleTotalJobsClick = () => {
+    navigate("/dashboard/job-details", {
+      state: {
+        jobData: {
+          totalJobs: filteredData?.totalJobs || 0,
+          completedJobs: filteredData?.completedJobs || 0,
+          inProgressJobs: filteredData?.inProgressJobs || 0,
+          plannedJobs: filteredData?.plannedJobs || 0,
+        },
+        // Pass the filtered job plans and completed jobs data
+        filteredJobPlans: filteredData?.jobPlans || [],
+        filteredCompletedJobs: filteredData?.completedJobsData || [],
+        dateFilter: dateFilter,
+        customDateRange: customDateRange,
       },
-      // Pass the filtered job plans and completed jobs data
-      filteredJobPlans: filteredData?.jobPlans || [],
-      filteredCompletedJobs: filteredData?.completedJobsData || [],
-      dateFilter: dateFilter,
-      customDateRange: customDateRange
-    },
-  });
-};
-
-// Add this handler alongside your existing handlers
-const handleHeldJobsClick = () => {
-  console.log("Held Jobs card clicked - navigating to held jobs view");
-  
-  // Filter jobs that have steps with "hold" status
-  const heldJobPlans = filteredData?.jobPlans?.filter(jobPlan => {
-    let jobOnHold = false;
-
-    // Check each step to determine if job is on hold
-    jobPlan.steps.forEach(step => {
-      if (
-        step.stepDetails?.data?.status === "hold" ||
-        step.stepDetails?.status === "hold"
-      ) {
-        jobOnHold = true;
-      }
     });
+  };
 
-    return jobOnHold;
-  }) || [];
+  // Add this handler alongside your existing handlers
+  const handleHeldJobsClick = () => {
+    console.log("Held Jobs card clicked - navigating to held jobs view");
 
-  navigate("/dashboard/held-jobs", {
-    state: {
-      heldJobs: heldJobPlans,
-      dateFilter: dateFilter,
-      customDateRange: customDateRange
-    }
-  });
-};
+    // Filter jobs that have steps with "hold" status
+    const heldJobPlans =
+      filteredData?.jobPlans?.filter((jobPlan) => {
+        let jobOnHold = false;
 
+        // Check each step to determine if job is on hold
+        jobPlan.steps.forEach((step) => {
+          if (
+            step.stepDetails?.data?.status === "hold" ||
+            step.stepDetails?.status === "hold"
+          ) {
+            jobOnHold = true;
+          }
+        });
 
-// Handle Completed Jobs card click
-const handleCompletedJobsClick = () => {
-  console.log("Completed Jobs card clicked - navigating to completed jobs view");
-  navigate("/dashboard/completed-jobs", {
-    state: {
-      completedJobs: filteredData?.completedJobsData || [],
-      dateFilter: dateFilter,
-      customDateRange: customDateRange
-    }
-  });
-};
+        return jobOnHold;
+      }) || [];
 
-
-
-// Handle In Progress Jobs card click
-// Handle In Progress Jobs card click
-const handleInProgressJobsClick = () => {
-  console.log("In Progress Jobs card clicked - navigating to in-progress jobs view");
-  
-  // 🔥 UPDATED: Use the same logic as processJobPlanData
-  const inProgressJobPlans = filteredData?.jobPlans?.filter(jobPlan => {
-    let jobInProgress = false;
-
-    // Check each step to determine if job is in progress
-    jobPlan.steps.forEach(step => {
-      if (
-        step.status === "start" ||
-        (step.stepDetails && step.stepDetails.status === "in_progress")
-      ) {
-        jobInProgress = true;
-      }
+    navigate("/dashboard/held-jobs", {
+      state: {
+        heldJobs: heldJobPlans,
+        dateFilter: dateFilter,
+        customDateRange: customDateRange,
+      },
     });
+  };
 
-    return jobInProgress;
-  }) || [];
-
-  navigate("/dashboard/in-progress-jobs", {
-    state: {
-      inProgressJobs: inProgressJobPlans,
-      dateFilter: dateFilter,
-      customDateRange: customDateRange
-    }
-  });
-};
-
-
-// Handle Planned Jobs card click
-// Handle Planned Jobs card click
-const handlePlannedJobsClick = () => {
-  console.log("Planned Jobs card clicked - navigating to planned jobs view");
-  
-  // 🔥 UPDATED: Use the same logic as processJobPlanData
-  const plannedJobPlans = filteredData?.jobPlans?.filter(jobPlan => {
-    let jobCompleted = true;
-    let jobInProgress = false;
-
-    // Check each step to determine job status
-    jobPlan.steps.forEach(step => {
-      if (
-        step.status === "stop" || 
-        (step.stepDetails && step.stepDetails.status === "accept")
-      ) {
-        // This step is completed - continue checking other steps
-      } else if (
-        step.status === "start" ||
-        (step.stepDetails && step.stepDetails.status === "in_progress")
-      ) {
-        // This step is in progress
-        jobInProgress = true;
-        jobCompleted = false;
-      } else {
-        // This step is planned (not started)
-        jobCompleted = false;
-      }
+  // Handle Completed Jobs card click
+  const handleCompletedJobsClick = () => {
+    console.log(
+      "Completed Jobs card clicked - navigating to completed jobs view"
+    );
+    navigate("/dashboard/completed-jobs", {
+      state: {
+        completedJobs: filteredData?.completedJobsData || [],
+        dateFilter: dateFilter,
+        customDateRange: customDateRange,
+      },
     });
+  };
 
-    // 🔥 FIXED: A job is "planned" if it's not completed AND not in progress
-    // This matches the logic from processJobPlanData
-    return !jobCompleted && !jobInProgress;
-  }) || [];
+  // Handle In Progress Jobs card click
+  // Handle In Progress Jobs card click
+  const handleInProgressJobsClick = () => {
+    console.log(
+      "In Progress Jobs card clicked - navigating to in-progress jobs view"
+    );
 
-  navigate("/dashboard/planned-jobs", {
-    state: {
-      plannedJobs: plannedJobPlans,
-      dateFilter: dateFilter,
-      customDateRange: customDateRange
-    }
-  });
-};
+    // 🔥 UPDATED: Use the same logic as processJobPlanData
+    const inProgressJobPlans =
+      filteredData?.jobPlans?.filter((jobPlan) => {
+        let jobInProgress = false;
+        let jobOnHold = false;
 
+        // Check each step to determine if job is in progress
+        jobPlan.steps.forEach((step) => {
+          // Check for hold status first (highest priority)
+          if (
+            step.stepDetails?.data?.status === "hold" ||
+            step.stepDetails?.status === "hold"
+          ) {
+            jobOnHold = true;
+            return; // Skip the rest of the logic for this step
+          }
+
+          if (
+            step.status === "start" ||
+            (step.stepDetails && step.stepDetails.status === "in_progress")
+          ) {
+            jobInProgress = true;
+          }
+        });
+
+        // Only return true if in progress AND not on hold
+        return jobInProgress && !jobOnHold;
+      }) || [];
+
+    navigate("/dashboard/in-progress-jobs", {
+      state: {
+        inProgressJobs: inProgressJobPlans,
+        dateFilter: dateFilter,
+        customDateRange: customDateRange,
+      },
+    });
+  };
+
+  // Handle Planned Jobs card click
+  // Handle Planned Jobs card click
+  const handlePlannedJobsClick = () => {
+    console.log("Planned Jobs card clicked - navigating to planned jobs view");
+
+    // 🔥 UPDATED: Use the same logic as processJobPlanData
+    const plannedJobPlans =
+      filteredData?.jobPlans?.filter((jobPlan) => {
+        let jobCompleted = true;
+        let jobInProgress = false;
+
+        // Check each step to determine job status
+        jobPlan.steps.forEach((step) => {
+          if (
+            step.status === "stop" ||
+            (step.stepDetails && step.stepDetails.status === "accept")
+          ) {
+            // This step is completed - continue checking other steps
+          } else if (
+            step.status === "start" ||
+            (step.stepDetails && step.stepDetails.status === "in_progress")
+          ) {
+            // This step is in progress
+            jobInProgress = true;
+            jobCompleted = false;
+          } else {
+            // This step is planned (not started)
+            jobCompleted = false;
+          }
+        });
+
+        // 🔥 FIXED: A job is "planned" if it's not completed AND not in progress
+        // This matches the logic from processJobPlanData
+        return !jobCompleted && !jobInProgress;
+      }) || [];
+
+    navigate("/dashboard/planned-jobs", {
+      state: {
+        plannedJobs: plannedJobPlans,
+        dateFilter: dateFilter,
+        customDateRange: customDateRange,
+      },
+    });
+  };
 
   // Fetch step-specific details for a job
   const fetchStepDetails = async (
@@ -398,566 +413,592 @@ const handlePlannedJobsClick = () => {
   };
 
   // Add this new function to fetch machine data
-// Add this function at the top level
-const fetchMachineUtilization = async (): Promise<MachineUtilizationData> => {
-  try {
-    const accessToken = localStorage.getItem('accessToken');
-    if (!accessToken) {
-      throw new Error('Authentication token not found.');
-    }
+  // Add this function at the top level
+  const fetchMachineUtilization = async (): Promise<MachineUtilizationData> => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        throw new Error("Authentication token not found.");
+      }
 
-    const response = await fetch('https://nrprod.nrcontainers.com/api/machines?', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    });
+      const response = await fetch(
+        "https://nrprod.nrcontainers.com/api/machines?",
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch machines: ${response.status}`);
-    }
+      if (!response.ok) {
+        throw new Error(`Failed to fetch machines: ${response.status}`);
+      }
 
-    const data = await response.json();
-    if (!data.success || !Array.isArray(data.data)) {
-      throw new Error('Invalid API response format');
-    }
+      const data = await response.json();
+      if (!data.success || !Array.isArray(data.data)) {
+        throw new Error("Invalid API response format");
+      }
 
-    // Process machines by type for stats
-    const machineStats: Record<string, { total: number; available: number; inUse: number }> = {};
-    
-    // Store individual machine details
-    const machineDetails: MachineDetails[] = [];
-    
-    data.data.forEach((machine: any) => {
-      // Skip inactive machines
-      if (!machine.isActive) return;
-      
-      const machineType = machine.machineType;
-      
-      // Add to individual machine details
-      machineDetails.push({
-        id: machine.id,
-        machineCode: machine.machineCode,
-        machineType: machine.machineType,
-        description: machine.description,
-        status: machine.status,
-        capacity: machine.capacity,
-        unit: machine.unit,
-        jobs: machine.jobs || []
+      // Process machines by type for stats
+      const machineStats: Record<
+        string,
+        { total: number; available: number; inUse: number }
+      > = {};
+
+      // Store individual machine details
+      const machineDetails: MachineDetails[] = [];
+
+      data.data.forEach((machine: any) => {
+        // Skip inactive machines
+        if (!machine.isActive) return;
+
+        const machineType = machine.machineType;
+
+        // Add to individual machine details
+        machineDetails.push({
+          id: machine.id,
+          machineCode: machine.machineCode,
+          machineType: machine.machineType,
+          description: machine.description,
+          status: machine.status,
+          capacity: machine.capacity,
+          unit: machine.unit,
+          jobs: machine.jobs || [],
+        });
+
+        // Initialize stats if not exists
+        if (!machineStats[machineType]) {
+          machineStats[machineType] = { total: 0, available: 0, inUse: 0 };
+        }
+
+        // Count totals
+        machineStats[machineType].total++;
+
+        // Count by status
+        switch (machine.status.toLowerCase()) {
+          case "available":
+            machineStats[machineType].available++;
+            break;
+          case "busy":
+          case "in_use":
+          case "occupied":
+            machineStats[machineType].inUse++;
+            break;
+          default:
+            // For other statuses (maintenance, etc.), don't count as available or in use
+            break;
+        }
       });
-      
-      // Initialize stats if not exists
-      if (!machineStats[machineType]) {
-        machineStats[machineType] = { total: 0, available: 0, inUse: 0 };
-      }
-      
-      // Count totals
-      machineStats[machineType].total++;
-      
-      // Count by status
-      switch (machine.status.toLowerCase()) {
-        case 'available':
-          machineStats[machineType].available++;
-          break;
-        case 'busy':
-        case 'in_use':
-        case 'occupied':
-          machineStats[machineType].inUse++;
-          break;
-        default:
-          // For other statuses (maintenance, etc.), don't count as available or in use
-          break;
-      }
-    });
 
-    return {
-      machineStats,
-      machineDetails
-    };
-  } catch (error) {
-    console.error('Error fetching machine utilization:', error);
-    return {
-      machineStats: {},
-      machineDetails: []
-    };
-  }
-};
-
-const mergeStepCompletionStats = (stepStats: {
-  [key: string]: { 
-    completed: number; 
-    inProgress: number; 
-    planned: number;
-    completedData: JobPlan[];
-    inProgressData: JobPlan[];
-    plannedData: JobPlan[];
-  };
-}) => {
-  // Define mapping for duplicate steps
-  const stepMappings = {
-    'Printing': ['Printing', 'PrintingDetails'],
-    'Flute Lamination': ['Flute Lamination', 'FluteLaminateBoardConversion'],
-    'Quality Control': ['Quality Control', 'QualityDept'],
-    'Flap Pasting': ['Flap Pasting', 'SideFlapPasting'],
-    'Paper Store': ['Paper Store', 'PaperStore'],
-    'Dispatch': ['Dispatch', 'DispatchProcess']
+      return {
+        machineStats,
+        machineDetails,
+      };
+    } catch (error) {
+      console.error("Error fetching machine utilization:", error);
+      return {
+        machineStats: {},
+        machineDetails: [],
+      };
+    }
   };
 
-  const mergedStats: {
-    [key: string]: { 
-      completed: number; 
-      inProgress: number; 
+  const mergeStepCompletionStats = (stepStats: {
+    [key: string]: {
+      completed: number;
+      inProgress: number;
       planned: number;
       completedData: JobPlan[];
       inProgressData: JobPlan[];
       plannedData: JobPlan[];
     };
-  } = {};
+  }) => {
+    // Define mapping for duplicate steps
+    const stepMappings = {
+      Printing: ["Printing", "PrintingDetails"],
+      "Flute Lamination": ["Flute Lamination", "FluteLaminateBoardConversion"],
+      "Quality Control": ["Quality Control", "QualityDept"],
+      "Flap Pasting": ["Flap Pasting", "SideFlapPasting"],
+      "Paper Store": ["Paper Store", "PaperStore"],
+      Dispatch: ["Dispatch", "DispatchProcess"],
+    };
 
-  const processedKeys = new Set<string>();
+    const mergedStats: {
+      [key: string]: {
+        completed: number;
+        inProgress: number;
+        planned: number;
+        completedData: JobPlan[];
+        inProgressData: JobPlan[];
+        plannedData: JobPlan[];
+      };
+    } = {};
 
-  // Process each step in the original stats
-  Object.keys(stepStats).forEach(stepName => {
-    if (processedKeys.has(stepName)) return;
+    const processedKeys = new Set<string>();
 
-    // Find if this step belongs to any mapping group
-    let masterKey = stepName;
-    let foundGroup = false;
+    // Process each step in the original stats
+    Object.keys(stepStats).forEach((stepName) => {
+      if (processedKeys.has(stepName)) return;
 
-    for (const [master, variants] of Object.entries(stepMappings)) {
-      if (variants.includes(stepName)) {
-        masterKey = master;
-        foundGroup = true;
-        break;
+      // Find if this step belongs to any mapping group
+      let masterKey = stepName;
+      let foundGroup = false;
+
+      for (const [master, variants] of Object.entries(stepMappings)) {
+        if (variants.includes(stepName)) {
+          masterKey = master;
+          foundGroup = true;
+          break;
+        }
       }
-    }
 
-    // Initialize the master key if not exists
-    if (!mergedStats[masterKey]) {
-      mergedStats[masterKey] = { 
-        completed: 0, 
-        inProgress: 0, 
+      // Initialize the master key if not exists
+      if (!mergedStats[masterKey]) {
+        mergedStats[masterKey] = {
+          completed: 0,
+          inProgress: 0,
+          planned: 0,
+          completedData: [],
+          inProgressData: [],
+          plannedData: [],
+        };
+      }
+
+      if (foundGroup) {
+        // Aggregate all variants of this step
+        const variants = stepMappings[masterKey as keyof typeof stepMappings];
+        variants.forEach((variant) => {
+          if (stepStats[variant]) {
+            mergedStats[masterKey].completed += stepStats[variant].completed;
+            mergedStats[masterKey].inProgress += stepStats[variant].inProgress;
+            mergedStats[masterKey].planned += stepStats[variant].planned;
+
+            // Merge the data arrays
+            mergedStats[masterKey].completedData.push(
+              ...stepStats[variant].completedData
+            );
+            mergedStats[masterKey].inProgressData.push(
+              ...stepStats[variant].inProgressData
+            );
+            mergedStats[masterKey].plannedData.push(
+              ...stepStats[variant].plannedData
+            );
+
+            processedKeys.add(variant);
+          }
+        });
+      } else {
+        // Single step, just copy the data
+        mergedStats[masterKey].completed += stepStats[stepName].completed;
+        mergedStats[masterKey].inProgress += stepStats[stepName].inProgress;
+        mergedStats[masterKey].planned += stepStats[stepName].planned;
+
+        // Copy the data arrays
+        mergedStats[masterKey].completedData.push(
+          ...stepStats[stepName].completedData
+        );
+        mergedStats[masterKey].inProgressData.push(
+          ...stepStats[stepName].inProgressData
+        );
+        mergedStats[masterKey].plannedData.push(
+          ...stepStats[stepName].plannedData
+        );
+
+        processedKeys.add(stepName);
+      }
+    });
+
+    return mergedStats;
+  };
+
+  // Updated fetchDashboardData - make it async and await processJobPlanData
+  const fetchDashboardData = async (
+    filterType?: DateFilterType,
+    customRange?: { start: string; end: string }
+  ) => {
+    try {
+      setLoading(true);
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) throw new Error("Authentication token not found.");
+
+      // Build query parameters for date filtering
+      const queryParams = new URLSearchParams();
+      if (filterType && filterType !== "custom") {
+        queryParams.append("filter", filterType);
+      } else if (customRange) {
+        queryParams.append("startDate", customRange.start);
+        queryParams.append("endDate", customRange.end);
+      }
+
+      // Fetch filtered job planning data
+      const jobPlanningUrl = `https://nrprod.nrcontainers.com/api/job-planning/?${queryParams.toString()}`;
+      const jobPlanningResponse = await fetch(jobPlanningUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!jobPlanningResponse.ok) {
+        throw new Error(
+          `Failed to fetch job planning data: ${jobPlanningResponse.status}`
+        );
+      }
+
+      const jobPlanningResult = await jobPlanningResponse.json();
+
+      // Fetch filtered completed jobs data
+      const completedJobsUrl = `https://nrprod.nrcontainers.com/api/completed-jobs?${queryParams.toString()}`;
+      const completedJobsResponse = await fetch(completedJobsUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      let completedJobsData: CompletedJob[] = [];
+      if (completedJobsResponse.ok) {
+        const completedJobsResult = await completedJobsResponse.json();
+        if (
+          completedJobsResult.success &&
+          Array.isArray(completedJobsResult.data)
+        ) {
+          completedJobsData = completedJobsResult.data;
+        }
+      }
+
+      if (jobPlanningResult.success && Array.isArray(jobPlanningResult.data)) {
+        const jobPlans = jobPlanningResult.data;
+
+        // Fetch step details for each job plan
+        const jobPlansWithDetails = await Promise.all(
+          jobPlans.map(async (jobPlan: JobPlan) => {
+            const stepsWithDetails = await Promise.all(
+              jobPlan.steps.map(async (step: JobPlanStep) => {
+                let stepDetails = null;
+                if (step.status === "start" || step.status === "stop") {
+                  stepDetails = await fetchStepDetails(
+                    step.stepName,
+                    jobPlan.nrcJobNo,
+                    accessToken
+                  );
+                }
+
+                return {
+                  ...step,
+                  stepDetails,
+                };
+              })
+            );
+
+            return {
+              ...jobPlan,
+              steps: stepsWithDetails,
+            };
+          })
+        );
+
+        console.log("completedJobsData", completedJobsData);
+        // Process the data to create dashboard statistics - AWAIT this call
+        const processedData = await processJobPlanData(
+          jobPlansWithDetails,
+          completedJobsData
+        );
+
+        setData(processedData);
+      } else {
+        throw new Error("Invalid API response format");
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch dashboard data"
+      );
+      console.error("Dashboard data fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Updated processJobPlanData - fetch machines once, not in loop
+  const processJobPlanData = async (
+    jobPlans: JobPlan[],
+    completedJobsData: CompletedJob[]
+  ): Promise<AdminDashboardData> => {
+    // Count completed jobs from the completed jobs API
+    const completedJobsCount = completedJobsData.length;
+
+    // Fetch machine data once at the beginning
+    const machineStats = await fetchMachineUtilization();
+
+    // Count jobs from job planning API (these are in progress or planned)
+    const totalJobs = jobPlans.length;
+    let inProgressJobs = 0;
+    let plannedJobs = 0;
+    let heldJobs = 0;
+    let totalSteps = 0;
+    let completedSteps = 0;
+    const uniqueUsers = new Set<string>();
+
+    const stepStats: {
+      [key: string]: {
+        completed: number;
+        inProgress: number;
+        planned: number;
+        completedData: JobPlan[];
+        inProgressData: JobPlan[];
+        plannedData: JobPlan[];
+      };
+    } = {};
+
+    const timeSeriesData: Array<{
+      date: string;
+      jobsStarted: number;
+      jobsCompleted: number;
+      totalSteps: number;
+      completedSteps: number;
+    }> = [];
+
+    // Initialize step statistics
+    const stepNames = [
+      "PaperStore",
+      "PrintingDetails",
+      "Corrugation",
+      "FluteLaminateBoardConversion",
+      "Punching",
+      "SideFlapPasting",
+      "QualityDept",
+      "DispatchProcess",
+    ];
+
+    // ✅ Helper function for step variants
+    const isStepVariant = (
+      stepCategory: string,
+      actualStepName: string
+    ): boolean => {
+      const stepMappings: { [key: string]: string[] } = {
+        PaperStore: ["PaperStore", "Paper Store"],
+        PrintingDetails: ["PrintingDetails", "Printing"],
+        Corrugation: ["Corrugation"],
+        FluteLaminateBoardConversion: [
+          "FluteLaminateBoardConversion",
+          "Flute Lamination",
+        ],
+        Punching: ["Punching"],
+        SideFlapPasting: ["SideFlapPasting", "Flap Pasting"],
+        QualityDept: ["QualityDept", "Quality Control"],
+        DispatchProcess: ["DispatchProcess", "Dispatch"],
+      };
+
+      return (
+        stepMappings[stepCategory]?.includes(actualStepName) ||
+        stepCategory === actualStepName
+      );
+    };
+
+    stepNames.forEach((step) => {
+      stepStats[step] = {
+        completed: 0,
+        inProgress: 0,
         planned: 0,
         completedData: [],
         inProgressData: [],
-        plannedData: []
+        plannedData: [],
       };
-    }
+    });
 
-    if (foundGroup) {
-      // Aggregate all variants of this step
-      const variants = stepMappings[masterKey as keyof typeof stepMappings];
-      variants.forEach(variant => {
-        if (stepStats[variant]) {
-          mergedStats[masterKey].completed += stepStats[variant].completed;
-          mergedStats[masterKey].inProgress += stepStats[variant].inProgress;
-          mergedStats[masterKey].planned += stepStats[variant].planned;
-          
-          // Merge the data arrays
-          mergedStats[masterKey].completedData.push(...stepStats[variant].completedData);
-          mergedStats[masterKey].inProgressData.push(...stepStats[variant].inProgressData);
-          mergedStats[masterKey].plannedData.push(...stepStats[variant].plannedData);
-          
-          processedKeys.add(variant);
+    // Process each job plan
+    jobPlans.forEach((jobPlan) => {
+      let jobCompleted = true;
+      let jobInProgress = false;
+      let jobOnHold = false;
+      const totalStepsInJob = jobPlan.steps.length;
+      let completedStepsInJob = 0;
+
+      totalSteps += totalStepsInJob;
+
+      // ✅ FIXED: Process each step category separately
+      stepNames.forEach((stepName) => {
+        // Find the matching step for this category in this job
+        const matchingStep = jobPlan.steps.find((step) =>
+          isStepVariant(stepName, step.stepName)
+        );
+
+        if (matchingStep) {
+          // Categorize based on the matching step's status
+          if (
+            matchingStep.status === "stop" ||
+            (matchingStep.stepDetails &&
+              matchingStep.stepDetails.status === "accept")
+          ) {
+            // This step is completed
+            stepStats[stepName].completed++;
+            stepStats[stepName].completedData.push(jobPlan);
+            completedStepsInJob++;
+            completedSteps++;
+          } else if (
+            matchingStep.status === "start" ||
+            (matchingStep.stepDetails &&
+              matchingStep.stepDetails.status === "in_progress")
+          ) {
+            // This step is in progress
+            stepStats[stepName].inProgress++;
+            stepStats[stepName].inProgressData.push(jobPlan);
+            jobInProgress = true;
+            jobCompleted = false;
+          } else {
+            // This step is planned
+            stepStats[stepName].planned++;
+            stepStats[stepName].plannedData.push(jobPlan);
+            jobCompleted = false;
+          }
+
+          // Track unique users
+          if (matchingStep.user) {
+            uniqueUsers.add(matchingStep.user);
+          }
         }
       });
-    } else {
-      // Single step, just copy the data
-      mergedStats[masterKey].completed += stepStats[stepName].completed;
-      mergedStats[masterKey].inProgress += stepStats[stepName].inProgress;
-      mergedStats[masterKey].planned += stepStats[stepName].planned;
-      
-      // Copy the data arrays
-      mergedStats[masterKey].completedData.push(...stepStats[stepName].completedData);
-      mergedStats[masterKey].inProgressData.push(...stepStats[stepName].inProgressData);
-      mergedStats[masterKey].plannedData.push(...stepStats[stepName].plannedData);
-      
-      processedKeys.add(stepName);
-    }
-  });
 
-  return mergedStats;
-};
+      // ✅ SAFETY CHECK: Handle steps not in our predefined list
+      jobPlan.steps.forEach((step) => {
+        // Only process steps that are not already handled by the main logic
+        const isHandled = stepNames.some((stepName) =>
+          isStepVariant(stepName, step.stepName)
+        );
 
+        if (!isHandled) {
+          // SAFETY CHECK: Ensure stepStats exists for this step name
+          if (!stepStats[step.stepName]) {
+            stepStats[step.stepName] = {
+              completed: 0,
+              inProgress: 0,
+              planned: 0,
+              completedData: [],
+              inProgressData: [],
+              plannedData: [],
+            };
+          }
 
+          if (
+            step.stepDetails?.data?.status === "hold" ||
+            step.stepDetails?.status === "hold"
+          ) {
+            jobOnHold = true;
+            jobCompleted = false;
+          }
 
-// Updated fetchDashboardData - make it async and await processJobPlanData
-const fetchDashboardData = async (
-  filterType?: DateFilterType,
-  customRange?: { start: string; end: string }
-) => {
-  try {
-    setLoading(true);
-    const accessToken = localStorage.getItem("accessToken");
-    if (!accessToken) throw new Error("Authentication token not found.");
+          // Process the unhandled step
+          if (
+            step.status === "stop" ||
+            (step.stepDetails && step.stepDetails.status === "accept")
+          ) {
+            stepStats[step.stepName].completed++;
+            stepStats[step.stepName].completedData.push(jobPlan);
+          } else if (
+            step.status === "start" ||
+            (step.stepDetails && step.stepDetails.status === "in_progress")
+          ) {
+            stepStats[step.stepName].inProgress++;
+            stepStats[step.stepName].inProgressData.push(jobPlan);
+            jobInProgress = true;
+            jobCompleted = false;
+          } else {
+            stepStats[step.stepName].planned++;
+            stepStats[step.stepName].plannedData.push(jobPlan);
+            jobCompleted = false;
+          }
 
-    // Build query parameters for date filtering
-    const queryParams = new URLSearchParams();
-    if (filterType && filterType !== "custom") {
-      queryParams.append("filter", filterType);
-    } else if (customRange) {
-      queryParams.append("startDate", customRange.start);
-      queryParams.append("endDate", customRange.end);
-    }
-
-    // Fetch filtered job planning data
-    const jobPlanningUrl = `https://nrprod.nrcontainers.com/api/job-planning/?${queryParams.toString()}`;
-    const jobPlanningResponse = await fetch(jobPlanningUrl, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-
-    if (!jobPlanningResponse.ok) {
-      throw new Error(
-        `Failed to fetch job planning data: ${jobPlanningResponse.status}`
-      );
-    }
-
-    const jobPlanningResult = await jobPlanningResponse.json();
-
-    // Fetch filtered completed jobs data
-    const completedJobsUrl = `https://nrprod.nrcontainers.com/api/completed-jobs?${queryParams.toString()}`;
-    const completedJobsResponse = await fetch(completedJobsUrl, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-
-    let completedJobsData: CompletedJob[] = [];
-    if (completedJobsResponse.ok) {
-      const completedJobsResult = await completedJobsResponse.json();
-      if (
-        completedJobsResult.success &&
-        Array.isArray(completedJobsResult.data)
-      ) {
-        completedJobsData = completedJobsResult.data;
-      }
-    }
-
-    if (jobPlanningResult.success && Array.isArray(jobPlanningResult.data)) {
-      const jobPlans = jobPlanningResult.data;
-
-      // Fetch step details for each job plan
-      const jobPlansWithDetails = await Promise.all(
-        jobPlans.map(async (jobPlan: JobPlan) => {
-          const stepsWithDetails = await Promise.all(
-            jobPlan.steps.map(async (step: JobPlanStep) => {
-              let stepDetails = null;
-              if (step.status === "start" || step.status === "stop") {
-                stepDetails = await fetchStepDetails(
-                  step.stepName,
-                  jobPlan.nrcJobNo,
-                  accessToken
-                );
-              }
-
-              return {
-                ...step,
-                stepDetails,
-              };
-            })
-          );
-
-          return {
-            ...jobPlan,
-            steps: stepsWithDetails,
-          };
-        })
-      );
-
-      console.log("completedJobsData", completedJobsData)
-      // Process the data to create dashboard statistics - AWAIT this call
-      const processedData = await processJobPlanData(
-        jobPlansWithDetails,
-        completedJobsData
-      );
-
-      setData(processedData);
-    } else {
-      throw new Error("Invalid API response format");
-    }
-  } catch (err) {
-    setError(
-      err instanceof Error ? err.message : "Failed to fetch dashboard data"
-    );
-    console.error("Dashboard data fetch error:", err);
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-
-// Updated processJobPlanData - fetch machines once, not in loop
-const processJobPlanData = async (
-  jobPlans: JobPlan[],
-  completedJobsData: CompletedJob[]
-): Promise<AdminDashboardData> => {
-  // Count completed jobs from the completed jobs API
-  const completedJobsCount = completedJobsData.length;
-
-  // Fetch machine data once at the beginning
-  const machineStats = await fetchMachineUtilization();
-
-  // Count jobs from job planning API (these are in progress or planned)
-  const totalJobs = jobPlans.length;
-  let inProgressJobs = 0;
-  let plannedJobs = 0;
-  let heldJobs = 0;
-  let totalSteps = 0;
-  let completedSteps = 0;
-  const uniqueUsers = new Set<string>();
-
-  const stepStats: {
-    [key: string]: { 
-      completed: number; 
-      inProgress: number; 
-      planned: number;
-      completedData: JobPlan[];
-      inProgressData: JobPlan[];
-      plannedData: JobPlan[];
-    };
-  } = {};
-  
-  const timeSeriesData: Array<{
-    date: string;
-    jobsStarted: number;
-    jobsCompleted: number;
-    totalSteps: number;
-    completedSteps: number;
-  }> = [];
-
-  // Initialize step statistics
-  const stepNames = [
-    "PaperStore",
-    "PrintingDetails", 
-    "Corrugation",
-    "FluteLaminateBoardConversion",
-    "Punching",
-    "SideFlapPasting",
-    "QualityDept",
-    "DispatchProcess",
-  ];
-
-  // ✅ Helper function for step variants
-  const isStepVariant = (stepCategory: string, actualStepName: string): boolean => {
-    const stepMappings: { [key: string]: string[] } = {
-      'PaperStore': ['PaperStore', 'Paper Store'],
-      'PrintingDetails': ['PrintingDetails', 'Printing'],
-      'Corrugation': ['Corrugation'],
-      'FluteLaminateBoardConversion': ['FluteLaminateBoardConversion', 'Flute Lamination'],
-      'Punching': ['Punching'],
-      'SideFlapPasting': ['SideFlapPasting', 'Flap Pasting'],
-      'QualityDept': ['QualityDept', 'Quality Control'],
-      'DispatchProcess': ['DispatchProcess', 'Dispatch'],
-    };
-
-    return stepMappings[stepCategory]?.includes(actualStepName) || stepCategory === actualStepName;
-  };
-  
-  stepNames.forEach((step) => {
-    stepStats[step] = { 
-      completed: 0, 
-      inProgress: 0, 
-      planned: 0,
-      completedData: [],
-      inProgressData: [],
-      plannedData: []
-    };
-  });
-
-  // Process each job plan
-  jobPlans.forEach((jobPlan) => {
-    let jobCompleted = true;
-    let jobInProgress = false;
-    let jobOnHold = false;
-    const totalStepsInJob = jobPlan.steps.length;
-    let completedStepsInJob = 0;
-
-    totalSteps += totalStepsInJob;
-
-    // ✅ FIXED: Process each step category separately
-    stepNames.forEach((stepName) => {
-      // Find the matching step for this category in this job
-      const matchingStep = jobPlan.steps.find(step => 
-        isStepVariant(stepName, step.stepName)
-      );
-
-      if (matchingStep) {
-        // Categorize based on the matching step's status
-        if (
-          matchingStep.status === "stop" || 
-          (matchingStep.stepDetails && matchingStep.stepDetails.status === "accept")
-        ) {
-          // This step is completed
-          stepStats[stepName].completed++;
-          stepStats[stepName].completedData.push(jobPlan);
-          completedStepsInJob++;
-          completedSteps++;
-        } else if (
-          matchingStep.status === "start" ||
-          (matchingStep.stepDetails && matchingStep.stepDetails.status === "in_progress")
-        ) {
-          // This step is in progress
-          stepStats[stepName].inProgress++;
-          stepStats[stepName].inProgressData.push(jobPlan);
-          jobInProgress = true;
-          jobCompleted = false;
-        } else {
-          // This step is planned
-          stepStats[stepName].planned++;
-          stepStats[stepName].plannedData.push(jobPlan);
-          jobCompleted = false;
+          // Track unique users
+          if (step.user) {
+            uniqueUsers.add(step.user);
+          }
         }
-
-        // Track unique users
-        if (matchingStep.user) {
-          uniqueUsers.add(matchingStep.user);
-        }
-      }
-    });
-
-    // ✅ SAFETY CHECK: Handle steps not in our predefined list
-    jobPlan.steps.forEach((step) => {
-      // Only process steps that are not already handled by the main logic
-      const isHandled = stepNames.some(stepName => isStepVariant(stepName, step.stepName));
-      
-      if (!isHandled) {
-        // SAFETY CHECK: Ensure stepStats exists for this step name
-        if (!stepStats[step.stepName]) {
-          stepStats[step.stepName] = {
-            completed: 0,
-            inProgress: 0,
-            planned: 0,
-            completedData: [],
-            inProgressData: [],
-            plannedData: []
-          };
-        }
-
-        if (
-        step.stepDetails?.data?.status === "hold" ||
-        step.stepDetails?.status === "hold"
-      ) {
-        jobOnHold = true;
-        jobCompleted = false;
-      }
-
-        // Process the unhandled step
-        if (
-          step.status === "stop" || 
-          (step.stepDetails && step.stepDetails.status === "accept")
-        ) {
-          stepStats[step.stepName].completed++;
-          stepStats[step.stepName].completedData.push(jobPlan);
-        } else if (
-          step.status === "start" ||
-          (step.stepDetails && step.stepDetails.status === "in_progress")
-        ) {
-          stepStats[step.stepName].inProgress++;
-          stepStats[step.stepName].inProgressData.push(jobPlan);
-          jobInProgress = true;
-          jobCompleted = false;
-        } else {
-          stepStats[step.stepName].planned++;
-          stepStats[step.stepName].plannedData.push(jobPlan);
-          jobCompleted = false;
-        }
-
-        // Track unique users
-        if (step.user) {
-          uniqueUsers.add(step.user);
-        }
-      }
-    });
-
-    // Determine job status
-    if (jobCompleted) {
-      // This job is completed, but we're not counting it here since it comes from completed jobs API
-    } 
-    else if (jobOnHold) {
-      heldJobs++;
-    }else if (jobInProgress) {
-      inProgressJobs++;
-    } else {
-      plannedJobs++;
-    }
-
-    // Add to time series data
-    const jobDate = new Date(jobPlan.createdAt).toISOString().split("T")[0];
-    const existingDateIndex = timeSeriesData.findIndex(
-      (item) => item.date === jobDate
-    );
-
-    if (existingDateIndex >= 0) {
-      timeSeriesData[existingDateIndex].totalSteps += totalStepsInJob;
-      timeSeriesData[existingDateIndex].completedSteps += completedStepsInJob;
-      if (jobInProgress) timeSeriesData[existingDateIndex].jobsStarted++;
-    } else {
-      timeSeriesData.push({
-        date: jobDate,
-        jobsStarted: jobInProgress ? 1 : 0,
-        jobsCompleted: 0,
-        totalSteps: totalStepsInJob,
-        completedSteps: completedStepsInJob,
       });
-    }
-  });
 
-  console.log("completed jobs", completedJobsData);
+      // Determine job status
+      if (jobCompleted) {
+        // This job is completed, but we're not counting it here since it comes from completed jobs API
+      } else if (jobOnHold) {
+        heldJobs++;
+      } else if (jobInProgress) {
+        inProgressJobs++;
+      } else {
+        plannedJobs++;
+      }
 
-  // Process completed jobs data for time series
-  completedJobsData.forEach((completedJob) => {
-    const poDate = completedJob.purchaseOrderDetails?.poDate;
-
-    if (poDate) {
-      const completedDate = new Date(poDate).toISOString().split("T")[0];
+      // Add to time series data
+      const jobDate = new Date(jobPlan.createdAt).toISOString().split("T")[0];
       const existingDateIndex = timeSeriesData.findIndex(
-        (item) => item.date === completedDate
+        (item) => item.date === jobDate
       );
 
       if (existingDateIndex >= 0) {
-        timeSeriesData[existingDateIndex].jobsCompleted++;
+        timeSeriesData[existingDateIndex].totalSteps += totalStepsInJob;
+        timeSeriesData[existingDateIndex].completedSteps += completedStepsInJob;
+        if (jobInProgress) timeSeriesData[existingDateIndex].jobsStarted++;
       } else {
         timeSeriesData.push({
-          date: completedDate,
-          jobsStarted: 0,
-          jobsCompleted: 1,
-          totalSteps: 0,
-          completedSteps: 0,
+          date: jobDate,
+          jobsStarted: jobInProgress ? 1 : 0,
+          jobsCompleted: 0,
+          totalSteps: totalStepsInJob,
+          completedSteps: completedStepsInJob,
         });
       }
-    } else {
-      console.warn(`Job ${completedJob.id} has no purchase order date, skipping...`);
-    }
-  });
+    });
 
-  // Sort time series data by date
-  timeSeriesData.sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
+    console.log("completed jobs", completedJobsData);
 
-  // Calculate efficiency
-  const efficiency =
-    totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+    // Process completed jobs data for time series
+    completedJobsData.forEach((completedJob) => {
+      const poDate = completedJob.purchaseOrderDetails?.poDate;
 
-  const mergedStepStats = mergeStepCompletionStats(stepStats);
+      if (poDate) {
+        const completedDate = new Date(poDate).toISOString().split("T")[0];
+        const existingDateIndex = timeSeriesData.findIndex(
+          (item) => item.date === completedDate
+        );
 
-  return {
-    jobPlans,
-    totalJobs: totalJobs + completedJobsCount,
-    completedJobs: completedJobsCount,
-    inProgressJobs,
-    plannedJobs,
-    totalSteps,
-    completedSteps,
-    activeUsers: uniqueUsers.size,
-    efficiency,
-    stepCompletionStats: mergedStepStats,
-    machineUtilization: machineStats,
-    timeSeriesData,
-    completedJobsData: completedJobsData,
-    heldJobs,
+        if (existingDateIndex >= 0) {
+          timeSeriesData[existingDateIndex].jobsCompleted++;
+        } else {
+          timeSeriesData.push({
+            date: completedDate,
+            jobsStarted: 0,
+            jobsCompleted: 1,
+            totalSteps: 0,
+            completedSteps: 0,
+          });
+        }
+      } else {
+        console.warn(
+          `Job ${completedJob.id} has no purchase order date, skipping...`
+        );
+      }
+    });
+
+    // Sort time series data by date
+    timeSeriesData.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    // Calculate efficiency
+    const efficiency =
+      totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+
+    const mergedStepStats = mergeStepCompletionStats(stepStats);
+
+    return {
+      jobPlans,
+      totalJobs: totalJobs + completedJobsCount,
+      completedJobs: completedJobsCount,
+      inProgressJobs,
+      plannedJobs,
+      totalSteps,
+      completedSteps,
+      activeUsers: uniqueUsers.size,
+      efficiency,
+      stepCompletionStats: mergedStepStats,
+      machineUtilization: machineStats,
+      timeSeriesData,
+      completedJobsData: completedJobsData,
+      heldJobs,
+    };
   };
-};
-
-  
 
   // Handle filter changes
   const handleFilterChange = (
@@ -974,315 +1015,358 @@ const processJobPlanData = async (
   // Data is now filtered at the API level, so we use the data directly
   // const filteredData = data;
 
-// Helper function to check if a date falls within the selected range
-// Helper function to check if a date falls within the selected range
-const isDateInRange = (date: string | Date, startDate: Date, endDate: Date): boolean => {
-  const checkDate = new Date(date);
-  // Reset time to start of day for accurate comparison
-  checkDate.setHours(0, 0, 0, 0);
-  startDate.setHours(0, 0, 0, 0);
-  endDate.setHours(23, 59, 59, 999);
-  
-  return checkDate >= startDate && checkDate <= endDate;
-};
+  // Helper function to check if a date falls within the selected range
+  // Helper function to check if a date falls within the selected range
+  const isDateInRange = (
+    date: string | Date,
+    startDate: Date,
+    endDate: Date
+  ): boolean => {
+    const checkDate = new Date(date);
+    // Reset time to start of day for accurate comparison
+    checkDate.setHours(0, 0, 0, 0);
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
 
-// Calculate date range based on your filter options
-const getDateRange = (filter: DateFilterType, customRange?: {start: string; end: string}) => {
-  const today = new Date();
-  let startDate: Date;
-  let endDate: Date = new Date(today);
-
-  switch (filter) {
-    case 'today':
-      startDate = new Date(today);
-      endDate = new Date(today);
-      break;
-    case 'week':
-      // This week (from Monday to Sunday)
-      startDate = new Date(today);
-      const dayOfWeek = today.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, Monday = 1
-      startDate.setDate(today.getDate() - daysToMonday);
-      endDate = new Date(startDate);
-      endDate.setDate(startDate.getDate() + 6);
-      break;
-    case 'month':
-      // This month
-      startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-      endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      break;
-    case 'quarter':
-      // This quarter
-      const currentQuarter = Math.floor(today.getMonth() / 3);
-      startDate = new Date(today.getFullYear(), currentQuarter * 3, 1);
-      endDate = new Date(today.getFullYear(), (currentQuarter + 1) * 3, 0);
-      break;
-    case 'year':
-      // This year
-      startDate = new Date(today.getFullYear(), 0, 1);
-      endDate = new Date(today.getFullYear(), 11, 31);
-      break;
-    case 'custom':
-      if (customRange) {
-        startDate = new Date(customRange.start);
-        endDate = new Date(customRange.end);
-      } else {
-        // Fallback to today if no custom range
-        startDate = new Date(today);
-        endDate = new Date(today);
-      }
-      break;
-    default:
-      // Show all data
-      return null;
-  }
-
-  return { startDate, endDate };
-};
-
-// Filter the data based on selected dates
-// 🔥 FIXED: filteredData useMemo with consistent logic
-const filteredData = useMemo(() => {
-  if (!data) return null;
-
-  // If no date filter is applied, return all data
-  if (!dateFilter) return data;
-
-  const dateRange = getDateRange(dateFilter, customDateRange);
-  
-  // If no date range specified, return all data
-  if (!dateRange) return data;
-
-  const { startDate, endDate } = dateRange;
-
-  console.log('Filtering data from:', startDate.toDateString(), 'to:', endDate.toDateString());
-
-  // Filter jobPlans based on createdAt date
-  const filteredJobPlans = data.jobPlans.filter(jobPlan => {
-    const jobDate = new Date(jobPlan.createdAt);
-    return isDateInRange(jobDate, new Date(startDate), new Date(endDate));
-  });
-
-  // Filter completedJobsData based on poDate
-  const filteredCompletedJobsData = data.completedJobsData.filter(completedJob => {
-    const poDate = completedJob.purchaseOrderDetails?.poDate;
-    if (!poDate) return false;
-    return isDateInRange(poDate, new Date(startDate), new Date(endDate));
-  });
-
-  // Filter timeSeriesData based on date
-  const filteredTimeSeriesData = data.timeSeriesData.filter(timeData => {
-    return isDateInRange(timeData.date, new Date(startDate), new Date(endDate));
-  });
-
-  // 🔥 RECALCULATE USING THE SAME LOGIC AS processJobPlanData
-  const totalJobs = filteredJobPlans.length;
-  const completedJobs = filteredCompletedJobsData.length;
-  
-  let inProgressJobs = 0;
-  let plannedJobs = 0;
-  let totalSteps = 0;
-  let heldJobs = 0;
-  let completedSteps = 0;
-  const uniqueUsers = new Set<string>();
-
-  // 🔥 UPDATED: Process each job plan using the exact same logic
-  filteredJobPlans.forEach(jobPlan => {
-    let jobCompleted = true;
-    let jobInProgress = false;
-    let jobOnHold = false;
-    const totalStepsInJob = jobPlan.steps.length;
-    let completedStepsInJob = 0;
-
-    totalSteps += totalStepsInJob;
-
-    // 🔥 IMPORTANT: Use the exact same step processing logic
-    jobPlan.steps.forEach(step => {
-      // Track unique users
-      if (step.user) {
-        uniqueUsers.add(step.user);
-      }
-
-          if (
-      step.stepDetails?.data?.status === "hold" ||
-      step.stepDetails?.status === "hold"
-    ) {
-      jobOnHold = true;
-    }
-
-
-      // 🔥 FIXED: Use the same categorization logic as processJobPlanData
-      if (
-        step.status === "stop" || 
-        (step.stepDetails && step.stepDetails.status === "accept")
-      ) {
-        // This step is completed
-        completedStepsInJob++;
-        completedSteps++;
-      } else if (
-        step.status === "start" ||
-        (step.stepDetails && step.stepDetails.status === "in_progress")
-      ) {
-        // This step is in progress
-        jobInProgress = true;
-        jobCompleted = false;
-      } else {
-        // This step is planned (not started)
-        jobCompleted = false;
-      }
-    });
-
-    // 🔥 FIXED: Use the same job categorization logic
-    if (jobCompleted) {
-      // This job is completed, but we're not counting it here since it comes from completed jobs API
-      // NOTE: This case should not happen for job plans
-    }
-    if (jobOnHold) {
-    heldJobs++;
-  } else if (jobInProgress) {
-      inProgressJobs++;
-    } else {
-      plannedJobs++;
-    }
-  });
-
-  // 🔥 RECALCULATE STEP STATS USING SAME LOGIC (if needed for step completion stats)
-  const stepCompletionStats: Record<string, {
-    completed: number;
-    inProgress: number;
-    planned: number;
-    completedData: any[];
-    inProgressData: any[];
-    plannedData: any[];
-  }> = {};
-
-  // Initialize step stats using the same step names as processJobPlanData
-  const stepNames = ["PaperStore", "PrintingDetails", "Corrugation", "FluteLaminateBoardConversion", "Punching", "SideFlapPasting", "QualityDept", "DispatchProcess"];
-  
-  stepNames.forEach(stepName => {
-    stepCompletionStats[stepName] = {
-      completed: 0,
-      inProgress: 0,
-      planned: 0,
-      completedData: [],
-      inProgressData: [],
-      plannedData: []
-    };
-  });
-
-  // 🔥 HELPER FUNCTION: Same as processJobPlanData
-  const isStepVariant = (stepCategory: string, actualStepName: string): boolean => {
-    const stepMappings: { [key: string]: string[] } = {
-      'PaperStore': ['PaperStore', 'Paper Store'],
-      'PrintingDetails': ['PrintingDetails', 'Printing'],
-      'Corrugation': ['Corrugation'],
-      'FluteLaminateBoardConversion': ['FluteLaminateBoardConversion', 'Flute Lamination'],
-      'Punching': ['Punching'],
-      'SideFlapPasting': ['SideFlapPasting', 'Flap Pasting'],
-      'QualityDept': ['QualityDept', 'Quality Control'],
-      'DispatchProcess': ['DispatchProcess', 'Dispatch'],
-    };
-
-    return stepMappings[stepCategory]?.includes(actualStepName) || stepCategory === actualStepName;
+    return checkDate >= startDate && checkDate <= endDate;
   };
 
-  // Process step completion stats using the same logic
-  filteredJobPlans.forEach(jobPlan => {
-    stepNames.forEach(stepName => {
-      const matchingStep = jobPlan.steps.find(step => 
-        isStepVariant(stepName, step.stepName)
-      );
+  // Calculate date range based on your filter options
+  const getDateRange = (
+    filter: DateFilterType,
+    customRange?: { start: string; end: string }
+  ) => {
+    const today = new Date();
+    let startDate: Date;
+    let endDate: Date = new Date(today);
 
-      if (matchingStep) {
-        if (
-          matchingStep.status === "stop" || 
-          (matchingStep.stepDetails && matchingStep.stepDetails.status === "accept")
-        ) {
-          stepCompletionStats[stepName].completed++;
-          stepCompletionStats[stepName].completedData.push(jobPlan);
-        } else if (
-          matchingStep.status === "start" ||
-          (matchingStep.stepDetails && matchingStep.stepDetails.status === "in_progress")
-        ) {
-          stepCompletionStats[stepName].inProgress++;
-          stepCompletionStats[stepName].inProgressData.push(jobPlan);
+    switch (filter) {
+      case "today":
+        startDate = new Date(today);
+        endDate = new Date(today);
+        break;
+      case "week":
+        // This week (from Monday to Sunday)
+        startDate = new Date(today);
+        const dayOfWeek = today.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, Monday = 1
+        startDate.setDate(today.getDate() - daysToMonday);
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6);
+        break;
+      case "month":
+        // This month
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        break;
+      case "quarter":
+        // This quarter
+        const currentQuarter = Math.floor(today.getMonth() / 3);
+        startDate = new Date(today.getFullYear(), currentQuarter * 3, 1);
+        endDate = new Date(today.getFullYear(), (currentQuarter + 1) * 3, 0);
+        break;
+      case "year":
+        // This year
+        startDate = new Date(today.getFullYear(), 0, 1);
+        endDate = new Date(today.getFullYear(), 11, 31);
+        break;
+      case "custom":
+        if (customRange) {
+          startDate = new Date(customRange.start);
+          endDate = new Date(customRange.end);
         } else {
-          stepCompletionStats[stepName].planned++;
-          stepCompletionStats[stepName].plannedData.push(jobPlan);
+          // Fallback to today if no custom range
+          startDate = new Date(today);
+          endDate = new Date(today);
         }
-      }
+        break;
+      default:
+        // Show all data
+        return null;
+    }
+
+    return { startDate, endDate };
+  };
+
+  // Filter the data based on selected dates
+  // 🔥 FIXED: filteredData useMemo with consistent logic
+  const filteredData = useMemo(() => {
+    if (!data) return null;
+
+    // If no date filter is applied, return all data
+    if (!dateFilter) return data;
+
+    const dateRange = getDateRange(dateFilter, customDateRange);
+
+    // If no date range specified, return all data
+    if (!dateRange) return data;
+
+    const { startDate, endDate } = dateRange;
+
+    console.log(
+      "Filtering data from:",
+      startDate.toDateString(),
+      "to:",
+      endDate.toDateString()
+    );
+
+    // Filter jobPlans based on createdAt date
+    const filteredJobPlans = data.jobPlans.filter((jobPlan) => {
+      const jobDate = new Date(jobPlan.createdAt);
+      return isDateInRange(jobDate, new Date(startDate), new Date(endDate));
     });
 
-    // Handle steps not in predefined list (same as processJobPlanData)
-    jobPlan.steps.forEach(step => {
-      const isHandled = stepNames.some(stepName => isStepVariant(stepName, step.stepName));
-      
-      if (!isHandled) {
-        if (!stepCompletionStats[step.stepName]) {
-          stepCompletionStats[step.stepName] = {
-            completed: 0,
-            inProgress: 0,
-            planned: 0,
-            completedData: [],
-            inProgressData: [],
-            plannedData: []
-          };
+    // Filter completedJobsData based on poDate
+    const filteredCompletedJobsData = data.completedJobsData.filter(
+      (completedJob) => {
+        const poDate = completedJob.purchaseOrderDetails?.poDate;
+        if (!poDate) return false;
+        return isDateInRange(poDate, new Date(startDate), new Date(endDate));
+      }
+    );
+
+    // Filter timeSeriesData based on date
+    const filteredTimeSeriesData = data.timeSeriesData.filter((timeData) => {
+      return isDateInRange(
+        timeData.date,
+        new Date(startDate),
+        new Date(endDate)
+      );
+    });
+
+    // 🔥 RECALCULATE USING THE SAME LOGIC AS processJobPlanData
+    const totalJobs = filteredJobPlans.length;
+    const completedJobs = filteredCompletedJobsData.length;
+
+    let inProgressJobs = 0;
+    let plannedJobs = 0;
+    let totalSteps = 0;
+    let heldJobs = 0;
+    let completedSteps = 0;
+    const uniqueUsers = new Set<string>();
+
+    // 🔥 UPDATED: Process each job plan using the exact same logic
+    filteredJobPlans.forEach((jobPlan) => {
+      let jobCompleted = true;
+      let jobInProgress = false;
+      let jobOnHold = false;
+      const totalStepsInJob = jobPlan.steps.length;
+      let completedStepsInJob = 0;
+
+      totalSteps += totalStepsInJob;
+
+      // 🔥 IMPORTANT: Use the exact same step processing logic
+      jobPlan.steps.forEach((step) => {
+        // Track unique users
+        if (step.user) {
+          uniqueUsers.add(step.user);
         }
 
+        // 🔥 FIXED: Check for hold status FIRST (highest priority)
         if (
-          step.status === "stop" || 
+          step.stepDetails?.data?.status === "hold" ||
+          step.stepDetails?.status === "hold"
+        ) {
+          jobOnHold = true;
+          jobCompleted = false;
+          // Don't set jobInProgress = true if it's on hold
+          return; // Skip the rest of the logic for this step
+        }
+
+        // 🔥 FIXED: Use the same categorization logic as processJobPlanData
+        if (
+          step.status === "stop" ||
           (step.stepDetails && step.stepDetails.status === "accept")
         ) {
-          stepCompletionStats[step.stepName].completed++;
-          stepCompletionStats[step.stepName].completedData.push(jobPlan);
+          // This step is completed
+          completedStepsInJob++;
+          completedSteps++;
         } else if (
           step.status === "start" ||
           (step.stepDetails && step.stepDetails.status === "in_progress")
         ) {
-          stepCompletionStats[step.stepName].inProgress++;
-          stepCompletionStats[step.stepName].inProgressData.push(jobPlan);
+          // This step is in progress (only if not on hold)
+          jobInProgress = true;
+          jobCompleted = false;
         } else {
-          stepCompletionStats[step.stepName].planned++;
-          stepCompletionStats[step.stepName].plannedData.push(jobPlan);
+          // This step is planned (not started)
+          jobCompleted = false;
         }
+      });
+
+      // 🔥 FIXED: Use the same job categorization logic
+      if (jobCompleted) {
+        // This job is completed, but we're not counting it here since it comes from completed jobs API
+        // NOTE: This case should not happen for job plans
+      }
+      if (jobOnHold) {
+        heldJobs++;
+      } else if (jobInProgress) {
+        inProgressJobs++;
+      } else {
+        plannedJobs++;
       }
     });
-  });
 
-  // Calculate efficiency
-  const efficiency = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+    // 🔥 RECALCULATE STEP STATS USING SAME LOGIC (if needed for step completion stats)
+    const stepCompletionStats: Record<
+      string,
+      {
+        completed: number;
+        inProgress: number;
+        planned: number;
+        completedData: any[];
+        inProgressData: any[];
+        plannedData: any[];
+      }
+    > = {};
 
-  // Use your existing mergeStepCompletionStats function
-  const mergedStepStats = mergeStepCompletionStats(stepCompletionStats);
+    // Initialize step stats using the same step names as processJobPlanData
+    const stepNames = [
+      "PaperStore",
+      "PrintingDetails",
+      "Corrugation",
+      "FluteLaminateBoardConversion",
+      "Punching",
+      "SideFlapPasting",
+      "QualityDept",
+      "DispatchProcess",
+    ];
 
-  console.log('🔍 Filtered Data Results:');
-  console.log('Total filtered jobPlans:', filteredJobPlans.length);
-  console.log('Completed jobs:', completedJobs);
-  console.log('In progress jobs:', inProgressJobs);
-  console.log('Planned jobs:', plannedJobs);
-  console.log('Total jobs:', totalJobs + completedJobs);
+    stepNames.forEach((stepName) => {
+      stepCompletionStats[stepName] = {
+        completed: 0,
+        inProgress: 0,
+        planned: 0,
+        completedData: [],
+        inProgressData: [],
+        plannedData: [],
+      };
+    });
 
-  return {
-    ...data, // Keep machine utilization and other non-date-dependent data
-    jobPlans: filteredJobPlans,
-    totalJobs: totalJobs + completedJobs, // Total includes both in-progress and completed
-    completedJobs,
-    inProgressJobs,
-    plannedJobs,
-    totalSteps,
-    completedSteps,
-    activeUsers: uniqueUsers.size,
-    efficiency,
-    stepCompletionStats: mergedStepStats,
-    timeSeriesData: filteredTimeSeriesData,
-    completedJobsData: filteredCompletedJobsData,
-    heldJobs,
-  };
-}, [data, dateFilter, customDateRange]);
+    // 🔥 HELPER FUNCTION: Same as processJobPlanData
+    const isStepVariant = (
+      stepCategory: string,
+      actualStepName: string
+    ): boolean => {
+      const stepMappings: { [key: string]: string[] } = {
+        PaperStore: ["PaperStore", "Paper Store"],
+        PrintingDetails: ["PrintingDetails", "Printing"],
+        Corrugation: ["Corrugation"],
+        FluteLaminateBoardConversion: [
+          "FluteLaminateBoardConversion",
+          "Flute Lamination",
+        ],
+        Punching: ["Punching"],
+        SideFlapPasting: ["SideFlapPasting", "Flap Pasting"],
+        QualityDept: ["QualityDept", "Quality Control"],
+        DispatchProcess: ["DispatchProcess", "Dispatch"],
+      };
 
+      return (
+        stepMappings[stepCategory]?.includes(actualStepName) ||
+        stepCategory === actualStepName
+      );
+    };
 
+    // Process step completion stats using the same logic
+    filteredJobPlans.forEach((jobPlan) => {
+      stepNames.forEach((stepName) => {
+        const matchingStep = jobPlan.steps.find((step) =>
+          isStepVariant(stepName, step.stepName)
+        );
 
+        if (matchingStep) {
+          if (
+            matchingStep.status === "stop" ||
+            (matchingStep.stepDetails &&
+              matchingStep.stepDetails.status === "accept")
+          ) {
+            stepCompletionStats[stepName].completed++;
+            stepCompletionStats[stepName].completedData.push(jobPlan);
+          } else if (
+            matchingStep.status === "start" ||
+            (matchingStep.stepDetails &&
+              matchingStep.stepDetails.status === "in_progress")
+          ) {
+            stepCompletionStats[stepName].inProgress++;
+            stepCompletionStats[stepName].inProgressData.push(jobPlan);
+          } else {
+            stepCompletionStats[stepName].planned++;
+            stepCompletionStats[stepName].plannedData.push(jobPlan);
+          }
+        }
+      });
 
+      // Handle steps not in predefined list (same as processJobPlanData)
+      jobPlan.steps.forEach((step) => {
+        const isHandled = stepNames.some((stepName) =>
+          isStepVariant(stepName, step.stepName)
+        );
+
+        if (!isHandled) {
+          if (!stepCompletionStats[step.stepName]) {
+            stepCompletionStats[step.stepName] = {
+              completed: 0,
+              inProgress: 0,
+              planned: 0,
+              completedData: [],
+              inProgressData: [],
+              plannedData: [],
+            };
+          }
+
+          if (
+            step.status === "stop" ||
+            (step.stepDetails && step.stepDetails.status === "accept")
+          ) {
+            stepCompletionStats[step.stepName].completed++;
+            stepCompletionStats[step.stepName].completedData.push(jobPlan);
+          } else if (
+            step.status === "start" ||
+            (step.stepDetails && step.stepDetails.status === "in_progress")
+          ) {
+            stepCompletionStats[step.stepName].inProgress++;
+            stepCompletionStats[step.stepName].inProgressData.push(jobPlan);
+          } else {
+            stepCompletionStats[step.stepName].planned++;
+            stepCompletionStats[step.stepName].plannedData.push(jobPlan);
+          }
+        }
+      });
+    });
+
+    // Calculate efficiency
+    const efficiency =
+      totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+
+    // Use your existing mergeStepCompletionStats function
+    const mergedStepStats = mergeStepCompletionStats(stepCompletionStats);
+
+    console.log("🔍 Filtered Data Results:");
+    console.log("Total filtered jobPlans:", filteredJobPlans.length);
+    console.log("Completed jobs:", completedJobs);
+    console.log("In progress jobs:", inProgressJobs);
+    console.log("Planned jobs:", plannedJobs);
+    console.log("Total jobs:", totalJobs + completedJobs);
+
+    return {
+      ...data, // Keep machine utilization and other non-date-dependent data
+      jobPlans: filteredJobPlans,
+      totalJobs: totalJobs + completedJobs, // Total includes both in-progress and completed
+      completedJobs,
+      inProgressJobs,
+      plannedJobs,
+      totalSteps,
+      completedSteps,
+      activeUsers: uniqueUsers.size,
+      efficiency,
+      stepCompletionStats: mergedStepStats,
+      timeSeriesData: filteredTimeSeriesData,
+      completedJobsData: filteredCompletedJobsData,
+      heldJobs,
+    };
+  }, [data, dateFilter, customDateRange]);
 
   if (loading) {
     return (
@@ -1316,9 +1400,7 @@ const filteredData = useMemo(() => {
   if (!filteredData) {
     return <div>No data available</div>;
   }
-  console.log("filtered", filteredData)
-
-
+  console.log("filtered", filteredData);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8  min-h-screen">
@@ -1476,28 +1558,32 @@ const filteredData = useMemo(() => {
 
         {/* Step Completion Status */}
         <BarChartComponent
-  data={Object.entries(filteredData.stepCompletionStats)
-    .filter(([step]) => !(step === "Paper Store" && filteredData.stepCompletionStats["PaperStore"]))
-    .map(([step, stats]) => ({
-      step,
-      completed: stats.completed,
-      inProgress: stats.inProgress,
-      planned: stats.planned,
-    }))
-  }
-  dataKeys={[
-    { key: "completed", color: colors.success, name: "Completed" },
-    { key: "inProgress", color: colors.warning, name: "In Progress" },
-    { key: "planned", color: colors.gray, name: "Planned" },
-  ]}
-  xAxisKey="step"
-  title="Step Completion Status"
-  height={300}
-  maxDataPoints={500}
-  stacked={true}
-  stepCompletionStats={filteredData.stepCompletionStats} // Add this line
-/>
-
+          data={Object.entries(filteredData.stepCompletionStats)
+            .filter(
+              ([step]) =>
+                !(
+                  step === "Paper Store" &&
+                  filteredData.stepCompletionStats["PaperStore"]
+                )
+            )
+            .map(([step, stats]) => ({
+              step,
+              completed: stats.completed,
+              inProgress: stats.inProgress,
+              planned: stats.planned,
+            }))}
+          dataKeys={[
+            { key: "completed", color: colors.success, name: "Completed" },
+            { key: "inProgress", color: colors.warning, name: "In Progress" },
+            { key: "planned", color: colors.gray, name: "Planned" },
+          ]}
+          xAxisKey="step"
+          title="Step Completion Status"
+          height={300}
+          maxDataPoints={500}
+          stacked={true}
+          stepCompletionStats={filteredData.stepCompletionStats} // Add this line
+        />
       </div>
       {/* <DateFilterComponent
         dateFilter={dateFilter}
@@ -1528,11 +1614,10 @@ const filteredData = useMemo(() => {
   showDateFilter={true}
 /> */}
 
-<MachineUtilizationDashboard
-  machineData={filteredData.machineUtilization}
-  className="mb-8"
-/>
-
+      <MachineUtilizationDashboard
+        machineData={filteredData.machineUtilization}
+        className="mb-8"
+      />
 
       {/* Step-wise Progress Chart */}
       {/* <LineChartComponent
@@ -1673,13 +1758,15 @@ const filteredData = useMemo(() => {
       {/* Job Plans Table */}
       <JobPlansTable
         jobPlans={filteredData.jobPlans}
-        onViewDetails={(jobPlan: JobPlan) => console.log("Viewing job plan:", jobPlan)}
+        onViewDetails={(jobPlan: JobPlan) =>
+          console.log("Viewing job plan:", jobPlan)
+        }
         className="mb-8"
       />
 
       {/* Job Demand Distribution Pie Chart */}
       {/* Quality Check and Customer Insights Section */}
-{/* <div className="flex flex-col lg:flex-row gap-8 mb-8">
+      {/* <div className="flex flex-col lg:flex-row gap-8 mb-8">
 
    <div className="flex-1">
     <div className="bg-white rounded-lg shadow-md p-6 mb-6 h-full">
@@ -1821,65 +1908,64 @@ const filteredData = useMemo(() => {
   </div>
 </div> */}
 
-{/* Job Demand Distribution Pie Chart */}
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-  <PieChartComponent
-    data={[
-      {
-        name: "Low Demand",
-        value: filteredData.jobPlans.filter(
-          (jp) => jp.jobDemand === "low"
-        ).length,
-        color: colors.success,
-      },
-      {
-        name: "Medium Demand", 
-        value: filteredData.jobPlans.filter(
-          (jp) => jp.jobDemand === "medium"
-        ).length,
-        color: colors.warning,
-      },
-      {
-        name: "High Demand",
-        value: filteredData.jobPlans.filter(
-          (jp) => jp.jobDemand === "high"
-        ).length,
-        color: colors.danger,
-      },
-    ]}
-    title="Job Demand Distribution"
-    height={300}
-    maxDataPoints={50}
-    showPercentage={true}
-    showValues={true}
-  />
+      {/* Job Demand Distribution Pie Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <PieChartComponent
+          data={[
+            {
+              name: "Low Demand",
+              value: filteredData.jobPlans.filter(
+                (jp) => jp.jobDemand === "low"
+              ).length,
+              color: colors.success,
+            },
+            {
+              name: "Regular",
+              value: filteredData.jobPlans.filter(
+                (jp) => jp.jobDemand === "medium"
+              ).length,
+              color: colors.warning,
+            },
+            {
+              name: "High Demand",
+              value: filteredData.jobPlans.filter(
+                (jp) => jp.jobDemand === "high"
+              ).length,
+              color: colors.danger,
+            },
+          ]}
+          title="Job Demand Distribution"
+          height={300}
+          maxDataPoints={50}
+          showPercentage={true}
+          showValues={true}
+        />
 
-  <PieChartComponent
-    data={[
-      {
-        name: "Completed",
-        value: filteredData.completedJobs,
-        color: colors.success,
-      },
-      {
-        name: "In Progress",
-        value: filteredData.inProgressJobs,
-        color: colors.warning,
-      },
-      {
-        name: "Planned",
-        value: filteredData.plannedJobs,
-        color: colors.gray,
-      },
-    ]}
-    title="Job Status Distribution"
-    height={300}
-    maxDataPoints={50}
-    showPercentage={true}
-    showValues={true}
-  />
-</div>
-
+        <PieChartComponent
+          data={[
+            {
+              name: "Completed",
+              value: filteredData.completedJobs,
+              color: colors.success,
+            },
+            {
+              name: "In Progress",
+              value: filteredData.inProgressJobs,
+              color: colors.warning,
+            },
+            {
+              name: "Planned",
+              value: filteredData.plannedJobs,
+              color: colors.gray,
+            },
+          ]}
+          title="Job Status Distribution"
+          height={300}
+          maxDataPoints={50}
+          showPercentage={true}
+          showValues={true}
+        />
+      </div>
     </div>
   );
 };
