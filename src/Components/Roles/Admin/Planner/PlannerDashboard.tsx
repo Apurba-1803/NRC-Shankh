@@ -535,45 +535,58 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
     });
   };
 
-  // Chart data preparation
+  // Chart data preparation - Based on POs
   const chartData = useMemo(() => {
+    // Count POs by status
+    const completedPOs = data.summary.totalCompletedJobs || 0; // From Completed Jobs API
+    const plannedOrInProgressPOs = assignedJobsCount; // From job planning API
+    const openPOs = purchaseOrders.filter(
+      (po) => checkPOCompletionStatus(po) === "more_info_pending"
+    ).length;
+
     const completionData = [
       {
-        name: "Fully Completed",
-        value: data.summary.fullyCompleted,
+        name: "Completed POs",
+        value: completedPOs,
         color: "#10B981",
       },
       {
-        name: "Partially Completed",
-        value: data.summary.partiallyCompleted,
-        color: "#F59E0B",
-      },
-      { name: "Not Started", value: data.summary.notStarted, color: "#EF4444" },
-    ].filter((item) => item.value > 0);
-
-    const comparisonData = [
-      {
-        name: "PO",
-        completed: data.summary.poCompleted,
-        total: data.summary.totalJobs,
+        name: "Planned/In Progress POs",
+        value: plannedOrInProgressPOs,
         color: "#3B82F6",
       },
       {
-        name: "Machine Details",
-        completed: data.summary.machineDetailsCompleted,
-        total: data.summary.totalJobs,
-        color: "#8B5CF6",
+        name: "Open POs (More Info Pending)",
+        value: openPOs,
+        color: "#F59E0B",
+      },
+    ].filter((item) => item.value > 0);
+
+    const totalPOs = completedPOs + plannedOrInProgressPOs + openPOs;
+
+    const comparisonData = [
+      {
+        name: "Completed POs",
+        completed: completedPOs,
+        total: totalPOs,
+        color: "#10B981",
       },
       {
-        name: "Artwork",
-        completed: data.summary.artworkCompleted,
-        total: data.summary.totalJobs,
-        color: "#06B6D4",
+        name: "Planned/In Progress",
+        completed: plannedOrInProgressPOs,
+        total: totalPOs,
+        color: "#3B82F6",
+      },
+      {
+        name: "Open POs",
+        completed: openPOs,
+        total: totalPOs,
+        color: "#F59E0B",
       },
     ];
 
     return { completionData, comparisonData };
-  }, [data.summary]);
+  }, [purchaseOrders, assignedJobsCount, data.summary.totalCompletedJobs]);
 
   return (
     <div className="min-h-screen p-6">
@@ -1114,7 +1127,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
         {/* Pie Chart */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Job Distribution by Completion Status
+            PO Distribution by Status
           </h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -1144,7 +1157,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
         {/* Bar Chart */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Task Completion Progress
+            PO Completion Progress
           </h3>
           <div className="space-y-6">
             {chartData.comparisonData.map((item, index) => {

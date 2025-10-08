@@ -185,12 +185,8 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
 
       yPosition += 35;
 
-      // Job Card Style Section Function
-      const addJobCardSection = (
-        title: string,
-        stepDetails: any[],
-        hasTable: boolean = false
-      ) => {
+      // Job Card Style Section Function - Match UI structure exactly
+      const addJobCardSection = (title: string, step: any) => {
         // Check if we need a new page
         if (yPosition > pageHeight - 60) {
           pdf.addPage();
@@ -205,325 +201,145 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
         pdf.text(title, pageWidth / 2, yPosition + 5.5, { align: "center" });
         yPosition += 12;
 
-        if (hasTable && stepDetails.length > 0) {
-          // Create table for this section
-          const tableHeaders = getTableHeaders(title);
-          const rowHeight = 6;
-          const headerHeight = 8;
+        pdf.setFontSize(9);
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
 
-          // Table header
-          drawRect(
-            15,
-            yPosition,
-            pageWidth - 30,
-            headerHeight,
-            colors.lightGray
-          );
-          drawBorder(15, yPosition, pageWidth - 30, headerHeight);
-
-          // Draw header text
+        // Machine Details Section (if available)
+        if (step.machineDetails && step.machineDetails.length > 0) {
           pdf.setFontSize(8);
           pdf.setFont("helvetica", "bold");
-          pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+          pdf.text("Machine Details:", 20, yPosition);
+          yPosition += 6;
 
-          const colWidth = (pageWidth - 30) / tableHeaders.length;
-          tableHeaders.forEach((header, index) => {
-            const xPos = 15 + index * colWidth;
-            pdf.text(header, xPos + 2, yPosition + 5);
-            // Draw vertical lines
-            if (index > 0) {
-              pdf.setDrawColor(
-                colors.black[0],
-                colors.black[1],
-                colors.black[2]
-              );
-              pdf.setLineWidth(0.3);
-              pdf.line(xPos, yPosition, xPos, yPosition + headerHeight);
-            }
-          });
-
-          yPosition += headerHeight;
-
-          // Table rows
-          stepDetails.forEach((detail) => {
-            if (yPosition > pageHeight - 40) {
-              pdf.addPage();
-              yPosition = 20;
-            }
-
-            drawBorder(15, yPosition, pageWidth - 30, rowHeight);
-
-            // Draw row data
-            pdf.setFontSize(7);
-            pdf.setFont("helvetica", "normal");
-            const rowData = getTableRowData(title, detail);
-            rowData.forEach((cellData, colIndex) => {
-              const xPos = 15 + colIndex * colWidth;
-              pdf.text(cellData || "", xPos + 2, yPosition + 4);
-              // Draw vertical lines
-              if (colIndex > 0) {
-                pdf.setDrawColor(
-                  colors.black[0],
-                  colors.black[1],
-                  colors.black[2]
-                );
-                pdf.setLineWidth(0.3);
-                pdf.line(xPos, yPosition, xPos, yPosition + rowHeight);
-              }
-            });
-
-            yPosition += rowHeight;
-          });
-        } else {
-          // Form-style layout for sections without tables
-          const formFields = getFormFields(title);
-          formFields.forEach((field) => {
+          step.machineDetails.forEach((machine: any) => {
             if (yPosition > pageHeight - 20) {
               pdf.addPage();
               yPosition = 20;
             }
 
-            pdf.setFontSize(9);
+            pdf.setFontSize(8);
             pdf.setFont("helvetica", "normal");
-            pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
 
-            const value = getFieldValue(field, stepDetails);
-            pdf.text(`${field} : ${value}`, 20, yPosition);
-            yPosition += 6;
+            if (machine.unit) {
+              pdf.text(`Unit: ${machine.unit}`, 25, yPosition);
+              yPosition += 4;
+            }
+            if (machine.machineId) {
+              pdf.text(`Machine ID: ${machine.machineId}`, 25, yPosition);
+              yPosition += 4;
+            }
+            if (machine.machineCode) {
+              pdf.text(`Machine Code: ${machine.machineCode}`, 25, yPosition);
+              yPosition += 4;
+            }
+            if (machine.machineType) {
+              pdf.text(`Machine Type: ${machine.machineType}`, 25, yPosition);
+              yPosition += 4;
+            }
+            yPosition += 2; // Space between machines
           });
         }
 
-        yPosition += 5; // Space after section
-      };
+        // Step Details Section (if available)
+        const stepDetails = getStepDetailsFromStep(step);
+        if (stepDetails && stepDetails.length > 0) {
+          if (yPosition > pageHeight - 20) {
+            pdf.addPage();
+            yPosition = 20;
+          }
 
-      // Helper functions for job card sections
-      const getTableHeaders = (sectionTitle: string) => {
-        switch (sectionTitle) {
-          case "PAPER STORE":
-            return [
-              "SHEET SIZE",
-              "REQUIRED",
-              "AVAILABLE",
-              "ISSUED DATE",
-              "MILL",
-              "EXTRA MARGIN",
-              "GSM",
-              "QUALITY",
-            ];
-          case "CORRUGATION":
-            return [
-              "DATE",
-              "SHIFT",
-              "OPR NAME",
-              "NO OF SHEETS",
-              "SIZE",
-              "GSM 1",
-              "GSM 2",
-              "FLUTE",
-              "REMARKS",
-              "QC CHECK & SIGN BY",
-            ];
-          case "FLAP PASTING":
-            return [
-              "DATE",
-              "SHIFT",
-              "OPR NAME",
-              "ADHESIVE",
-              "QUANTITY",
-              "WASTAGE",
-              "REMARKS",
-              "QC CHECK & SIGN BY",
-            ];
-          case "QUALITY CHECK (SORTING)":
-            return [
-              "DATE",
-              "SHIFT",
-              "OPR NAME",
-              "CHECKED BY",
-              "REJECTED QTY",
-              "PASS QTY",
-              "REASON FOR REJECTION",
-              "REMARKS",
-              "QC CHECK & SIGN BY",
-            ];
-          case "DISPATCH":
-            return [
-              "DATE",
-              "SHIFT",
-              "OPR NAME",
-              "NO OF BOXES",
-              "DISPATCH NO'S",
-              "DATE",
-              "REMARKS",
-              "BALANCE QTY",
-              "QC CHECK & SIGN BY",
-            ];
-          default:
-            return [];
+          pdf.setFontSize(8);
+          pdf.setFont("helvetica", "bold");
+          pdf.text("Step Details:", 20, yPosition);
+          yPosition += 6;
+
+          stepDetails.forEach((detail: any) => {
+            if (yPosition > pageHeight - 20) {
+              pdf.addPage();
+              yPosition = 20;
+            }
+
+            pdf.setFontSize(8);
+            pdf.setFont("helvetica", "normal");
+
+            // Display step-specific fields exactly as in UI
+            if (step.stepName === "PaperStore") {
+              if (detail.sheetSize) {
+                pdf.text(`Sheet Size: ${detail.sheetSize}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.quantity) {
+                pdf.text(`Quantity: ${detail.quantity}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.available) {
+                pdf.text(`Available: ${detail.available}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.issuedDate) {
+                const formattedDate = new Date(
+                  detail.issuedDate
+                ).toLocaleDateString();
+                pdf.text(`Issued Date: ${formattedDate}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.mill) {
+                pdf.text(`Mill: ${detail.mill}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.gsm) {
+                pdf.text(`GSM: ${detail.gsm}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.quality) {
+                pdf.text(`Quality: ${detail.quality}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.shift) {
+                pdf.text(`Shift: ${detail.shift}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.operatorName) {
+                pdf.text(`Operator: ${detail.operatorName}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.status) {
+                pdf.text(`Status: ${detail.status}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.remarks) {
+                pdf.text(`Remarks: ${detail.remarks}`, 25, yPosition);
+                yPosition += 4;
+              }
+            } else {
+              // Generic fields for other steps
+              if (detail.quantity) {
+                pdf.text(`Quantity: ${detail.quantity}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.shift) {
+                pdf.text(`Shift: ${detail.shift}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.operatorName) {
+                pdf.text(`Operator: ${detail.operatorName}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.status) {
+                pdf.text(`Status: ${detail.status}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.remarks) {
+                pdf.text(`Remarks: ${detail.remarks}`, 25, yPosition);
+                yPosition += 4;
+              }
+            }
+            yPosition += 2; // Space between details
+          });
         }
-      };
 
-      const getTableRowData = (sectionTitle: string, detail: any) => {
-        // Use the actual data fields that exist in the UI
-        // Convert all values to strings to avoid PDF errors
-        switch (sectionTitle) {
-          case "PAPER STORE":
-            return [
-              String(detail.sheetSize || detail.size || ""),
-              String(detail.required || detail.quantity || ""),
-              String(detail.available || ""),
-              String(detail.issuedDate || detail.date || ""),
-              String(detail.mill || ""),
-              String(detail.extraMargin || ""),
-              String(detail.gsm || ""),
-              String(detail.quality || ""),
-            ];
-          case "CORRUGATION":
-            return [
-              String(detail.date || ""),
-              String(detail.shift || ""),
-              String(
-                detail.oprName || detail.operatorName || detail.user || ""
-              ),
-              String(detail.noOfSheets || detail.quantity || ""),
-              String(detail.size || ""),
-              String(detail.gsm1 || ""),
-              String(detail.gsm2 || ""),
-              String(detail.flute || ""),
-              String(detail.remarks || ""),
-              String(detail.qcCheck || ""),
-            ];
-          case "FLAP PASTING":
-            return [
-              String(detail.date || ""),
-              String(detail.shift || ""),
-              String(
-                detail.oprName || detail.operatorName || detail.user || ""
-              ),
-              String(detail.adhesive || ""),
-              String(detail.quantity || ""),
-              String(detail.wastage || ""),
-              String(detail.remarks || ""),
-              String(detail.qcCheck || ""),
-            ];
-          case "QUALITY CHECK (SORTING)":
-            return [
-              String(detail.date || ""),
-              String(detail.shift || ""),
-              String(
-                detail.oprName || detail.operatorName || detail.user || ""
-              ),
-              String(detail.checkedBy || ""),
-              String(detail.rejectedQty || ""),
-              String(detail.passQuantity || ""),
-              String(detail.reasonForRejection || ""),
-              String(detail.remarks || ""),
-              String(detail.qcCheck || ""),
-            ];
-          case "DISPATCH":
-            return [
-              String(detail.date || ""),
-              String(detail.shift || ""),
-              String(
-                detail.oprName || detail.operatorName || detail.user || ""
-              ),
-              String(detail.noOfBoxes || ""),
-              String(detail.dispatchNo || ""),
-              String(detail.dispatchDate || ""),
-              String(detail.remarks || ""),
-              String(detail.balanceQty || ""),
-              String(detail.qcCheck || ""),
-            ];
-          default:
-            return [];
-        }
-      };
-
-      const getFormFields = (sectionTitle: string) => {
-        switch (sectionTitle) {
-          case "PRINTING DETAILS":
-            return [
-              "DATE",
-              "SHIFT",
-              "OPR NAME",
-              "NO. OF COLOURS",
-              "INKS USED",
-              "POST PRINTING FINISHING",
-              "COATING",
-              "SEPARATE SHEETS",
-              "EXTRA SHEETS",
-              "REMARKS",
-              "PRINTED BY",
-              "QC CHECK & SIGN BY",
-            ];
-          case "FLUTE LAMINATION":
-            return [
-              "DATE",
-              "SHIFT",
-              "OPR NAME",
-              "FILM",
-              "ADHESIVE",
-              "QC CHECK & SIGN BY",
-            ];
-          case "PUNCHING":
-            return [
-              "DATE",
-              "SHIFT",
-              "OPR NAME",
-              "MACHINE",
-              "DIE NO.",
-              "REMARKS",
-              "QC CHECK & SIGN BY",
-            ];
-          default:
-            return [];
-        }
-      };
-
-      const getFieldValue = (field: string, stepDetails: any[]) => {
-        if (stepDetails.length === 0) return "";
-
-        const detail = stepDetails[0]; // Use first detail for form fields
-        switch (field) {
-          case "DATE":
-            return detail.date
-              ? new Date(detail.date).toLocaleDateString()
-              : "";
-          case "SHIFT":
-            return String(detail.shift || "");
-          case "OPR NAME":
-            return String(
-              detail.oprName || detail.operatorName || detail.user || ""
-            );
-          case "NO. OF COLOURS":
-            return String(detail.noOfColours || detail.noOfColors || "");
-          case "INKS USED":
-            return String(detail.inksUsed || "");
-          case "POST PRINTING FINISHING":
-            return String(detail.postPrintingFinishing || "");
-          case "COATING":
-            return String(detail.coatingType || detail.coating || "");
-          case "SEPARATE SHEETS":
-            return String(detail.separateSheets || "");
-          case "EXTRA SHEETS":
-            return String(detail.extraSheets || "");
-          case "REMARKS":
-            return String(detail.remarks || "");
-          case "PRINTED BY":
-            return String(detail.printedBy || "");
-          case "QC CHECK & SIGN BY":
-            return String(detail.qcCheck || "");
-          case "FILM":
-            return String(detail.film || "");
-          case "ADHESIVE":
-            return String(detail.adhesive || "");
-          case "MACHINE":
-            return String(detail.machine || "");
-          case "DIE NO.":
-            return String(detail.dieNumber || detail.die || "");
-          default:
-            return "";
-        }
+        yPosition += 8; // Space after section
       };
 
       // Use the same data structure as the UI
@@ -554,10 +370,8 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
         // Add each step as a job card section
         sortedSteps.forEach((step: any) => {
           const sectionTitle = getSectionTitle(step.stepName);
-          const stepDetails = getStepDetailsFromStep(step);
-          const hasTable = shouldUseTableFormat(step.stepName);
 
-          addJobCardSection(sectionTitle, stepDetails, hasTable);
+          addJobCardSection(sectionTitle, step);
         });
       }
 
@@ -577,7 +391,7 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
           case "SideFlapPasting":
             return "FLAP PASTING";
           case "QualityDept":
-            return "QUALITY CHECK (SORTING)";
+            return "QUALITY DEPT";
           case "DispatchProcess":
             return "DISPATCH";
           default:
@@ -639,17 +453,6 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
         }
 
         return [];
-      }
-
-      // Determine if step should use table format
-      function shouldUseTableFormat(stepName: string): boolean {
-        return [
-          "PaperStore",
-          "Corrugation",
-          "SideFlapPasting",
-          "QualityDept",
-          "DispatchProcess",
-        ].includes(stepName);
       }
 
       // Simple footer - Job Card style doesn't need complex footer

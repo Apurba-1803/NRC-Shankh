@@ -31,6 +31,13 @@ interface JobPlanStep {
   user: string | null;
   createdAt: string;
   updatedAt: string;
+  stepDetails?: {
+    data?: {
+      status?: string;
+      [key: string]: any;
+    };
+    [key: string]: any;
+  };
 }
 
 interface JobPlan {
@@ -533,11 +540,15 @@ const JobPlansTable: React.FC<JobPlansTableProps> = ({
                       <td className="px-6 py-4">
                         <span
                           className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusStyle(
-                            step.status
+                            step.stepDetails?.data?.status || step.status
                           )}`}
                         >
-                          {step.status.charAt(0).toUpperCase() +
-                            step.status.slice(1).replace("-", " ")}
+                          {(step.stepDetails?.data?.status || step.status)
+                            .charAt(0)
+                            .toUpperCase() +
+                            (step.stepDetails?.data?.status || step.status)
+                              .slice(1)
+                              .replace("-", " ")}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">
