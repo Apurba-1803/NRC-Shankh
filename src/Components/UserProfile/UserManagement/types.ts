@@ -7,6 +7,7 @@ export interface UserData {
   lastLogin: string;
   createdAt: string;
   updatedAt: string;
+  machineIds?: string[];
 }
 
 export interface CreateUserPayload {
@@ -23,7 +24,6 @@ export interface UpdateUserPayload {
   email: string;
   roles: string[];
   password?: string;
-  machineId : string[];
 }
 
 // Role options matching the backend expectations
@@ -44,32 +44,32 @@ export const roleOptions = [
 
 export const getRoleDisplayName = (roleValue: string): string => {
   const roleMap: Record<string, string> = {
-    'admin': 'Admin',
-    'planner': 'Planner',
-    'production_head': 'Production Head',
-    'dispatch_executive': 'Dispatch Executive',
-    'qc_manager': 'QC Manager',
-    'printer': 'Printer',
-    'corrugator': 'Corrugator',
-    'flutelaminator': 'Flute Laminator',
-    'pasting_operator': 'Pasting Operator',
-    'punching_operator': 'Punching Operator',
-    'paperstore': 'Paper Store',
-    'flyingsquad': 'Flying Squad',
+    admin: "Admin",
+    planner: "Planner",
+    production_head: "Production Head",
+    dispatch_executive: "Dispatch Executive",
+    qc_manager: "QC Manager",
+    printer: "Printer",
+    corrugator: "Corrugator",
+    flutelaminator: "Flute Laminator",
+    pasting_operator: "Pasting Operator",
+    punching_operator: "Punching Operator",
+    paperstore: "Paper Store",
+    flyingsquad: "Flying Squad",
   };
   return roleMap[roleValue] || roleValue;
 };
 
 export const formatDate = (dateString: string): string => {
   try {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   } catch {
-    return 'Invalid Date';
+    return "Invalid Date";
   }
-}; 
+};
