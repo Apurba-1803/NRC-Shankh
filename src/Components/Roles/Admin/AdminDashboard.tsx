@@ -945,10 +945,10 @@ const AdminDashboard: React.FC = () => {
 
     // Process completed jobs data for time series
     completedJobsData.forEach((completedJob) => {
-      const poDate = completedJob.purchaseOrderDetails?.poDate;
+      const completedAt = completedJob.completedAt;
 
-      if (poDate) {
-        const completedDate = new Date(poDate).toISOString().split("T")[0];
+      if (completedAt) {
+        const completedDate = new Date(completedAt).toISOString().split("T")[0];
         const existingDateIndex = timeSeriesData.findIndex(
           (item) => item.date === completedDate
         );
@@ -966,7 +966,7 @@ const AdminDashboard: React.FC = () => {
         }
       } else {
         console.warn(
-          `Job ${completedJob.id} has no purchase order date, skipping...`
+          `Job ${completedJob.id} has no completedAt date, skipping...`
         );
       }
     });
@@ -1116,12 +1116,16 @@ const AdminDashboard: React.FC = () => {
       return isDateInRange(jobDate, new Date(startDate), new Date(endDate));
     });
 
-    // Filter completedJobsData based on poDate
+    // Filter completedJobsData based on completedAt date
     const filteredCompletedJobsData = data.completedJobsData.filter(
       (completedJob) => {
-        const poDate = completedJob.purchaseOrderDetails?.poDate;
-        if (!poDate) return false;
-        return isDateInRange(poDate, new Date(startDate), new Date(endDate));
+        const completedAt = completedJob.completedAt;
+        if (!completedAt) return false;
+        return isDateInRange(
+          completedAt,
+          new Date(startDate),
+          new Date(endDate)
+        );
       }
     );
 
