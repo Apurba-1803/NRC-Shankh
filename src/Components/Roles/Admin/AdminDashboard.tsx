@@ -1917,13 +1917,6 @@ const AdminDashboard: React.FC = () => {
         <PieChartComponent
           data={[
             {
-              name: "Low Demand",
-              value: filteredData.jobPlans.filter(
-                (jp) => jp.jobDemand === "low"
-              ).length,
-              color: colors.success,
-            },
-            {
               name: "Regular",
               value: filteredData.jobPlans.filter(
                 (jp) => jp.jobDemand === "medium"

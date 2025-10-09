@@ -134,6 +134,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
   const [availableBoardSizes, setAvailableBoardSizes] = useState<string[]>([]);
   const [noOfColorsSearch, setNoOfColorsSearch] = useState("");
   const [dimensionsSearch, setDimensionsSearch] = useState("");
+  const [tableSearch, setTableSearch] = useState("");
 
   // Fetch assigned jobs count
   useEffect(() => {
@@ -373,6 +374,27 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
       return matchesColor && matchesSize && matchesDateFrom && matchesDateTo;
     });
   }, [purchaseOrders, filters]);
+
+  // Apply table search filter
+  const searchedPOs = useMemo(() => {
+    if (!tableSearch.trim()) {
+      return filteredPOs;
+    }
+
+    const searchTerm = tableSearch.toLowerCase();
+    return filteredPOs.filter((po) => {
+      return (
+        po.poNumber?.toLowerCase().includes(searchTerm) ||
+        po.style?.toLowerCase().includes(searchTerm) ||
+        po.customer?.toLowerCase().includes(searchTerm) ||
+        po.totalPOQuantity?.toString().includes(searchTerm) ||
+        po.deliveryDate?.toLowerCase().includes(searchTerm) ||
+        (po.boxDimensions || po.jobBoardSize || "0x0x0")
+          ?.toLowerCase()
+          .includes(searchTerm)
+      );
+    });
+  }, [filteredPOs, tableSearch]);
 
   // Toggle filters
   const toggleNoOfColorFilter = (color: string) => {
@@ -1010,6 +1032,51 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
           </div>
         )}
 
+        {/* Search Bar */}
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center space-x-4">
+            <div className="flex-1">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search POs by PO Number, Style, Customer, Quantity, Delivery Date, or Dimensions..."
+                  value={tableSearch}
+                  onChange={(e) => setTableSearch(e.target.value)}
+                  className="w-full px-4 py-2 pl-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg
+                    className="h-4 w-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            {tableSearch && (
+              <button
+                onClick={() => setTableSearch("")}
+                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {tableSearch && (
+            <div className="mt-2 text-sm text-gray-600">
+              Showing {searchedPOs.length} of {filteredPOs.length} POs
+            </div>
+          )}
+        </div>
+
         {/* PO List Table */}
         <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
           {loading ? (
@@ -1027,11 +1094,13 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
               <strong className="font-bold">Error!</strong>
               <span className="block sm:inline"> {error}</span>
             </div>
-          ) : filteredPOs.length === 0 ? (
+          ) : searchedPOs.length === 0 ? (
             <div className="text-center py-12">
               <DocumentTextIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 text-lg">
-                {activeFilterCount > 0
+                {tableSearch
+                  ? "No purchase orders found matching your search."
+                  : activeFilterCount > 0
                   ? "No purchase orders found matching the current filters."
                   : "No purchase orders needing job planning."}
               </p>
@@ -1067,7 +1136,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredPOs.map((po) => {
+                {searchedPOs.map((po) => {
                   const completionStatus = checkPOCompletionStatus(po);
                   return (
                     <tr

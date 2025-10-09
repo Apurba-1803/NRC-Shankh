@@ -55,11 +55,18 @@ interface PurchaseOrder {
   user: any | null;
   // Extended fields from job data
   boxDimensions: string | null;
-
   processColors?: string;
   noOfColor?: string | null;
-
   jobBoardSize: string | null;
+  // Job planning fields
+  steps?: any[];
+  jobSteps?: any[];
+  hasJobPlan?: boolean;
+  jobDemand?: string;
+  machineId?: string | null;
+  jobPlanId?: number;
+  jobPlanCreatedAt?: string;
+  jobPlanUpdatedAt?: string;
 }
 
 interface Job {
@@ -182,6 +189,17 @@ const PlannerJobs: React.FC = () => {
     po: any
   ): "artwork_pending" | "po_pending" | "more_info_pending" | "completed" => {
     console.log("po in check po completion function", po);
+
+    // Check if job plan exists using hasJobPlan flag, steps, or jobSteps
+    const hasJobPlan =
+      po.hasJobPlan ||
+      (po.steps && po.steps.length > 0) ||
+      (po.jobSteps && po.jobSteps.length > 0);
+
+    if (hasJobPlan) {
+      return "completed";
+    }
+
     if (!po.shadeCardApprovalDate) {
       return "artwork_pending";
     }
@@ -190,20 +208,7 @@ const PlannerJobs: React.FC = () => {
       return "po_pending";
     }
 
-    if (
-      !po.hasJobPlan ||
-      !po.jobDemand ||
-      !po.jobSteps ||
-      po.jobSteps.length === 0
-    ) {
-      return "more_info_pending";
-    }
-
-    if (po.jobDemand === "medium" && !po.machineId) {
-      return "more_info_pending";
-    }
-
-    return "completed";
+    return "more_info_pending";
   };
 
   // Enhanced function to merge PO data with job planning AND job details
