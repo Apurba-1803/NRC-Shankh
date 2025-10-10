@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save } from 'lucide-react';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Save } from "lucide-react";
 
 interface CreateNewJobFormData {
   nrcJobNo: string | null;
@@ -43,59 +43,66 @@ interface CreateNewJobProps {
 const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const [formData, setFormData] = useState<CreateNewJobFormData>({
-    nrcJobNo: '',
-    styleItemSKU: '',
-    customerName: '',
-    fluteType: '5PLY', // Set default value
-    status: 'ACTIVE', // Changed to uppercase enum value
+    nrcJobNo: "",
+    styleItemSKU: "",
+    customerName: "",
+    fluteType: "5PLY", // Set default value
+    status: "ACTIVE", // Changed to uppercase enum value
     latestRate: null,
     preRate: 0,
     length: 0,
     width: 0,
     height: 0,
-    boxDimensions: '',
+    boxDimensions: "",
     diePunchCode: 0,
-    boardCategory: '',
-    noOfColor: '',
-    processColors: '',
-    specialColor1: '',
-    specialColor2: '',
-    specialColor3: '',
-    specialColor4: '',
-    overPrintFinishing: '',
-    topFaceGSM: '',
-    flutingGSM: '',
-    bottomLinerGSM: '',
-    decalBoardX: '',
-    lengthBoardY: '',
-    boardSize: '',
+    boardCategory: "",
+    noOfColor: "",
+    processColors: "",
+    specialColor1: "",
+    specialColor2: "",
+    specialColor3: "",
+    specialColor4: "",
+    overPrintFinishing: "",
+    topFaceGSM: "",
+    flutingGSM: "",
+    bottomLinerGSM: "",
+    decalBoardX: "",
+    lengthBoardY: "",
+    boardSize: "",
     noUps: null,
-    artworkReceivedDate: '', // Use empty string for date inputs
-    artworkApprovedDate: '', // Use empty string for date inputs
-    shadeCardApprovalDate: '', // Use empty string for date inputs
-    srNo: 0
+    artworkReceivedDate: "", // Use empty string for date inputs
+    artworkApprovedDate: "", // Use empty string for date inputs
+    shadeCardApprovalDate: "", // Use empty string for date inputs
+    srNo: 0,
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
     const { name, value, type } = e.target;
-    
-    if (type === 'number') {
-      setFormData(prev => ({
+
+    if (type === "number") {
+      setFormData((prev) => ({
         ...prev,
-        [name]: value === '' ? null : parseFloat(value)
+        [name]: value === "" ? null : parseFloat(value),
       }));
-    } else if (type === 'date') {
-      setFormData(prev => ({
+    } else if (type === "date") {
+      setFormData((prev) => ({
         ...prev,
-        [name]: value === '' ? null : value
+        [name]: value === "" ? null : value,
       }));
     } else {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        [name]: value
+        [name]: value,
       }));
     }
   };
@@ -107,18 +114,27 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
 
     try {
       // Validate required fields
-      if (!formData.styleItemSKU || !formData.customerName || !formData.fluteType || !formData.noOfColor) {
-        throw new Error('Please fill in all required fields: Style Item SKU, Customer Name, Flute Type, and Number of Colors');
+      if (
+        !formData.styleItemSKU ||
+        !formData.customerName ||
+        !formData.fluteType ||
+        !formData.noOfColor
+      ) {
+        throw new Error(
+          "Please fill in all required fields: Style Item SKU, Customer Name, Flute Type, and Number of Colors"
+        );
       }
 
       // Validate dimensions
       if (formData.length <= 0 || formData.width <= 0 || formData.height <= 0) {
-        throw new Error('Please enter valid dimensions (Length, Width, and Height must be greater than 0)');
+        throw new Error(
+          "Please enter valid dimensions (Length, Width, and Height must be greater than 0)"
+        );
       }
 
-      const accessToken = localStorage.getItem('accessToken');
+      const accessToken = localStorage.getItem("accessToken");
       if (!accessToken) {
-        throw new Error('Authentication token not found. Please log in.');
+        throw new Error("Authentication token not found. Please log in.");
       }
 
       // Prepare the data with proper type conversions to match endpoint format
@@ -132,80 +148,88 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
         status: formData.status,
         latestRate: formData.latestRate || null,
         preRate: Number(formData.preRate),
-        
+
         // Dimension fields
         length: Number(formData.length),
         width: Number(formData.width),
         height: String(formData.height),
         boxDimensions: formData.boxDimensions,
-        
+
         // Technical fields
         diePunchCode: Number(formData.diePunchCode),
         boardCategory: formData.boardCategory || null,
         noOfColor: formData.noOfColor,
         processColors: formData.processColors || null,
-        
+
         // Special colors
         specialColor1: formData.specialColor1 || null,
         specialColor2: formData.specialColor2 || null,
         specialColor3: formData.specialColor3 || null,
         specialColor4: formData.specialColor4 || null,
-        
+
         // Finishing and materials
         overPrintFinishing: formData.overPrintFinishing || null,
         topFaceGSM: formData.topFaceGSM,
         flutingGSM: formData.flutingGSM,
         bottomLinerGSM: formData.bottomLinerGSM,
-        
+
         // Board details
         decalBoardX: formData.decalBoardX || null,
         lengthBoardY: formData.lengthBoardY || null,
         boardSize: formData.boardSize,
         noUps: formData.noUps || null,
-        
+
         // Dates
-        artworkReceivedDate: formData.artworkReceivedDate ? new Date(formData.artworkReceivedDate).toISOString() : null,
-        artworkApprovedDate: formData.artworkApprovedDate ? new Date(formData.artworkApprovedDate).toISOString() : null,
-        shadeCardApprovalDate: formData.shadeCardApprovalDate ? new Date(formData.shadeCardApprovalDate).toISOString() : null,
-        
+        artworkReceivedDate: formData.artworkReceivedDate
+          ? new Date(formData.artworkReceivedDate).toISOString()
+          : null,
+        artworkApprovedDate: formData.artworkApprovedDate
+          ? new Date(formData.artworkApprovedDate).toISOString()
+          : null,
+        shadeCardApprovalDate: formData.shadeCardApprovalDate
+          ? new Date(formData.shadeCardApprovalDate).toISOString()
+          : null,
+
         // Reference number
         srNo: Number(formData.srNo),
       };
 
-      console.log('Submitting data to API:', submitData);
+      console.log("Submitting data to API:", submitData);
 
-      const response = await fetch('https://nrprod.nrcontainers.com/api/jobs', {
-        method: 'POST',
+      const response = await fetch("https://nrprod.nrcontainers.com/api/jobs", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(submitData),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('API Error Response:', {
+        console.error("API Error Response:", {
           status: response.status,
           statusText: response.statusText,
           errorData: errorData,
-          requestData: submitData
+          requestData: submitData,
         });
-        throw new Error(errorData.error || `Failed to create job: ${response.status} - ${response.statusText}`);
+        throw new Error(
+          errorData.error ||
+            `Failed to create job: ${response.status} - ${response.statusText}`
+        );
       }
 
       const result = await response.json();
-      setMessage({ type: 'success', text: 'Job created successfully!' });
-      
+      setMessage({ type: "success", text: "Job created successfully!" });
+
       // Reset form after successful creation
       setTimeout(() => {
-        navigate('/dashboard');
+        navigate("/dashboard");
       }, 2000);
-
     } catch (error) {
-      setMessage({ 
-        type: 'error', 
-        text: error instanceof Error ? error.message : 'Failed to create job' 
+      setMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Failed to create job",
       });
     } finally {
       setLoading(false);
@@ -232,14 +256,18 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
 
         {/* Form */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">Create New Job</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">
+            Create New Job
+          </h1>
 
           {message && (
-            <div className={`mb-6 p-4 rounded-lg ${
-              message.type === 'success' 
-                ? 'bg-green-100 border border-green-400 text-green-700' 
-                : 'bg-red-100 border border-red-400 text-red-700'
-            }`}>
+            <div
+              className={`mb-6 p-4 rounded-lg ${
+                message.type === "success"
+                  ? "bg-green-100 border border-green-400 text-green-700"
+                  : "bg-red-100 border border-red-400 text-red-700"
+              }`}
+            >
               {message.text}
             </div>
           )}
@@ -248,11 +276,13 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
             {/* Basic Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">NRC Job Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  NRC Job Number
+                </label>
                 <input
                   type="text"
                   name="nrcJobNo"
-                  value={formData.nrcJobNo || ''}
+                  value={formData.nrcJobNo || ""}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., NRC001, NRC002"
@@ -260,7 +290,9 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Style Item SKU</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Style Item SKU
+                </label>
                 <input
                   type="text"
                   name="styleItemSKU"
@@ -273,7 +305,9 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Customer Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Customer Name
+                </label>
                 <input
                   type="text"
                   name="customerName"
@@ -286,7 +320,9 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Flute Type</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Flute Type
+                </label>
                 <select
                   name="fluteType"
                   value={formData.fluteType}
@@ -294,14 +330,22 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
-                  <option value="5PLY">5PLY</option>
+                  <option value="">Select Flute Type</option>
+                  <option value="2PLY">2PLY</option>
                   <option value="3PLY">3PLY</option>
+                  <option value="5PLY">5PLY</option>
                   <option value="7PLY">7PLY</option>
+                  <option value="FOLDER">FOLDER</option>
+                  <option value="INSERTER">INSERTER</option>
+                  <option value="SINGLE PC">SINGLE PC</option>
+                  <option value="TAG">TAG</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
                 <select
                   name="status"
                   value={formData.status}
@@ -318,7 +362,9 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Pre Rate</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Pre Rate
+                </label>
                 <input
                   type="number"
                   name="preRate"
@@ -334,10 +380,14 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
 
             {/* Dimensions */}
             <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Box Dimensions</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Box Dimensions
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Length (mm)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Length (mm)
+                  </label>
                   <input
                     type="number"
                     name="length"
@@ -351,7 +401,9 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Width (mm)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Width (mm)
+                  </label>
                   <input
                     type="number"
                     name="width"
@@ -365,7 +417,9 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Height (mm)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Height (mm)
+                  </label>
                   <input
                     type="number"
                     name="height"
@@ -380,7 +434,9 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
               </div>
 
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Box Dimensions (LxWxH)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Box Dimensions (LxWxH)
+                </label>
                 <input
                   type="text"
                   name="boxDimensions"
@@ -395,10 +451,14 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
 
             {/* Technical Specifications */}
             <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Technical Specifications</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Technical Specifications
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Die Punch Code</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Die Punch Code
+                  </label>
                   <input
                     type="number"
                     name="diePunchCode"
@@ -412,7 +472,9 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Number of Colors</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Number of Colors
+                  </label>
                   <input
                     type="text"
                     name="noOfColor"
@@ -425,7 +487,9 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Top Face GSM</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Top Face GSM
+                  </label>
                   <input
                     type="text"
                     name="topFaceGSM"
@@ -438,7 +502,9 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Fluting GSM</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Fluting GSM
+                  </label>
                   <textarea
                     name="flutingGSM"
                     value={formData.flutingGSM}
@@ -451,7 +517,9 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Bottom Liner GSM</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Bottom Liner GSM
+                  </label>
                   <textarea
                     name="bottomLinerGSM"
                     value={formData.bottomLinerGSM}
@@ -464,7 +532,9 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Board Size</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Board Size
+                  </label>
                   <input
                     type="text"
                     name="boardSize"
@@ -480,14 +550,18 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
 
             {/* Special Colors */}
             <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Special Colors</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Special Colors
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Special Color 1</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Special Color 1
+                  </label>
                   <input
                     type="text"
                     name="specialColor1"
-                    value={formData.specialColor1 || ''}
+                    value={formData.specialColor1 || ""}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="e.g., Pantone 123C, Metallic Gold"
@@ -495,11 +569,13 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Special Color 2</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Special Color 2
+                  </label>
                   <input
                     type="text"
                     name="specialColor2"
-                    value={formData.specialColor2 || ''}
+                    value={formData.specialColor2 || ""}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="e.g., Pantone 456C, UV Blue"
@@ -507,11 +583,13 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Special Color 3</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Special Color 3
+                  </label>
                   <input
                     type="text"
                     name="specialColor3"
-                    value={formData.specialColor3 || ''}
+                    value={formData.specialColor3 || ""}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="e.g., Pantone 789C, Fluorescent Pink"
@@ -519,11 +597,13 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Special Color 4</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Special Color 4
+                  </label>
                   <input
                     type="text"
                     name="specialColor4"
-                    value={formData.specialColor4 || ''}
+                    value={formData.specialColor4 || ""}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="e.g., Pantone 012C, Silver Foil"
@@ -534,36 +614,56 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
 
             {/* Dates */}
             <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Important Dates</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Important Dates
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Artwork Received Date</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Artwork Received Date
+                  </label>
                   <input
                     type="date"
                     name="artworkReceivedDate"
-                    value={formData.artworkReceivedDate ? formData.artworkReceivedDate.split('T')[0] : ''}
+                    value={
+                      formData.artworkReceivedDate
+                        ? formData.artworkReceivedDate.split("T")[0]
+                        : ""
+                    }
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Artwork Approved Date</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Artwork Approved Date
+                  </label>
                   <input
                     type="date"
                     name="artworkApprovedDate"
-                    value={formData.artworkApprovedDate ? formData.artworkApprovedDate.split('T')[0] : ''}
+                    value={
+                      formData.artworkApprovedDate
+                        ? formData.artworkApprovedDate.split("T")[0]
+                        : ""
+                    }
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Shade Card Approval Date</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Shade Card Approval Date
+                  </label>
                   <input
                     type="date"
                     name="shadeCardApprovalDate"
-                    value={formData.shadeCardApprovalDate ? formData.shadeCardApprovalDate.split('T')[0] : ''}
+                    value={
+                      formData.shadeCardApprovalDate
+                        ? formData.shadeCardApprovalDate.split("T")[0]
+                        : ""
+                    }
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -573,10 +673,14 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
 
             {/* Additional Fields */}
             <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Additional Information</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Additional Information
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">SR Number</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    SR Number
+                  </label>
                   <input
                     type="number"
                     name="srNo"
@@ -590,11 +694,13 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Over Print Finishing</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Over Print Finishing
+                  </label>
                   <input
                     type="text"
                     name="overPrintFinishing"
-                    value={formData.overPrintFinishing || ''}
+                    value={formData.overPrintFinishing || ""}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="e.g., Varnish, Lamination, Foil Stamping"
@@ -630,4 +736,4 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
   );
 };
 
-export default CreateNewJob; 
+export default CreateNewJob;

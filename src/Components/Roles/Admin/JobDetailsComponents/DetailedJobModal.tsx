@@ -129,7 +129,7 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       pdf.setFontSize(20);
       pdf.setFont("helvetica", "bold");
       pdf.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-      pdf.text("JOB CARD", pageWidth - 20, yPosition + 10, { align: "right" });
+      pdf.text("JOB DETAILS", pageWidth - 20, yPosition + 10, { align: "right" });
 
       yPosition += 25;
 
@@ -140,7 +140,7 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
 
       // Left Column
       pdf.text(
-        `Client's Name : ${String(job.company || job.customerName || "N/A")}`,
+        `Client's Name : ${String(job.jobDetails?.company || job.jobDetails?.customerName || "N/A")}`,
         20,
         yPosition
       );
@@ -296,6 +296,10 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
                 pdf.text(`Quality: ${detail.quality}`, 25, yPosition);
                 yPosition += 4;
               }
+              if (detail.extraMargin) {
+                pdf.text(`Extra Margin: ${detail.extraMargin}`, 25, yPosition);
+                yPosition += 4;
+              }
               if (detail.shift) {
                 pdf.text(`Shift: ${detail.shift}`, 25, yPosition);
                 yPosition += 4;
@@ -306,6 +310,372 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
               }
               if (detail.status) {
                 pdf.text(`Status: ${detail.status}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.holdRemark) {
+                pdf.text(`Hold Remark: ${detail.holdRemark}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.completeRemark) {
+                pdf.text(
+                  `Complete Remark: ${detail.completeRemark}`,
+                  25,
+                  yPosition
+                );
+                yPosition += 4;
+              }
+              if (detail.remarks) {
+                pdf.text(`Remarks: ${detail.remarks}`, 25, yPosition);
+                yPosition += 4;
+              }
+            } else if (step.stepName === "PrintingDetails") {
+              if (detail.quantity) {
+                pdf.text(`Quantity: ${detail.quantity}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.machine) {
+                pdf.text(`Machine: ${detail.machine}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.oprName) {
+                pdf.text(`Operator: ${detail.oprName}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.inksUsed) {
+                pdf.text(`Inks Used: ${detail.inksUsed}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.coatingType) {
+                pdf.text(`Coating Type: ${detail.coatingType}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.noOfColours) {
+                pdf.text(
+                  `No. of Colours: ${detail.noOfColours}`,
+                  25,
+                  yPosition
+                );
+                yPosition += 4;
+              }
+              if (detail.extraSheets) {
+                pdf.text(`Extra Sheets: ${detail.extraSheets}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.separateSheets) {
+                pdf.text(
+                  `Separate Sheets: ${detail.separateSheets}`,
+                  25,
+                  yPosition
+                );
+                yPosition += 4;
+              }
+              if (detail.wastage) {
+                pdf.text(`Wastage: ${detail.wastage}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.shift) {
+                pdf.text(`Shift: ${detail.shift}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.status) {
+                pdf.text(`Status: ${detail.status}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.holdRemark) {
+                pdf.text(`Hold Remark: ${detail.holdRemark}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.completeRemark) {
+                pdf.text(
+                  `Complete Remark: ${detail.completeRemark}`,
+                  25,
+                  yPosition
+                );
+                yPosition += 4;
+              }
+              if (detail.remarks) {
+                pdf.text(`Remarks: ${detail.remarks}`, 25, yPosition);
+                yPosition += 4;
+              }
+            } else if (step.stepName === "Corrugation") {
+              if (detail.quantity) {
+                pdf.text(`Quantity: ${detail.quantity}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.machineNo) {
+                pdf.text(`Machine No: ${detail.machineNo}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.oprName) {
+                pdf.text(`Operator: ${detail.oprName}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.flute) {
+                pdf.text(`Flute: ${detail.flute}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.size) {
+                pdf.text(`Size: ${detail.size}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.gsm1) {
+                pdf.text(`GSM 1: ${detail.gsm1}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.gsm2) {
+                pdf.text(`GSM 2: ${detail.gsm2}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.shift) {
+                pdf.text(`Shift: ${detail.shift}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.status) {
+                pdf.text(`Status: ${detail.status}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.holdRemark) {
+                pdf.text(`Hold Remark: ${detail.holdRemark}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.completeRemark) {
+                pdf.text(
+                  `Complete Remark: ${detail.completeRemark}`,
+                  25,
+                  yPosition
+                );
+                yPosition += 4;
+              }
+              if (detail.remarks) {
+                pdf.text(`Remarks: ${detail.remarks}`, 25, yPosition);
+                yPosition += 4;
+              }
+            } else if (step.stepName === "FluteLaminateBoardConversion") {
+              if (detail.quantity) {
+                pdf.text(`Quantity: ${detail.quantity}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.operatorName) {
+                pdf.text(`Operator: ${detail.operatorName}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.film) {
+                pdf.text(`Film: ${detail.film}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.adhesive) {
+                pdf.text(`Adhesive: ${detail.adhesive}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.wastage) {
+                pdf.text(`Wastage: ${detail.wastage}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.shift) {
+                pdf.text(`Shift: ${detail.shift}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.status) {
+                pdf.text(`Status: ${detail.status}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.holdRemark) {
+                pdf.text(`Hold Remark: ${detail.holdRemark}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.completeRemark) {
+                pdf.text(
+                  `Complete Remark: ${detail.completeRemark}`,
+                  25,
+                  yPosition
+                );
+                yPosition += 4;
+              }
+              if (detail.remarks) {
+                pdf.text(`Remarks: ${detail.remarks}`, 25, yPosition);
+                yPosition += 4;
+              }
+            } else if (step.stepName === "Punching") {
+              if (detail.quantity) {
+                pdf.text(`Quantity: ${detail.quantity}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.machine) {
+                pdf.text(`Machine: ${detail.machine}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.operatorName) {
+                pdf.text(`Operator: ${detail.operatorName}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.die) {
+                pdf.text(`Die: ${detail.die}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.wastage) {
+                pdf.text(`Wastage: ${detail.wastage}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.shift) {
+                pdf.text(`Shift: ${detail.shift}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.status) {
+                pdf.text(`Status: ${detail.status}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.holdRemark) {
+                pdf.text(`Hold Remark: ${detail.holdRemark}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.completeRemark) {
+                pdf.text(
+                  `Complete Remark: ${detail.completeRemark}`,
+                  25,
+                  yPosition
+                );
+                yPosition += 4;
+              }
+              if (detail.remarks) {
+                pdf.text(`Remarks: ${detail.remarks}`, 25, yPosition);
+                yPosition += 4;
+              }
+            } else if (step.stepName === "SideFlapPasting") {
+              if (detail.quantity) {
+                pdf.text(`Quantity: ${detail.quantity}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.machineNo) {
+                pdf.text(`Machine No: ${detail.machineNo}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.operatorName) {
+                pdf.text(`Operator: ${detail.operatorName}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.adhesive) {
+                pdf.text(`Adhesive: ${detail.adhesive}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.wastage) {
+                pdf.text(`Wastage: ${detail.wastage}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.shift) {
+                pdf.text(`Shift: ${detail.shift}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.status) {
+                pdf.text(`Status: ${detail.status}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.holdRemark) {
+                pdf.text(`Hold Remark: ${detail.holdRemark}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.completeRemark) {
+                pdf.text(
+                  `Complete Remark: ${detail.completeRemark}`,
+                  25,
+                  yPosition
+                );
+                yPosition += 4;
+              }
+              if (detail.remarks) {
+                pdf.text(`Remarks: ${detail.remarks}`, 25, yPosition);
+                yPosition += 4;
+              }
+            } else if (step.stepName === "QualityDept") {
+              if (detail.quantity) {
+                pdf.text(`Quantity: ${detail.quantity}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.operatorName) {
+                pdf.text(`Operator: ${detail.operatorName}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.checkedBy) {
+                pdf.text(`Checked By: ${detail.checkedBy}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.rejectedQty) {
+                pdf.text(`Rejected Qty: ${detail.rejectedQty}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.reasonForRejection) {
+                pdf.text(
+                  `Reason for Rejection: ${detail.reasonForRejection}`,
+                  25,
+                  yPosition
+                );
+                yPosition += 4;
+              }
+              if (detail.shift) {
+                pdf.text(`Shift: ${detail.shift}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.status) {
+                pdf.text(`Status: ${detail.status}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.holdRemark) {
+                pdf.text(`Hold Remark: ${detail.holdRemark}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.completeRemark) {
+                pdf.text(
+                  `Complete Remark: ${detail.completeRemark}`,
+                  25,
+                  yPosition
+                );
+                yPosition += 4;
+              }
+              if (detail.remarks) {
+                pdf.text(`Remarks: ${detail.remarks}`, 25, yPosition);
+                yPosition += 4;
+              }
+            } else if (step.stepName === "DispatchProcess") {
+              if (detail.quantity) {
+                pdf.text(`Quantity: ${detail.quantity}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.balanceQty) {
+                pdf.text(`Balance Qty: ${detail.balanceQty}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.dispatchNo) {
+                pdf.text(`Dispatch No: ${detail.dispatchNo}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.operatorName) {
+                pdf.text(`Operator: ${detail.operatorName}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.dispatchDate) {
+                const formattedDate = new Date(
+                  detail.dispatchDate
+                ).toLocaleDateString();
+                pdf.text(`Dispatch Date: ${formattedDate}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.shift) {
+                pdf.text(`Shift: ${detail.shift}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.status) {
+                pdf.text(`Status: ${detail.status}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.holdRemark) {
+                pdf.text(`Hold Remark: ${detail.holdRemark}`, 25, yPosition);
+                yPosition += 4;
+              }
+              if (detail.completeRemark) {
+                pdf.text(
+                  `Complete Remark: ${detail.completeRemark}`,
+                  25,
+                  yPosition
+                );
                 yPosition += 4;
               }
               if (detail.remarks) {
@@ -506,7 +876,7 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
             <div>
               <h2 className="text-2xl font-bold">{job.nrcJobNo}</h2>
               <p className="text-blue-100">
-                {job.company || job.customerName || "N/A"}
+                {job.jobDetails?.company || job.jobDetails?.customerName || "N/A"}
               </p>
             </div>
           </div>
@@ -998,6 +1368,12 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
                                               <span>{detail.quality}</span>
                                             </div>
                                           )}
+                                          {detail.extraMargin && (
+                                            <div className="flex justify-between">
+                                              <span>Extra Margin:</span>
+                                              <span>{detail.extraMargin}</span>
+                                            </div>
+                                          )}
                                           {detail.shift && (
                                             <div className="flex justify-between">
                                               <span>Shift:</span>
@@ -1019,13 +1395,31 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
                                                     ? "bg-red-100 text-red-800"
                                                     : detail.status === "start"
                                                     ? "bg-yellow-100 text-yellow-800"
-                                                    : detail.status ===
-                                                      "completed"
+                                                    : detail.status === "accept"
                                                     ? "bg-green-100 text-green-800"
+                                                    : detail.status ===
+                                                      "in_progress"
+                                                    ? "bg-blue-100 text-blue-800"
                                                     : "bg-gray-100 text-gray-800"
                                                 }`}
                                               >
                                                 {detail.status}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.holdRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Hold Remark:</span>
+                                              <span className="text-red-600">
+                                                {detail.holdRemark}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.completeRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Complete Remark:</span>
+                                              <span className="text-green-600">
+                                                {detail.completeRemark}
                                               </span>
                                             </div>
                                           )}
@@ -1038,8 +1432,659 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
                                         </>
                                       )}
 
-                                      {/* Generic Details for other steps */}
-                                      {step.stepName !== "PaperStore" && (
+                                      {/* Printing Details */}
+                                      {step.stepName === "PrintingDetails" && (
+                                        <>
+                                          {detail.quantity && (
+                                            <div className="flex justify-between">
+                                              <span>Quantity:</span>
+                                              <span>{detail.quantity}</span>
+                                            </div>
+                                          )}
+                                          {detail.machine && (
+                                            <div className="flex justify-between">
+                                              <span>Machine:</span>
+                                              <span>{detail.machine}</span>
+                                            </div>
+                                          )}
+                                          {detail.oprName && (
+                                            <div className="flex justify-between">
+                                              <span>Operator:</span>
+                                              <span>{detail.oprName}</span>
+                                            </div>
+                                          )}
+                                          {detail.inksUsed && (
+                                            <div className="flex justify-between">
+                                              <span>Inks Used:</span>
+                                              <span>{detail.inksUsed}</span>
+                                            </div>
+                                          )}
+                                          {detail.coatingType && (
+                                            <div className="flex justify-between">
+                                              <span>Coating Type:</span>
+                                              <span>{detail.coatingType}</span>
+                                            </div>
+                                          )}
+                                          {detail.noOfColours && (
+                                            <div className="flex justify-between">
+                                              <span>No. of Colours:</span>
+                                              <span>{detail.noOfColours}</span>
+                                            </div>
+                                          )}
+                                          {detail.extraSheets && (
+                                            <div className="flex justify-between">
+                                              <span>Extra Sheets:</span>
+                                              <span>{detail.extraSheets}</span>
+                                            </div>
+                                          )}
+                                          {detail.separateSheets && (
+                                            <div className="flex justify-between">
+                                              <span>Separate Sheets:</span>
+                                              <span>
+                                                {detail.separateSheets}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.wastage && (
+                                            <div className="flex justify-between">
+                                              <span>Wastage:</span>
+                                              <span>{detail.wastage}</span>
+                                            </div>
+                                          )}
+                                          {detail.shift && (
+                                            <div className="flex justify-between">
+                                              <span>Shift:</span>
+                                              <span>{detail.shift}</span>
+                                            </div>
+                                          )}
+                                          {detail.status && (
+                                            <div className="flex justify-between">
+                                              <span>Status:</span>
+                                              <span
+                                                className={`px-1 py-0.5 rounded text-xs ${
+                                                  detail.status === "hold"
+                                                    ? "bg-red-100 text-red-800"
+                                                    : detail.status === "start"
+                                                    ? "bg-yellow-100 text-yellow-800"
+                                                    : detail.status === "accept"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : detail.status ===
+                                                      "in_progress"
+                                                    ? "bg-blue-100 text-blue-800"
+                                                    : "bg-gray-100 text-gray-800"
+                                                }`}
+                                              >
+                                                {detail.status}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.holdRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Hold Remark:</span>
+                                              <span className="text-red-600">
+                                                {detail.holdRemark}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.completeRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Complete Remark:</span>
+                                              <span className="text-green-600">
+                                                {detail.completeRemark}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.remarks && (
+                                            <div className="flex justify-between">
+                                              <span>Remarks:</span>
+                                              <span>{detail.remarks}</span>
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+
+                                      {/* Corrugation Details */}
+                                      {step.stepName === "Corrugation" && (
+                                        <>
+                                          {detail.quantity && (
+                                            <div className="flex justify-between">
+                                              <span>Quantity:</span>
+                                              <span>{detail.quantity}</span>
+                                            </div>
+                                          )}
+                                          {detail.machineNo && (
+                                            <div className="flex justify-between">
+                                              <span>Machine No:</span>
+                                              <span>{detail.machineNo}</span>
+                                            </div>
+                                          )}
+                                          {detail.oprName && (
+                                            <div className="flex justify-between">
+                                              <span>Operator:</span>
+                                              <span>{detail.oprName}</span>
+                                            </div>
+                                          )}
+                                          {detail.flute && (
+                                            <div className="flex justify-between">
+                                              <span>Flute:</span>
+                                              <span>{detail.flute}</span>
+                                            </div>
+                                          )}
+                                          {detail.size && (
+                                            <div className="flex justify-between">
+                                              <span>Size:</span>
+                                              <span>{detail.size}</span>
+                                            </div>
+                                          )}
+                                          {detail.gsm1 && (
+                                            <div className="flex justify-between">
+                                              <span>GSM 1:</span>
+                                              <span>{detail.gsm1}</span>
+                                            </div>
+                                          )}
+                                          {detail.gsm2 && (
+                                            <div className="flex justify-between">
+                                              <span>GSM 2:</span>
+                                              <span>{detail.gsm2}</span>
+                                            </div>
+                                          )}
+                                          {detail.shift && (
+                                            <div className="flex justify-between">
+                                              <span>Shift:</span>
+                                              <span>{detail.shift}</span>
+                                            </div>
+                                          )}
+                                          {detail.status && (
+                                            <div className="flex justify-between">
+                                              <span>Status:</span>
+                                              <span
+                                                className={`px-1 py-0.5 rounded text-xs ${
+                                                  detail.status === "hold"
+                                                    ? "bg-red-100 text-red-800"
+                                                    : detail.status === "start"
+                                                    ? "bg-yellow-100 text-yellow-800"
+                                                    : detail.status === "accept"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : detail.status ===
+                                                      "in_progress"
+                                                    ? "bg-blue-100 text-blue-800"
+                                                    : "bg-gray-100 text-gray-800"
+                                                }`}
+                                              >
+                                                {detail.status}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {/* {detail.holdRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Hold Remark:</span>
+                                              <span className="text-red-600">
+                                                {detail.holdRemark}
+                                              </span>
+                                            </div>
+                                          )} */}
+                                          {detail.completeRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Complete Remark:</span>
+                                              <span className="text-green-600">
+                                                {detail.completeRemark}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.remarks && (
+                                            <div className="flex justify-between">
+                                              <span>Remarks:</span>
+                                              <span>{detail.remarks}</span>
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+
+                                      {/* Flute Laminate Details */}
+                                      {step.stepName ===
+                                        "FluteLaminateBoardConversion" && (
+                                        <>
+                                          {detail.quantity && (
+                                            <div className="flex justify-between">
+                                              <span>Quantity:</span>
+                                              <span>{detail.quantity}</span>
+                                            </div>
+                                          )}
+                                          {detail.operatorName && (
+                                            <div className="flex justify-between">
+                                              <span>Operator:</span>
+                                              <span>{detail.operatorName}</span>
+                                            </div>
+                                          )}
+                                          {detail.film && (
+                                            <div className="flex justify-between">
+                                              <span>Film:</span>
+                                              <span>{detail.film}</span>
+                                            </div>
+                                          )}
+                                          {detail.adhesive && (
+                                            <div className="flex justify-between">
+                                              <span>Adhesive:</span>
+                                              <span>{detail.adhesive}</span>
+                                            </div>
+                                          )}
+                                          {detail.wastage && (
+                                            <div className="flex justify-between">
+                                              <span>Wastage:</span>
+                                              <span>{detail.wastage}</span>
+                                            </div>
+                                          )}
+                                          {detail.shift && (
+                                            <div className="flex justify-between">
+                                              <span>Shift:</span>
+                                              <span>{detail.shift}</span>
+                                            </div>
+                                          )}
+                                          {detail.status && (
+                                            <div className="flex justify-between">
+                                              <span>Status:</span>
+                                              <span
+                                                className={`px-1 py-0.5 rounded text-xs ${
+                                                  detail.status === "hold"
+                                                    ? "bg-red-100 text-red-800"
+                                                    : detail.status === "start"
+                                                    ? "bg-yellow-100 text-yellow-800"
+                                                    : detail.status === "accept"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : detail.status ===
+                                                      "in_progress"
+                                                    ? "bg-blue-100 text-blue-800"
+                                                    : "bg-gray-100 text-gray-800"
+                                                }`}
+                                              >
+                                                {detail.status}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.holdRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Hold Remark:</span>
+                                              <span className="text-red-600">
+                                                {detail.holdRemark}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.completeRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Complete Remark:</span>
+                                              <span className="text-green-600">
+                                                {detail.completeRemark}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.remarks && (
+                                            <div className="flex justify-between">
+                                              <span>Remarks:</span>
+                                              <span>{detail.remarks}</span>
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+
+                                      {/* Punching Details */}
+                                      {step.stepName === "Punching" && (
+                                        <>
+                                          {detail.quantity && (
+                                            <div className="flex justify-between">
+                                              <span>Quantity:</span>
+                                              <span>{detail.quantity}</span>
+                                            </div>
+                                          )}
+                                          {detail.machine && (
+                                            <div className="flex justify-between">
+                                              <span>Machine:</span>
+                                              <span>{detail.machine}</span>
+                                            </div>
+                                          )}
+                                          {detail.operatorName && (
+                                            <div className="flex justify-between">
+                                              <span>Operator:</span>
+                                              <span>{detail.operatorName}</span>
+                                            </div>
+                                          )}
+                                          {detail.die && (
+                                            <div className="flex justify-between">
+                                              <span>Die:</span>
+                                              <span>{detail.die}</span>
+                                            </div>
+                                          )}
+                                          {detail.wastage && (
+                                            <div className="flex justify-between">
+                                              <span>Wastage:</span>
+                                              <span>{detail.wastage}</span>
+                                            </div>
+                                          )}
+                                          {detail.shift && (
+                                            <div className="flex justify-between">
+                                              <span>Shift:</span>
+                                              <span>{detail.shift}</span>
+                                            </div>
+                                          )}
+                                          {detail.status && (
+                                            <div className="flex justify-between">
+                                              <span>Status:</span>
+                                              <span
+                                                className={`px-1 py-0.5 rounded text-xs ${
+                                                  detail.status === "hold"
+                                                    ? "bg-red-100 text-red-800"
+                                                    : detail.status === "start"
+                                                    ? "bg-yellow-100 text-yellow-800"
+                                                    : detail.status === "accept"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : detail.status ===
+                                                      "in_progress"
+                                                    ? "bg-blue-100 text-blue-800"
+                                                    : "bg-gray-100 text-gray-800"
+                                                }`}
+                                              >
+                                                {detail.status}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.holdRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Hold Remark:</span>
+                                              <span className="text-red-600">
+                                                {detail.holdRemark}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.completeRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Complete Remark:</span>
+                                              <span className="text-green-600">
+                                                {detail.completeRemark}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.remarks && (
+                                            <div className="flex justify-between">
+                                              <span>Remarks:</span>
+                                              <span>{detail.remarks}</span>
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+
+                                      {/* Side Flap Pasting Details */}
+                                      {step.stepName === "SideFlapPasting" && (
+                                        <>
+                                          {detail.quantity && (
+                                            <div className="flex justify-between">
+                                              <span>Quantity:</span>
+                                              <span>{detail.quantity}</span>
+                                            </div>
+                                          )}
+                                          {detail.machineNo && (
+                                            <div className="flex justify-between">
+                                              <span>Machine No:</span>
+                                              <span>{detail.machineNo}</span>
+                                            </div>
+                                          )}
+                                          {detail.operatorName && (
+                                            <div className="flex justify-between">
+                                              <span>Operator:</span>
+                                              <span>{detail.operatorName}</span>
+                                            </div>
+                                          )}
+                                          {detail.adhesive && (
+                                            <div className="flex justify-between">
+                                              <span>Adhesive:</span>
+                                              <span>{detail.adhesive}</span>
+                                            </div>
+                                          )}
+                                          {detail.wastage && (
+                                            <div className="flex justify-between">
+                                              <span>Wastage:</span>
+                                              <span>{detail.wastage}</span>
+                                            </div>
+                                          )}
+                                          {detail.shift && (
+                                            <div className="flex justify-between">
+                                              <span>Shift:</span>
+                                              <span>{detail.shift}</span>
+                                            </div>
+                                          )}
+                                          {detail.status && (
+                                            <div className="flex justify-between">
+                                              <span>Status:</span>
+                                              <span
+                                                className={`px-1 py-0.5 rounded text-xs ${
+                                                  detail.status === "hold"
+                                                    ? "bg-red-100 text-red-800"
+                                                    : detail.status === "start"
+                                                    ? "bg-yellow-100 text-yellow-800"
+                                                    : detail.status === "accept"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : detail.status ===
+                                                      "in_progress"
+                                                    ? "bg-blue-100 text-blue-800"
+                                                    : "bg-gray-100 text-gray-800"
+                                                }`}
+                                              >
+                                                {detail.status}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.holdRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Hold Remark:</span>
+                                              <span className="text-red-600">
+                                                {detail.holdRemark}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.completeRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Complete Remark:</span>
+                                              <span className="text-green-600">
+                                                {detail.completeRemark}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.remarks && (
+                                            <div className="flex justify-between">
+                                              <span>Remarks:</span>
+                                              <span>{detail.remarks}</span>
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+
+                                      {/* Quality Dept Details */}
+                                      {step.stepName === "QualityDept" && (
+                                        <>
+                                          {detail.quantity && (
+                                            <div className="flex justify-between">
+                                              <span>Quantity:</span>
+                                              <span>{detail.quantity}</span>
+                                            </div>
+                                          )}
+                                          {detail.operatorName && (
+                                            <div className="flex justify-between">
+                                              <span>Operator:</span>
+                                              <span>{detail.operatorName}</span>
+                                            </div>
+                                          )}
+                                          {detail.checkedBy && (
+                                            <div className="flex justify-between">
+                                              <span>Checked By:</span>
+                                              <span>{detail.checkedBy}</span>
+                                            </div>
+                                          )}
+                                          {detail.rejectedQty && (
+                                            <div className="flex justify-between">
+                                              <span>Rejected Qty:</span>
+                                              <span className="text-red-600">
+                                                {detail.rejectedQty}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.reasonForRejection && (
+                                            <div className="flex justify-between">
+                                              <span>Reason for Rejection:</span>
+                                              <span className="text-red-600">
+                                                {detail.reasonForRejection}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.shift && (
+                                            <div className="flex justify-between">
+                                              <span>Shift:</span>
+                                              <span>{detail.shift}</span>
+                                            </div>
+                                          )}
+                                          {detail.status && (
+                                            <div className="flex justify-between">
+                                              <span>Status:</span>
+                                              <span
+                                                className={`px-1 py-0.5 rounded text-xs ${
+                                                  detail.status === "hold"
+                                                    ? "bg-red-100 text-red-800"
+                                                    : detail.status === "start"
+                                                    ? "bg-yellow-100 text-yellow-800"
+                                                    : detail.status === "accept"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : detail.status ===
+                                                      "in_progress"
+                                                    ? "bg-blue-100 text-blue-800"
+                                                    : "bg-gray-100 text-gray-800"
+                                                }`}
+                                              >
+                                                {detail.status}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.holdRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Hold Remark:</span>
+                                              <span className="text-red-600">
+                                                {detail.holdRemark}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.completeRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Complete Remark:</span>
+                                              <span className="text-green-600">
+                                                {detail.completeRemark}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.remarks && (
+                                            <div className="flex justify-between">
+                                              <span>Remarks:</span>
+                                              <span>{detail.remarks}</span>
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+
+                                      {/* Dispatch Process Details */}
+                                      {step.stepName === "DispatchProcess" && (
+                                        <>
+                                          {detail.quantity && (
+                                            <div className="flex justify-between">
+                                              <span>Quantity:</span>
+                                              <span>{detail.quantity}</span>
+                                            </div>
+                                          )}
+                                          {detail.balanceQty && (
+                                            <div className="flex justify-between">
+                                              <span>Balance Qty:</span>
+                                              <span>{detail.balanceQty}</span>
+                                            </div>
+                                          )}
+                                          {detail.dispatchNo && (
+                                            <div className="flex justify-between">
+                                              <span>Dispatch No:</span>
+                                              <span>{detail.dispatchNo}</span>
+                                            </div>
+                                          )}
+                                          {detail.operatorName && (
+                                            <div className="flex justify-between">
+                                              <span>Operator:</span>
+                                              <span>{detail.operatorName}</span>
+                                            </div>
+                                          )}
+                                          {detail.dispatchDate && (
+                                            <div className="flex justify-between">
+                                              <span>Dispatch Date:</span>
+                                              <span>
+                                                {new Date(
+                                                  detail.dispatchDate
+                                                ).toLocaleDateString()}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.shift && (
+                                            <div className="flex justify-between">
+                                              <span>Shift:</span>
+                                              <span>{detail.shift}</span>
+                                            </div>
+                                          )}
+                                          {detail.status && (
+                                            <div className="flex justify-between">
+                                              <span>Status:</span>
+                                              <span
+                                                className={`px-1 py-0.5 rounded text-xs ${
+                                                  detail.status === "hold"
+                                                    ? "bg-red-100 text-red-800"
+                                                    : detail.status === "start"
+                                                    ? "bg-yellow-100 text-yellow-800"
+                                                    : detail.status === "accept"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : detail.status ===
+                                                      "in_progress"
+                                                    ? "bg-blue-100 text-blue-800"
+                                                    : "bg-gray-100 text-gray-800"
+                                                }`}
+                                              >
+                                                {detail.status}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.holdRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Hold Remark:</span>
+                                              <span className="text-red-600">
+                                                {detail.holdRemark}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.completeRemark && (
+                                            <div className="flex justify-between">
+                                              <span>Complete Remark:</span>
+                                              <span className="text-green-600">
+                                                {detail.completeRemark}
+                                              </span>
+                                            </div>
+                                          )}
+                                          {detail.remarks && (
+                                            <div className="flex justify-between">
+                                              <span>Remarks:</span>
+                                              <span>{detail.remarks}</span>
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+
+                                      {/* Generic Details for any step not covered above */}
+                                      {![
+                                        "PaperStore",
+                                        "PrintingDetails",
+                                        "Corrugation",
+                                        "FluteLaminateBoardConversion",
+                                        "Punching",
+                                        "SideFlapPasting",
+                                        "QualityDept",
+                                        "DispatchProcess",
+                                      ].includes(step.stepName) && (
                                         <>
                                           {detail.quantity && (
                                             <div className="flex justify-between">
@@ -1068,9 +2113,11 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
                                                     ? "bg-red-100 text-red-800"
                                                     : detail.status === "start"
                                                     ? "bg-yellow-100 text-yellow-800"
-                                                    : detail.status ===
-                                                      "completed"
+                                                    : detail.status === "accept"
                                                     ? "bg-green-100 text-green-800"
+                                                    : detail.status ===
+                                                      "in_progress"
+                                                    ? "bg-blue-100 text-blue-800"
                                                     : "bg-gray-100 text-gray-800"
                                                 }`}
                                               >
