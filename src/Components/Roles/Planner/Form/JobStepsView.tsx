@@ -1,12 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { type JobPlan, type JobPlanStep, type PaperStorePayload, type CorrugationPayload, type PrintingDetailsPayload, type FluteLaminationPayload, type PunchingPayload, type FlapPastingPayload, type QCDetailsPayload, type DispatchDetailsPayload } from '../Types/job.ts';
-import StartWorkConfirmModal from '../modal/StartWorkConfirmModal.tsx';
-import PaperStoreForm from '../Form/StepForms/PaperStoreForm.tsx';
-import GenericStepForm from '../Form/GenericStepForm.tsx'; // IMPORTED: The new Generic Form
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  type JobPlan,
+  type JobPlanStep,
+  type PaperStorePayload,
+  type CorrugationPayload,
+  type PrintingDetailsPayload,
+  type FluteLaminationPayload,
+  type PunchingPayload,
+  type FlapPastingPayload,
+  type QCDetailsPayload,
+  type DispatchDetailsPayload,
+} from "../Types/job.ts";
+import StartWorkConfirmModal from "../modal/StartWorkConfirmModal.tsx";
+import PaperStoreForm from "../Form/StepForms/PaperStoreForm.tsx";
+import GenericStepForm from "../Form/GenericStepForm.tsx"; // IMPORTED: The new Generic Form
 import { CheckCircle, PlayCircle, Pencil, Eye } from "lucide-react";
-import JobPlanningDetailModal from '../modal/JobPlanningDetailModal.tsx';
-
+import JobPlanningDetailModal from "../modal/JobPlanningDetailModal.tsx";
 
 interface JobStepsViewProps {
   // No props needed as it fetches data based on URL param
@@ -24,11 +34,13 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
   const [showStartConfirmModal, setShowStartConfirmModal] = useState(false);
   const [stepToStart, setStepToStart] = useState<JobPlanStep | null>(null);
 
-  const [showStepSpecificForm, setShowStepSpecificForm] = useState<string | null>(null);
+  const [showStepSpecificForm, setShowStepSpecificForm] = useState<
+    string | null
+  >(null);
   const [stepToEdit, setStepToEdit] = useState<JobPlanStep | null>(null);
 
-  const [selectedJobPlanForDetail, setSelectedJobPlanForDetail] = useState<JobPlan | null>(null);
-
+  const [selectedJobPlanForDetail, setSelectedJobPlanForDetail] =
+    useState<JobPlan | null>(null);
 
   // Removed formatDateForDisplay as it was unused in JSX
   // const formatDateForDisplay = (dateString: string | null) => {
@@ -48,56 +60,79 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
   //   return new Date(dateString + 'T00:00:00.000Z').toISOString();
   // };
 
-        // Helper to fetch step-specific details
-      const fetchStepDetails = async (stepName: string, stepId: number, jobNrcJobNo: string): Promise<PaperStorePayload | CorrugationPayload | PrintingDetailsPayload | FluteLaminationPayload | PunchingPayload | FlapPastingPayload | QCDetailsPayload | DispatchDetailsPayload | null> => {
-        try {
-          const accessToken = localStorage.getItem('accessToken');
-          if (!accessToken) throw new Error('Authentication token not found.');
+  // Helper to fetch step-specific details
+  const fetchStepDetails = async (
+    stepName: string,
+    stepId: number,
+    jobNrcJobNo: string
+  ): Promise<
+    | PaperStorePayload
+    | CorrugationPayload
+    | PrintingDetailsPayload
+    | FluteLaminationPayload
+    | PunchingPayload
+    | FlapPastingPayload
+    | QCDetailsPayload
+    | DispatchDetailsPayload
+    | null
+  > => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) throw new Error("Authentication token not found.");
 
-          // Properly encode the jobNrcJobNo for URL construction
-          const encodedJobNrcJobNo = (jobNrcJobNo);
-          let endpoint = '';
-          switch (stepName) {
-            case 'PaperStore':
-              endpoint = `https://nrprod.nrcontainers.com/api/paper-store/by-job/${encodedJobNrcJobNo}`;
-              break;
-            case 'Corrugation':
-              endpoint = `https://nrprod.nrcontainers.com/api/corrugation/by-job/${encodedJobNrcJobNo}`;
-              break;
-            case 'PrintingDetails':
-              endpoint = `https://nrprod.nrcontainers.com/api/printing-details/by-job/${encodedJobNrcJobNo}`;
-              break;
-            case 'FluteLamination':
-              endpoint = `https://nrprod.nrcontainers.com/api/flute-laminate-board-conversion/by-job/${encodedJobNrcJobNo}`;
-              break;
-            case 'Punching':
-              endpoint = `https://nrprod.nrcontainers.com/api/punching/by-job/${encodedJobNrcJobNo}`;
-              break;
-            case 'FlapPasting':
-              endpoint = `https://nrprod.nrcontainers.com/api/side-flap-pasting/by-job/${encodedJobNrcJobNo}`;
-              break;
-            case 'QualityDept':
-              endpoint = `https://nrprod.nrcontainers.com/api/quality-dept/by-job/${encodedJobNrcJobNo}`;
-              break;
-            case 'DispatchProcess':
-              endpoint = `https://nrprod.nrcontainers.com/api/dispatch-process/by-job/${encodedJobNrcJobNo}`;
-              break;
-            default:
-              return null;
-          }
+      // Properly encode the jobNrcJobNo for URL construction
+      const encodedJobNrcJobNo = jobNrcJobNo;
+      let endpoint = "";
+      switch (stepName) {
+        case "PaperStore":
+          endpoint = `https://nrprod.nrcontainers.com/api/paper-store/by-job/${encodedJobNrcJobNo}`;
+          break;
+        case "Corrugation":
+          endpoint = `https://nrprod.nrcontainers.com/api/corrugation/by-job/${encodedJobNrcJobNo}`;
+          break;
+        case "PrintingDetails":
+          endpoint = `https://nrprod.nrcontainers.com/api/printing-details/by-job/${encodedJobNrcJobNo}`;
+          break;
+        case "FluteLaminateBoardConversion":
+          endpoint = `https://nrprod.nrcontainers.com/api/flute-laminate-board-conversion/by-job/${encodedJobNrcJobNo}`;
+          break;
+        case "Punching":
+          endpoint = `https://nrprod.nrcontainers.com/api/punching/by-job/${encodedJobNrcJobNo}`;
+          break;
+        case "FlapPasting":
+          endpoint = `https://nrprod.nrcontainers.com/api/side-flap-pasting/by-job/${encodedJobNrcJobNo}`;
+          break;
+        case "QualityDept":
+          endpoint = `https://nrprod.nrcontainers.com/api/quality-dept/by-job/${encodedJobNrcJobNo}`;
+          break;
+        case "DispatchProcess":
+          endpoint = `https://nrprod.nrcontainers.com/api/dispatch-process/by-job/${encodedJobNrcJobNo}`;
+          break;
+        default:
+          return null;
+      }
 
-          console.log(`🔍 [fetchStepDetails] ${stepName} - Step ID: ${stepId}, Job NRC: ${jobNrcJobNo}`);
-          console.log(`🔍 [fetchStepDetails] ${stepName} - Encoded Job NRC: ${encodedJobNrcJobNo}`);
-          console.log(`🔍 [fetchStepDetails] ${stepName} - Full Endpoint: ${endpoint}`);
+      console.log(
+        `🔍 [fetchStepDetails] ${stepName} - Step ID: ${stepId}, Job NRC: ${jobNrcJobNo}`
+      );
+      console.log(
+        `🔍 [fetchStepDetails] ${stepName} - Encoded Job NRC: ${encodedJobNrcJobNo}`
+      );
+      console.log(
+        `🔍 [fetchStepDetails] ${stepName} - Full Endpoint: ${endpoint}`
+      );
 
       const response = await fetch(endpoint, {
-        headers: { 'Authorization': `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (!response.ok) {
         if (response.status === 404) return null;
         const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to fetch ${stepName} details: ${response.status} ${response.statusText}`);
+        throw new Error(
+          errorData.message ||
+            `Failed to fetch ${stepName} details: ${response.status} ${response.statusText}`
+        );
       }
       const data = await response.json();
       if (data.success && data.data) {
@@ -105,11 +140,13 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
       }
       return null;
     } catch (err) {
-      console.error(`Error fetching ${stepName} details for step ${stepId}:`, err);
+      console.error(
+        `Error fetching ${stepName} details for step ${stepId}:`,
+        err
+      );
       return null;
     }
   };
-
 
   // --- Data Fetching ---
   const fetchJobPlanDetails = async () => {
@@ -122,72 +159,130 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
     setLoading(true);
     setError(null);
     try {
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) throw new Error('Authentication token not found.');
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) throw new Error("Authentication token not found.");
 
       const jobPlanningEndpoint = `https://nrprod.nrcontainers.com/api/job-planning/`;
-      console.log(`🔍 [fetchJobPlanDetails] - Endpoint: ${jobPlanningEndpoint}`);
+      console.log(
+        `🔍 [fetchJobPlanDetails] - Endpoint: ${jobPlanningEndpoint}`
+      );
       console.log(`🔍 [fetchJobPlanDetails] - Method: GET`);
-      console.log(`🔍 [fetchJobPlanDetails] - Job Plan ID from URL: ${jobPlanId}`);
-      
+      console.log(
+        `🔍 [fetchJobPlanDetails] - Job Plan ID from URL: ${jobPlanId}`
+      );
+
       const response = await fetch(jobPlanningEndpoint, {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${accessToken}` },
+        method: "GET",
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to fetch job plan details: ${response.status} ${response.statusText}`);
+        throw new Error(
+          errorData.message ||
+            `Failed to fetch job plan details: ${response.status} ${response.statusText}`
+        );
       }
       const data = await response.json();
       if (data.success && Array.isArray(data.data)) {
-        const foundJobPlan = data.data.find((plan: JobPlan) => plan.jobPlanId === Number(jobPlanId));
+        const foundJobPlan = data.data.find(
+          (plan: JobPlan) => plan.jobPlanId === Number(jobPlanId)
+        );
         if (foundJobPlan) {
-          foundJobPlan.steps.sort((a: JobPlanStep, b: JobPlanStep) => a.stepNo - b.stepNo);
+          foundJobPlan.steps.sort(
+            (a: JobPlanStep, b: JobPlanStep) => a.stepNo - b.stepNo
+          );
 
-          const stepsWithDetails = await Promise.all(foundJobPlan.steps.map(async (step: { status: string; stepName: string; id: number; }) => {
-            let details = null;
-            if (step.status === 'start' || step.status === 'stop') {
-              details = await fetchStepDetails(step.stepName, step.id, decodeURIComponent(foundJobPlan.nrcJobNo));
-            }
-            switch (step.stepName) {
-              case 'PaperStore':
-                return { ...step, paperStoreDetails: details as PaperStorePayload || undefined };
-              case 'Corrugation':
-                return { ...step, corrugationDetails: details as CorrugationPayload || undefined };
-              case 'PrintingDetails':
-                return { ...step, printingDetails: details as PrintingDetailsPayload || undefined };
-              case 'FluteLamination':
-                return { ...step, fluteLaminationDetails: details as FluteLaminationPayload || undefined };
-              case 'Punching':
-                return { ...step, punchingDetails: details as PunchingPayload || undefined };
-              case 'FlapPasting':
-                return { ...step, flapPastingDetails: details as FlapPastingPayload || undefined };
-              case 'QualityDept':
-                return { ...step, qcDetails: details as QCDetailsPayload || undefined };
-              case 'DispatchProcess':
-                return { ...step, dispatchDetails: details as DispatchDetailsPayload || undefined };
-              default:
-                return step;
-            }
-          }));
+          const stepsWithDetails = await Promise.all(
+            foundJobPlan.steps.map(
+              async (step: {
+                status: string;
+                stepName: string;
+                id: number;
+              }) => {
+                let details = null;
+                if (step.status === "start" || step.status === "stop") {
+                  details = await fetchStepDetails(
+                    step.stepName,
+                    step.id,
+                    decodeURIComponent(foundJobPlan.nrcJobNo)
+                  );
+                }
+                switch (step.stepName) {
+                  case "PaperStore":
+                    return {
+                      ...step,
+                      paperStoreDetails:
+                        (details as PaperStorePayload) || undefined,
+                    };
+                  case "Corrugation":
+                    return {
+                      ...step,
+                      corrugationDetails:
+                        (details as CorrugationPayload) || undefined,
+                    };
+                  case "PrintingDetails":
+                    return {
+                      ...step,
+                      printingDetails:
+                        (details as PrintingDetailsPayload) || undefined,
+                    };
+                  case "FluteLaminateBoardConversion":
+                    return {
+                      ...step,
+                      fluteLaminationDetails:
+                        (details as FluteLaminationPayload) || undefined,
+                    };
+                  case "Punching":
+                    return {
+                      ...step,
+                      punchingDetails:
+                        (details as PunchingPayload) || undefined,
+                    };
+                  case "FlapPasting":
+                    return {
+                      ...step,
+                      flapPastingDetails:
+                        (details as FlapPastingPayload) || undefined,
+                    };
+                  case "QualityDept":
+                    return {
+                      ...step,
+                      qcDetails: (details as QCDetailsPayload) || undefined,
+                    };
+                  case "DispatchProcess":
+                    return {
+                      ...step,
+                      dispatchDetails:
+                        (details as DispatchDetailsPayload) || undefined,
+                    };
+                  default:
+                    return step;
+                }
+              }
+            )
+          );
 
           // Decode the nrcJobNo when we first receive the data
-          const decodedJobPlan = { 
-            ...foundJobPlan, 
+          const decodedJobPlan = {
+            ...foundJobPlan,
             nrcJobNo: decodeURIComponent(foundJobPlan.nrcJobNo),
-            steps: stepsWithDetails 
+            steps: stepsWithDetails,
           };
           setJobPlan(decodedJobPlan);
         } else {
-          setError('Job Plan not found.');
+          setError("Job Plan not found.");
         }
       } else {
-        setError('Unexpected API response format for job plans.');
+        setError("Unexpected API response format for job plans.");
       }
     } catch (err) {
-      setError(`Failed to load job plan: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      console.error('Fetch Job Plan Details Error:', err);
+      setError(
+        `Failed to load job plan: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
+      console.error("Fetch Job Plan Details Error:", err);
     } finally {
       setLoading(false);
     }
@@ -197,76 +292,106 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
     fetchJobPlanDetails();
   }, [jobPlanId]);
 
-
   // --- Step Status Update (PATCH - for start/stop status in JobPlanStep) ---
-  const updateJobPlanStepStatus = async (step: JobPlanStep, newStatus: 'start' | 'stop') => {
+  const updateJobPlanStepStatus = async (
+    step: JobPlanStep,
+    newStatus: "start" | "stop"
+  ) => {
     setMessage(null);
     setError(null);
     if (!jobPlan) return;
 
     try {
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) throw new Error('Authentication token not found.');
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) throw new Error("Authentication token not found.");
 
-      const payload: { status: 'start' | 'stop'; startDate?: string; endDate?: string; user?: string } = { status: newStatus };
-      if (newStatus === 'start') {
+      const payload: {
+        status: "start" | "stop";
+        startDate?: string;
+        endDate?: string;
+        user?: string;
+      } = { status: newStatus };
+      if (newStatus === "start") {
         payload.startDate = new Date().toISOString();
-        const userDataString = localStorage.getItem('userData');
+        const userDataString = localStorage.getItem("userData");
         if (userDataString) {
           const userData = JSON.parse(userDataString);
           payload.user = userData.id; // User is updated here on start
         }
-      } else if (newStatus === 'stop') {
+      } else if (newStatus === "stop") {
         payload.endDate = new Date().toISOString();
       }
 
-      console.log('🔍 [updateJobPlanStepStatus] - nrcJobNo being used:', jobPlan.nrcJobNo);
-      console.log('🔍 [updateJobPlanStepStatus] - jobPlanId being used:', jobPlan.jobPlanId);
-      console.log('🔍 [updateJobPlanStepStatus] - Step ID:', step.id);
-      console.log('🔍 [updateJobPlanStepStatus] - Step Name:', step.stepName);
-      console.log('🔍 [updateJobPlanStepStatus] - New Status:', newStatus);
-      
+      console.log(
+        "🔍 [updateJobPlanStepStatus] - nrcJobNo being used:",
+        jobPlan.nrcJobNo
+      );
+      console.log(
+        "🔍 [updateJobPlanStepStatus] - jobPlanId being used:",
+        jobPlan.jobPlanId
+      );
+      console.log("🔍 [updateJobPlanStepStatus] - Step ID:", step.id);
+      console.log("🔍 [updateJobPlanStepStatus] - Step Name:", step.stepName);
+      console.log("🔍 [updateJobPlanStepStatus] - New Status:", newStatus);
+
       // Try using jobPlanId only in the path (backend might not support nrcJobNo in path)
       const url = `https://nrprod.nrcontainers.com/api/job-planning/${jobPlan.nrcJobNo}/steps/${step.stepNo}`;
-      console.log('🔍 [updateJobPlanStepStatus] - Full URL being called:', url);
-      
+      console.log("🔍 [updateJobPlanStepStatus] - Full URL being called:", url);
+
       // First PUT request to update step status
       const response = await fetch(url, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to update step status: ${response.status} ${response.statusText}`);
+        throw new Error(
+          errorData.message ||
+            `Failed to update step status: ${response.status} ${response.statusText}`
+        );
       }
-      
+
       const result = await response.json();
       if (result.success) {
         // If starting work, also create step-specific record with status "in_progress"
-        if (newStatus === 'start') {
+        if (newStatus === "start") {
           await createStepSpecificRecord(step, jobPlan.nrcJobNo, accessToken);
         }
-        
+
         setMessage(`Step "${step.stepName}" status updated to "${newStatus}".`);
-        setJobPlan(prevJobPlan => {
+        setJobPlan((prevJobPlan) => {
           if (!prevJobPlan) return null;
-          const updatedSteps = prevJobPlan.steps.map(s =>
-            s.id === step.id ? { ...s, status: newStatus, startDate: payload.startDate || s.startDate, endDate: payload.endDate || s.endDate, user: payload.user || s.user } : s
+          const updatedSteps = prevJobPlan.steps.map((s) =>
+            s.id === step.id
+              ? {
+                  ...s,
+                  status: newStatus,
+                  startDate: payload.startDate || s.startDate,
+                  endDate: payload.endDate || s.endDate,
+                  user: payload.user || s.user,
+                }
+              : s
           );
           return { ...prevJobPlan, steps: updatedSteps };
         });
         return true;
       } else {
-        throw new Error(result.message || `Failed to update step "${step.stepName}" status.`);
+        throw new Error(
+          result.message || `Failed to update step "${step.stepName}" status.`
+        );
       }
     } catch (err) {
-      setError(`Status Update Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      console.error('Step Status Update Error:', err);
+      setError(
+        `Status Update Error: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
+      console.error("Step Status Update Error:", err);
       return false;
     } finally {
       setTimeout(() => setMessage(null), 3000);
@@ -274,330 +399,453 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
   };
 
   // --- Helper function to create step-specific records ---
-  const createStepSpecificRecord = async (step: JobPlanStep,  jobNrcJobNo: string, accessToken: string) => {
-    console.log(`🚀 [createStepSpecificRecord] ===== STARTING POST REQUEST =====`);
+  const createStepSpecificRecord = async (
+    step: JobPlanStep,
+    jobNrcJobNo: string,
+    accessToken: string
+  ) => {
+    console.log(
+      `🚀 [createStepSpecificRecord] ===== STARTING POST REQUEST =====`
+    );
     console.log(`🚀 [createStepSpecificRecord] - Step Name: ${step.stepName}`);
     console.log(`🚀 [createStepSpecificRecord] - Step ID: ${step.id}`);
     console.log(`🚀 [createStepSpecificRecord] - Job NRC: ${jobNrcJobNo}`);
-    
+
     try {
-      let endpoint = '';
+      let endpoint = "";
       let payload: any = {
-        jobNrcJobNo:  jobNrcJobNo,
-        status: 'in_progress',
-        jobStepId: step.id,  // Use jobStepId if available, otherwise fallback to step.id
+        jobNrcJobNo: jobNrcJobNo,
+        status: "in_progress",
+        jobStepId: step.id, // Use jobStepId if available, otherwise fallback to step.id
       };
 
-      console.log(`🔍 [createStepSpecificRecord] - Base payload created:`, payload);
+      console.log(
+        `🔍 [createStepSpecificRecord] - Base payload created:`,
+        payload
+      );
 
       // Determine endpoint and payload based on step type
       switch (step.stepName) {
-        case 'PaperStore':
-          endpoint = 'https://nrprod.nrcontainers.com/api/paper-store';
-          console.log(`📝 [createStepSpecificRecord] - PAPER STORE step detected`);
-          console.log(`📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`);
+        case "PaperStore":
+          endpoint = "https://nrprod.nrcontainers.com/api/paper-store";
+          console.log(
+            `📝 [createStepSpecificRecord] - PAPER STORE step detected`
+          );
+          console.log(
+            `📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`
+          );
           payload = {
             ...payload,
-            sheetSize: '', // Will be filled by user in form
+            sheetSize: "", // Will be filled by user in form
             quantity: 0, // Will be filled by user in form (number)
             available: 0, // Will be filled by user in form (number)
             issuedDate: new Date().toISOString(), // Current timestamp
-            mill: '', // Will be filled by user in form
-            extraMargin: '', // Will be filled by user in form
-            gsm: '', // Will be filled by user in form
-            quality: '', // Will be filled by user in form
+            mill: "", // Will be filled by user in form
+            extraMargin: "", // Will be filled by user in form
+            gsm: "", // Will be filled by user in form
+            quality: "", // Will be filled by user in form
           };
           break;
-        case 'Corrugation':
-          endpoint = 'https://nrprod.nrcontainers.com/api/corrugation';
-          console.log(`📝 [createStepSpecificRecord] - CORRUGATION step detected`);
-          console.log(`📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`);
+        case "Corrugation":
+          endpoint = "https://nrprod.nrcontainers.com/api/corrugation";
+          console.log(
+            `📝 [createStepSpecificRecord] - CORRUGATION step detected`
+          );
+          console.log(
+            `📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`
+          );
           payload = {
             ...payload,
             date: new Date().toISOString(), // Current timestamp
-            shift: '', // Will be filled by user in form
-            oprName: '', // Will be filled by user in form
-            machineNo: '', // Will be filled by user in form
+            shift: "", // Will be filled by user in form
+            oprName: "", // Will be filled by user in form
+            machineNo: "", // Will be filled by user in form
             quantity: 0, // Will be filled by user in form (number)
-            size: '', // Will be filled by user in form
-            gsm1: '', // Will be filled by user in form
-            gsm2: '', // Will be filled by user in form
-            flute: '', // Will be filled by user in form
-            remarks: '', // Will be filled by user in form
-            qcCheckSignBy: '', // Will be filled by user in form
+            size: "", // Will be filled by user in form
+            gsm1: "", // Will be filled by user in form
+            gsm2: "", // Will be filled by user in form
+            flute: "", // Will be filled by user in form
+            remarks: "", // Will be filled by user in form
+            qcCheckSignBy: "", // Will be filled by user in form
           };
           break;
-        case 'PrintingDetails':
-          endpoint = 'https://nrprod.nrcontainers.com/api/printing-details';
-          console.log(`📝 [createStepSpecificRecord] - PRINTING DETAILS step detected`);
-          console.log(`📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`);
+        case "PrintingDetails":
+          endpoint = "https://nrprod.nrcontainers.com/api/printing-details";
+          console.log(
+            `📝 [createStepSpecificRecord] - PRINTING DETAILS step detected`
+          );
+          console.log(
+            `📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`
+          );
           payload = {
             ...payload,
             date: new Date().toISOString(), // Current timestamp
-            shift: '', // Will be filled by user in form
-            oprName: '', // Will be filled by user in form
+            shift: "", // Will be filled by user in form
+            oprName: "", // Will be filled by user in form
             noOfColours: 0, // Will be filled by user in form (number)
-            inksUsed: '', // Will be filled by user in form
+            inksUsed: "", // Will be filled by user in form
             postPrintingFinishingOkQty: 0, // Will be filled by user in form (number)
             wastage: 0, // Will be filled by user in form (number)
-            coatingType: '', // Will be filled by user in form
+            coatingType: "", // Will be filled by user in form
             separateSheets: 0, // Will be filled by user in form (number)
             extraSheets: 0, // Will be filled by user in form (number)
-            machine: '', // Will be filled by user in form
+            machine: "", // Will be filled by user in form
           };
           break;
-        case 'FluteLamination':
-          endpoint = 'https://nrprod.nrcontainers.com/api/flute-laminate-board-conversion';
-          console.log(`📝 [createStepSpecificRecord] - FLUTE LAMINATION step detected`);
-          console.log(`📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`);
+        case "FluteLamination":
+          endpoint =
+            "https://nrprod.nrcontainers.com/api/flute-laminate-board-conversion";
+          console.log(
+            `📝 [createStepSpecificRecord] - FLUTE LAMINATION step detected`
+          );
+          console.log(
+            `📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`
+          );
           payload = {
             ...payload,
             date: new Date().toISOString(), // Current timestamp
-            shift: '', // Will be filled by user in form
-            operatorName: '', // Will be filled by user in form
-            film: '', // Will be filled by user in form
+            shift: "", // Will be filled by user in form
+            operatorName: "", // Will be filled by user in form
+            film: "", // Will be filled by user in form
             okQty: 0, // Will be filled by user in form (number)
-            qcCheckSignBy: '', // Will be filled by user in form
-            adhesive: '', // Will be filled by user in form
+            qcCheckSignBy: "", // Will be filled by user in form
+            adhesive: "", // Will be filled by user in form
             wastage: 0, // Will be filled by user in form (number)
           };
           break;
-        case 'Punching':
-          endpoint = 'https://nrprod.nrcontainers.com/api/punching';
+        case "Punching":
+          endpoint = "https://nrprod.nrcontainers.com/api/punching";
           console.log(`📝 [createStepSpecificRecord] - PUNCHING step detected`);
-          console.log(`📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`);
+          console.log(
+            `📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`
+          );
           payload = {
             ...payload,
             date: new Date().toISOString(), // Current timestamp
-            shift: '', // Will be filled by user in form
-            operatorName: '', // Will be filled by user in form
+            shift: "", // Will be filled by user in form
+            operatorName: "", // Will be filled by user in form
             okQty: 0, // Will be filled by user in form (number)
-            machine: '', // Will be filled by user in form
-            qcCheckSignBy: '', // Will be filled by user in form
-            die: '', // Will be filled by user in form
+            machine: "", // Will be filled by user in form
+            qcCheckSignBy: "", // Will be filled by user in form
+            die: "", // Will be filled by user in form
             wastage: 0, // Will be filled by user in form (number)
-            remarks: '', // Will be filled by user in form
+            remarks: "", // Will be filled by user in form
           };
           break;
-        case 'FlapPasting':
-          endpoint = 'https://nrprod.nrcontainers.com/api/side-flap-pasting';
-          console.log(`📝 [createStepSpecificRecord] - FLAP PASTING step detected`);
-          console.log(`📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`);
+        case "FlapPasting":
+          endpoint = "https://nrprod.nrcontainers.com/api/side-flap-pasting";
+          console.log(
+            `📝 [createStepSpecificRecord] - FLAP PASTING step detected`
+          );
+          console.log(
+            `📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`
+          );
           payload = {
             ...payload,
-            machineNo: '', // Will be filled by user in form
+            machineNo: "", // Will be filled by user in form
             date: new Date().toISOString(), // Current timestamp
-            shift: '', // Will be filled by user in form
-            operatorName: '', // Will be filled by user in form
-            adhesive: '', // Will be filled by user in form
+            shift: "", // Will be filled by user in form
+            operatorName: "", // Will be filled by user in form
+            adhesive: "", // Will be filled by user in form
             quantity: 0, // Will be filled by user in form (number)
             wastage: 0, // Will be filled by user in form (number)
-            qcCheckSignBy: '', // Will be filled by user in form
-            remarks: '', // Will be filled by user in form
+            qcCheckSignBy: "", // Will be filled by user in form
+            remarks: "", // Will be filled by user in form
           };
           break;
-        case 'QualityDept':
-          endpoint = 'https://nrprod.nrcontainers.com/api/quality-dept';
-          console.log(`📝 [createStepSpecificRecord] - QUALITY DEPT step detected`);
-          console.log(`📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`);
+        case "QualityDept":
+          endpoint = "https://nrprod.nrcontainers.com/api/quality-dept";
+          console.log(
+            `📝 [createStepSpecificRecord] - QUALITY DEPT step detected`
+          );
+          console.log(
+            `📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`
+          );
           payload = {
             ...payload,
             date: new Date().toISOString(), // Current timestamp
-            shift: '', // Will be filled by user in form
-            operatorName: '', // Will be filled by user in form
-            checkedBy: '', // Will be filled by user in form
+            shift: "", // Will be filled by user in form
+            operatorName: "", // Will be filled by user in form
+            checkedBy: "", // Will be filled by user in form
             rejectedQty: 0, // Will be filled by user in form (number)
             passQty: 0, // Will be filled by user in form (number)
-            reasonForRejection: '', // Will be filled by user in form
-            remarks: '', // Will be filled by user in form
-            qcCheckSignBy: '', // Will be filled by user in form
+            reasonForRejection: "", // Will be filled by user in form
+            remarks: "", // Will be filled by user in form
+            qcCheckSignBy: "", // Will be filled by user in form
           };
           break;
-        case 'DispatchProcess':
-          endpoint = 'https://nrprod.nrcontainers.com/api/dispatch-process';
-          console.log(`📝 [createStepSpecificRecord] - DISPATCH PROCESS step detected`);
-          console.log(`📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`);
+        case "DispatchProcess":
+          endpoint = "https://nrprod.nrcontainers.com/api/dispatch-process";
+          console.log(
+            `📝 [createStepSpecificRecord] - DISPATCH PROCESS step detected`
+          );
+          console.log(
+            `📝 [createStepSpecificRecord] - POST endpoint: ${endpoint}`
+          );
           payload = {
             ...payload,
             date: new Date().toISOString(), // Current timestamp
-            shift: '', // Will be filled by user in form
-            operatorName: '', // Will be filled by user in form
+            shift: "", // Will be filled by user in form
+            operatorName: "", // Will be filled by user in form
             noOfBoxes: 0, // Will be filled by user in form (number)
-            dispatchNo: '', // Will be filled by user in form
+            dispatchNo: "", // Will be filled by user in form
             dispatchDate: new Date().toISOString(), // Current timestamp
-            remarks: '', // Will be filled by user in form
+            remarks: "", // Will be filled by user in form
             balanceQty: 0, // Will be filled by user in form (number)
-            qcCheckSignBy: '', // Will be filled by user in form
+            qcCheckSignBy: "", // Will be filled by user in form
           };
           break;
         default:
-          console.warn(`⚠️ [createStepSpecificRecord] - Unknown step type: ${step.stepName}`);
+          console.warn(
+            `⚠️ [createStepSpecificRecord] - Unknown step type: ${step.stepName}`
+          );
           return;
       }
 
-      console.log(`🔍 [createStepSpecificRecord] - Final payload prepared:`, payload);
-      console.log(`🔍 [createStepSpecificRecord] - About to make POST request to: ${endpoint}`);
+      console.log(
+        `🔍 [createStepSpecificRecord] - Final payload prepared:`,
+        payload
+      );
+      console.log(
+        `🔍 [createStepSpecificRecord] - About to make POST request to: ${endpoint}`
+      );
 
       console.log(`🌐 [createStepSpecificRecord] - Making POST request...`);
       console.log(`🌐 [createStepSpecificRecord] - Method: POST`);
       console.log(`🌐 [createStepSpecificRecord] - Headers:`, {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken.substring(0, 20)}...` // Show first 20 chars of token
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken.substring(0, 20)}...`, // Show first 20 chars of token
       });
-      
+
       const response = await fetch(endpoint, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(payload),
       });
 
       console.log(`📡 [createStepSpecificRecord] - Response received!`);
       console.log(`📡 [createStepSpecificRecord] - Status: ${response.status}`);
-      console.log(`📡 [createStepSpecificRecord] - Status Text: ${response.statusText}`);
-      console.log(`📡 [createStepSpecificRecord] - Response OK: ${response.ok}`);
+      console.log(
+        `📡 [createStepSpecificRecord] - Status Text: ${response.statusText}`
+      );
+      console.log(
+        `📡 [createStepSpecificRecord] - Response OK: ${response.ok}`
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error(`❌ [createStepSpecificRecord] - POST request FAILED for ${step.stepName}`);
-        console.error(`❌ [createStepSpecificRecord] - Error: ${errorData.message || response.statusText}`);
-        console.error(`❌ [createStepSpecificRecord] - Status: ${response.status}`);
+        console.error(
+          `❌ [createStepSpecificRecord] - POST request FAILED for ${step.stepName}`
+        );
+        console.error(
+          `❌ [createStepSpecificRecord] - Error: ${
+            errorData.message || response.statusText
+          }`
+        );
+        console.error(
+          `❌ [createStepSpecificRecord] - Status: ${response.status}`
+        );
         // Don't throw error here as the main step status update was successful
         return;
       }
 
       const result = await response.json();
       console.log(`📄 [createStepSpecificRecord] - Response body:`, result);
-      
+
       if (result.success) {
-        console.log(`✅ [createStepSpecificRecord] - SUCCESS! ${step.stepName} record created successfully`);
-        console.log(`✅ [createStepSpecificRecord] - Response data:`, result.data);
+        console.log(
+          `✅ [createStepSpecificRecord] - SUCCESS! ${step.stepName} record created successfully`
+        );
+        console.log(
+          `✅ [createStepSpecificRecord] - Response data:`,
+          result.data
+        );
       } else {
-        console.warn(`⚠️ [createStepSpecificRecord] - ${step.stepName} record creation returned success: false`);
-        console.warn(`⚠️ [createStepSpecificRecord] - Response message:`, result.message);
+        console.warn(
+          `⚠️ [createStepSpecificRecord] - ${step.stepName} record creation returned success: false`
+        );
+        console.warn(
+          `⚠️ [createStepSpecificRecord] - Response message:`,
+          result.message
+        );
       }
     } catch (err) {
-      console.error(`💥 [createStepSpecificRecord] - EXCEPTION occurred while creating ${step.stepName} record:`, err);
+      console.error(
+        `💥 [createStepSpecificRecord] - EXCEPTION occurred while creating ${step.stepName} record:`,
+        err
+      );
       // Don't throw error here as the main step status update was successful
     } finally {
-      console.log(`🏁 [createStepSpecificRecord] ===== POST REQUEST COMPLETED =====`);
+      console.log(
+        `🏁 [createStepSpecificRecord] ===== POST REQUEST COMPLETED =====`
+      );
     }
   };
 
   // --- Step Property Update (PUT 1 - for Tick/Cross/Emp ID) ---
   // CORRECTED: Added 'status' to the allowed properties in the type definition
-  const handleUpdateStepProperty = async (stepNo: number, property: 'startDate' | 'endDate' | 'user' | 'status', value: string | null) => {
+  const handleUpdateStepProperty = async (
+    stepNo: number,
+    property: "startDate" | "endDate" | "user" | "status",
+    value: string | null
+  ) => {
     setMessage(null);
     setError(null);
     if (!jobPlan) return;
 
     try {
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) throw new Error('Authentication token not found.');
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) throw new Error("Authentication token not found.");
 
       const payload: Partial<JobPlanStep> = { [property]: value };
-      if (property === 'user' && value === null) {
+      if (property === "user" && value === null) {
         payload.user = null;
-      } else if (property === 'user' && value !== null) {
+      } else if (property === "user" && value !== null) {
         payload.user = value;
       }
 
-
-      console.log('🔍 [handleUpdateStepProperty] - nrcJobNo:', jobPlan.nrcJobNo);
-      console.log('🔍 [handleUpdateStepProperty] - jobPlanId:', jobPlan.jobPlanId);
-      console.log('🔍 [handleUpdateStepProperty] - Step No:', stepNo);
-      console.log('🔍 [handleUpdateStepProperty] - Property:', property);
-      console.log('🔍 [handleUpdateStepProperty] - Value:', value);
+      console.log(
+        "🔍 [handleUpdateStepProperty] - nrcJobNo:",
+        jobPlan.nrcJobNo
+      );
+      console.log(
+        "🔍 [handleUpdateStepProperty] - jobPlanId:",
+        jobPlan.jobPlanId
+      );
+      console.log("🔍 [handleUpdateStepProperty] - Step No:", stepNo);
+      console.log("🔍 [handleUpdateStepProperty] - Property:", property);
+      console.log("🔍 [handleUpdateStepProperty] - Value:", value);
       // Try using jobPlanId only in the path (backend might not support nrcJobNo in path)
-      const endpoint = `https://nrprod.nrcontainers.com/api/job-planning/${encodeURIComponent(jobPlan.nrcJobNo)}/steps/${stepNo}`;
-      console.log('🔍 [handleUpdateStepProperty] - Full Endpoint:', endpoint);
+      const endpoint = `https://nrprod.nrcontainers.com/api/job-planning/${encodeURIComponent(
+        jobPlan.nrcJobNo
+      )}/steps/${stepNo}`;
+      console.log("🔍 [handleUpdateStepProperty] - Full Endpoint:", endpoint);
       const response = await fetch(endpoint, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to update step property: ${response.status} ${response.statusText}`);
+        throw new Error(
+          errorData.message ||
+            `Failed to update step property: ${response.status} ${response.statusText}`
+        );
       }
       const result = await response.json();
       if (result.success) {
         setMessage(`Step ${property} updated successfully!`);
-        setJobPlan(prevJobPlan => {
+        setJobPlan((prevJobPlan) => {
           if (!prevJobPlan) return null;
-          const updatedSteps = prevJobPlan.steps.map(s =>
+          const updatedSteps = prevJobPlan.steps.map((s) =>
             s.stepNo === stepNo ? { ...s, [property]: value } : s
           );
           return { ...prevJobPlan, steps: updatedSteps };
         });
-        return ;
+        return;
       } else {
         throw new Error(result.message || `Failed to update step property.`);
       }
     } catch (err) {
-      setError(`Property Update Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-;
+      setError(
+        `Property Update Error: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
     } finally {
       setTimeout(() => setMessage(null), 3000);
     }
   };
 
-
   // --- Step-Specific Form Submission (Complete Work) ---
-  const handleCompleteWork = async (step: JobPlanStep, put2Payload: any, put2Endpoint: string, empId: string) => {
-    console.log('🔍 [handleCompleteWork] - Starting complete work for step:', step.stepName);
-    console.log('🔍 [handleCompleteWork] - Step ID:', step.id);
-    console.log('🔍 [handleCompleteWork] - Employee ID:', empId);
-    console.log('🔍 [handleCompleteWork] - PUT2 Endpoint:', put2Endpoint);
-    console.log('🔍 [handleCompleteWork] - PUT2 Payload:', put2Payload);
-    
+  const handleCompleteWork = async (
+    step: JobPlanStep,
+    put2Payload: any,
+    put2Endpoint: string,
+    empId: string
+  ) => {
+    console.log(
+      "🔍 [handleCompleteWork] - Starting complete work for step:",
+      step.stepName
+    );
+    console.log("🔍 [handleCompleteWork] - Step ID:", step.id);
+    console.log("🔍 [handleCompleteWork] - Employee ID:", empId);
+    console.log("🔍 [handleCompleteWork] - PUT2 Endpoint:", put2Endpoint);
+    console.log("🔍 [handleCompleteWork] - PUT2 Payload:", put2Payload);
+
     setMessage(null);
     setError(null);
     if (!jobPlan) return;
 
     try {
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) throw new Error('Authentication token not found.');
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) throw new Error("Authentication token not found.");
 
       await Promise.all([
         // PUT 1: Update JobPlanStep properties (user, status, endDate)
-        handleUpdateStepProperty(step.stepNo, 'user', empId),
-        handleUpdateStepProperty(step.stepNo, 'status', 'stop'),
-        handleUpdateStepProperty(step.stepNo, 'endDate', new Date().toISOString()),
+        handleUpdateStepProperty(step.stepNo, "user", empId),
+        handleUpdateStepProperty(step.stepNo, "status", "stop"),
+        handleUpdateStepProperty(
+          step.stepNo,
+          "endDate",
+          new Date().toISOString()
+        ),
 
         // PUT 2: Update step-specific details
         (async () => {
-          console.log('🔍 [handleCompleteWork] - Making PUT request to:', put2Endpoint);
-          console.log('🔍 [handleCompleteWork] - PUT payload:', put2Payload);
-          
+          console.log(
+            "🔍 [handleCompleteWork] - Making PUT request to:",
+            put2Endpoint
+          );
+          console.log("🔍 [handleCompleteWork] - PUT payload:", put2Payload);
+
           const detailsUpdateResponse = await fetch(put2Endpoint, {
-            method: 'PUT',
+            method: "PUT",
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
             },
             body: JSON.stringify(put2Payload),
           });
 
-          console.log('🔍 [handleCompleteWork] - PUT response status:', detailsUpdateResponse.status);
-          console.log('🔍 [handleCompleteWork] - PUT response ok:', detailsUpdateResponse.ok);
+          console.log(
+            "🔍 [handleCompleteWork] - PUT response status:",
+            detailsUpdateResponse.status
+          );
+          console.log(
+            "🔍 [handleCompleteWork] - PUT response ok:",
+            detailsUpdateResponse.ok
+          );
 
           if (!detailsUpdateResponse.ok) {
             const errorData = await detailsUpdateResponse.json();
-            console.error('🔍 [handleCompleteWork] - PUT request failed:', errorData);
-            throw new Error(errorData.message || `Failed to update ${step.stepName} details: ${detailsUpdateResponse.status} ${detailsUpdateResponse.statusText}`);
+            console.error(
+              "🔍 [handleCompleteWork] - PUT request failed:",
+              errorData
+            );
+            throw new Error(
+              errorData.message ||
+                `Failed to update ${step.stepName} details: ${detailsUpdateResponse.status} ${detailsUpdateResponse.statusText}`
+            );
           }
           const detailsUpdateResult = await detailsUpdateResponse.json();
-          console.log('🔍 [handleCompleteWork] - PUT response data:', detailsUpdateResult);
-          
+          console.log(
+            "🔍 [handleCompleteWork] - PUT response data:",
+            detailsUpdateResult
+          );
+
           if (!detailsUpdateResult.success) {
-            throw new Error(detailsUpdateResult.message || `Failed to update ${step.stepName} details.`);
+            throw new Error(
+              detailsUpdateResult.message ||
+                `Failed to update ${step.stepName} details.`
+            );
           }
           return detailsUpdateResult;
         })(),
@@ -608,8 +856,12 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
       setStepToEdit(null);
       fetchJobPlanDetails(); // Re-fetch job plan details to get updated step-specific data
     } catch (err) {
-      setError(`Complete Work Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      console.error('Complete Work Error:', err);
+      setError(
+        `Complete Work Error: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
+      console.error("Complete Work Error:", err);
     } finally {
       setTimeout(() => setMessage(null), 3000);
     }
@@ -617,130 +869,274 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
 
   // --- Conditional Form Rendering ---
   const renderStepSpecificForm = () => {
-    console.log('🔍 [renderStepSpecificForm] - Rendering form for step:', stepToEdit?.stepName);
-    console.log('🔍 [renderStepSpecificForm] - Step ID:', stepToEdit?.id);
-    console.log('🔍 [renderStepSpecificForm] - Form type:', showStepSpecificForm);
-    
+    console.log(
+      "🔍 [renderStepSpecificForm] - Rendering form for step:",
+      stepToEdit?.stepName
+    );
+    console.log("🔍 [renderStepSpecificForm] - Step ID:", stepToEdit?.id);
+    console.log(
+      "🔍 [renderStepSpecificForm] - Form type:",
+      showStepSpecificForm
+    );
+
     if (!stepToEdit || !jobPlan) return null;
 
     const commonFormProps = {
       jobPlanId: jobPlan.jobPlanId,
       nrcJobNo: jobPlan.nrcJobNo,
       step: stepToEdit,
-      onClose: () => { setShowStepSpecificForm(null); setStepToEdit(null); },
-      isReadOnly: stepToEdit.status === 'stop',
+      onClose: () => {
+        setShowStepSpecificForm(null);
+        setStepToEdit(null);
+      },
+      isReadOnly: stepToEdit.status === "stop",
       onUpdateStepProperty: handleUpdateStepProperty,
     };
 
     switch (showStepSpecificForm) {
-  case 'PaperStore':
-    return <PaperStoreForm {...commonFormProps} onCompleteWork={(payload) => {
-      console.log('🔍 [PaperStore onCompleteWork] - Step:', stepToEdit);
-      console.log('🔍 [PaperStore onCompleteWork] - PaperStore Details:', stepToEdit.paperStoreDetails);
-      console.log('🔍 [PaperStore onCompleteWork] - Payload:', payload);
-      
-      // Find the specific paperStore item that matches this step's ID
-      const paperStoreItem = (stepToEdit.paperStoreDetails as any[])?.find((item: any) => item.jobStepId === stepToEdit.id);
-      
-      // Use the step-specific record ID if available, otherwise use the by-job endpoint
-      const endpoint = paperStoreItem?.id 
-        ? `https://nrprod.nrcontainers.com/api/paper-store/${paperStoreItem.id}`
-        : `https://nrprod.nrcontainers.com/api/paper-store/by-job/${encodeURIComponent(jobPlan.nrcJobNo)}`;
-      
-      console.log('🔍 [PaperStore onCompleteWork] - Found paperStore item:', paperStoreItem);
-      console.log('🔍 [PaperStore onCompleteWork] - Using endpoint:', endpoint);
-      return handleCompleteWork(stepToEdit, payload, endpoint, stepToEdit.user || '');
-    }} />;
+      case "PaperStore":
+        return (
+          <PaperStoreForm
+            {...commonFormProps}
+            onCompleteWork={(payload) => {
+              console.log("🔍 [PaperStore onCompleteWork] - Step:", stepToEdit);
+              console.log(
+                "🔍 [PaperStore onCompleteWork] - PaperStore Details:",
+                stepToEdit.paperStoreDetails
+              );
+              console.log("🔍 [PaperStore onCompleteWork] - Payload:", payload);
 
-      case 'Corrugation':
-      case 'PrintingDetails':
-      case 'FluteLamination':
-      case 'Punching':
-      case 'FlapPasting':
-      case 'QualityDept':
-      case 'DispatchProcess':
-        return <GenericStepForm {...commonFormProps} onCompleteWork={(payload, endpoint, empId) => handleCompleteWork(stepToEdit, payload, endpoint, empId)} />;
+              // Find the specific paperStore item that matches this step's ID
+              const paperStoreItem = (
+                stepToEdit.paperStoreDetails as any[]
+              )?.find((item: any) => item.jobStepId === stepToEdit.id);
+
+              // Use the step-specific record ID if available, otherwise use the by-job endpoint
+              const endpoint = paperStoreItem?.id
+                ? `https://nrprod.nrcontainers.com/api/paper-store/${paperStoreItem.id}`
+                : `https://nrprod.nrcontainers.com/api/paper-store/by-job/${encodeURIComponent(
+                    jobPlan.nrcJobNo
+                  )}`;
+
+              console.log(
+                "🔍 [PaperStore onCompleteWork] - Found paperStore item:",
+                paperStoreItem
+              );
+              console.log(
+                "🔍 [PaperStore onCompleteWork] - Using endpoint:",
+                endpoint
+              );
+              return handleCompleteWork(
+                stepToEdit,
+                payload,
+                endpoint,
+                stepToEdit.user || ""
+              );
+            }}
+          />
+        );
+
+      case "Corrugation":
+      case "PrintingDetails":
+      case "FluteLamination":
+      case "Punching":
+      case "FlapPasting":
+      case "QualityDept":
+      case "DispatchProcess":
+        return (
+          <GenericStepForm
+            {...commonFormProps}
+            onCompleteWork={(payload, endpoint, empId) =>
+              handleCompleteWork(stepToEdit, payload, endpoint, empId)
+            }
+          />
+        );
       default:
         return null;
     }
   };
 
-  const findDetailStatus = (details: any, stepId: number): boolean => {
-  if (!Array.isArray(details)) return false;
-  const item = details.find((detail: any) => detail.jobStepId === stepId);
-  return item?.status === 'accept';
-};
+  const findDetailStatus = (details: any): boolean => {
+    if (!Array.isArray(details) || details.length === 0) return false;
+
+    // Handle new data structure - take the first item from the array
+    const item = details[0];
+
+    // Check if the item has a data property (new structure) or direct properties (old structure)
+    if (item.data) {
+      return item.data.status === "accept";
+    }
+
+    // Fallback for old structure
+    return item?.status === "accept";
+  };
 
   // --- Step Card Rendering Logic ---
- const getStepStatusVisual = (step: JobPlanStep, isPreviousStepCompleted: boolean, isNextPlannedStep: boolean) => {
+  const getStepStatusVisual = (
+    step: JobPlanStep,
+    isPreviousStepCompleted: boolean,
+    isNextPlannedStep: boolean
+  ) => {
     let isDetailStatusAccepted = false;
-    console.log ("step", step)
-    
+    console.log("step", step);
+
     switch (step.stepName) {
-      case 'PaperStore':
-        // Find the paperStore item that matches this step's ID
-        const paperStoreItem = step.paperStoreDetails?.find(item => item.jobStepId === step.id);
-        isDetailStatusAccepted = paperStoreItem?.status === 'accept';
+      case "PaperStore":
+        // Handle new data structure where paperStoreDetails is an array with data property
+        if (
+          step.paperStoreDetails &&
+          Array.isArray(step.paperStoreDetails) &&
+          step.paperStoreDetails.length > 0
+        ) {
+          const paperStoreItem = step.paperStoreDetails[0] as any;
+          // Check if the item has a data property (new structure) or direct properties (old structure)
+          if (paperStoreItem.data) {
+            isDetailStatusAccepted = paperStoreItem.data.status === "accept";
+          } else {
+            isDetailStatusAccepted = paperStoreItem.status === "accept";
+          }
+        }
         break;
-      case 'Corrugation':
-        const corrugationItem = step.corrugationDetails?.find(item => item.jobStepId === step.id);
-        isDetailStatusAccepted = corrugationItem?.status === 'accept';
+      case "Corrugation":
+        // Handle new data structure for corrugation details
+        if (
+          step.corrugationDetails &&
+          Array.isArray(step.corrugationDetails) &&
+          step.corrugationDetails.length > 0
+        ) {
+          const corrugationItem = step.corrugationDetails[0] as any;
+          if (corrugationItem.data) {
+            isDetailStatusAccepted = corrugationItem.data.status === "accept";
+          } else {
+            isDetailStatusAccepted = corrugationItem.status === "accept";
+          }
+        }
         break;
-      case 'PrintingDetails':
-        const printingItem = step.printingDetails?.find(item => item.jobStepId === step.id);
-        isDetailStatusAccepted = printingItem?.status === 'accept';
+      case "PrintingDetails":
+        // Handle new data structure for printing details
+        if (
+          step.printingDetails &&
+          Array.isArray(step.printingDetails) &&
+          step.printingDetails.length > 0
+        ) {
+          const printingItem = step.printingDetails[0] as any;
+          if (printingItem.data) {
+            isDetailStatusAccepted = printingItem.data.status === "accept";
+          } else {
+            isDetailStatusAccepted = printingItem.status === "accept";
+          }
+        }
         break;
-      case 'FluteLamination':
-        const fluteItem = step.fluteLaminationDetails?.find(item => item.jobStepId === step.id);
-        isDetailStatusAccepted = fluteItem?.status === 'accept';
+      case "FluteLamination":
+        // Handle new data structure for flute lamination details
+        if (
+          step.fluteLaminationDetails &&
+          Array.isArray(step.fluteLaminationDetails) &&
+          step.fluteLaminationDetails.length > 0
+        ) {
+          const fluteItem = step.fluteLaminationDetails[0] as any;
+          if (fluteItem.data) {
+            isDetailStatusAccepted = fluteItem.data.status === "accept";
+          } else {
+            isDetailStatusAccepted = fluteItem.status === "accept";
+          }
+        }
         break;
-      case 'Punching':
-        const punchingItem = step.punchingDetails?.find(item => item.jobStepId === step.id);
-        isDetailStatusAccepted = punchingItem?.status === 'accept';
+      case "Punching":
+        // Handle new data structure for punching details
+        if (
+          step.punchingDetails &&
+          Array.isArray(step.punchingDetails) &&
+          step.punchingDetails.length > 0
+        ) {
+          const punchingItem = step.punchingDetails[0] as any;
+          if (punchingItem.data) {
+            isDetailStatusAccepted = punchingItem.data.status === "accept";
+          } else {
+            isDetailStatusAccepted = punchingItem.status === "accept";
+          }
+        }
         break;
-      case 'FlapPasting':
-        const flapPastingItem = step.flapPastingDetails?.find(item => item.jobStepId === step.id);
-        isDetailStatusAccepted = flapPastingItem?.status === 'accept';
+      case "FlapPasting":
+        // Handle new data structure for flap pasting details
+        if (
+          step.flapPastingDetails &&
+          Array.isArray(step.flapPastingDetails) &&
+          step.flapPastingDetails.length > 0
+        ) {
+          const flapPastingItem = step.flapPastingDetails[0] as any;
+          if (flapPastingItem.data) {
+            isDetailStatusAccepted = flapPastingItem.data.status === "accept";
+          } else {
+            isDetailStatusAccepted = flapPastingItem.status === "accept";
+          }
+        }
         break;
-      case 'QualityDept':
-        const qcItem = step.qcDetails?.find(item => item.jobStepId === step.id);
-        isDetailStatusAccepted = qcItem?.status === 'accept';
+      case "QualityDept":
+        // Handle new data structure for QC details
+        if (
+          step.qcDetails &&
+          Array.isArray(step.qcDetails) &&
+          step.qcDetails.length > 0
+        ) {
+          const qcItem = step.qcDetails[0] as any;
+          if (qcItem.data) {
+            isDetailStatusAccepted = qcItem.data.status === "accept";
+          } else {
+            isDetailStatusAccepted = qcItem.status === "accept";
+          }
+        }
         break;
-      case 'DispatchProcess':
-        const dispatchItem = step.dispatchDetails?.find(item => item.jobStepId === step.id);
-        isDetailStatusAccepted = dispatchItem?.status === 'accept';
+      case "DispatchProcess":
+        // Handle new data structure for dispatch details
+        if (
+          step.dispatchDetails &&
+          Array.isArray(step.dispatchDetails) &&
+          step.dispatchDetails.length > 0
+        ) {
+          const dispatchItem = step.dispatchDetails[0] as any;
+          if (dispatchItem.data) {
+            isDetailStatusAccepted = dispatchItem.data.status === "accept";
+          } else {
+            isDetailStatusAccepted = dispatchItem.status === "accept";
+          }
+        }
         break;
       default:
-        isDetailStatusAccepted = step.status === 'stop' && step.endDate !== null;
+        isDetailStatusAccepted =
+          step.status === "stop" && step.endDate !== null;
         break;
     }
 
     // Rest of your code remains the same...
 
     const isCompleted = isDetailStatusAccepted;
-    const isStarted = step.status === 'start' && step.startDate !== null;
+    const isStarted = step.status === "start" && step.startDate !== null;
 
     let icon = null;
-    let statusText = '';
-    let cardClasses = 'bg-white';
+    let statusText = "";
+    let cardClasses = "bg-white";
     let actionButton = null;
 
     if (isCompleted) {
       icon = <CheckCircle className="text-green-600 text-3xl" />;
-      statusText = 'Work completed';
-      cardClasses += ' border-green-300';
+      statusText = "Work completed";
+      cardClasses += " border-green-300";
     } else if (isStarted) {
       icon = <PlayCircle className="text-orange-500 text-3xl" />;
-      statusText = 'Work started - Click to add/edit details';
-      cardClasses += ' border-orange-300';
+      statusText = "Work started - Click to add/edit details";
+      cardClasses += " border-orange-300";
       actionButton = (
         <button
           className="ml-auto p-2 rounded-full hover:bg-gray-100"
           onClick={(e) => {
             e.stopPropagation();
-            console.log('🔍 [Step Edit Button] - Opening form for step:', step.stepName);
-            console.log('🔍 [Step Edit Button] - Step ID:', step.id);
-            console.log('🔍 [Step Edit Button] - Step Status:', step.status);
+            console.log(
+              "🔍 [Step Edit Button] - Opening form for step:",
+              step.stepName
+            );
+            console.log("🔍 [Step Edit Button] - Step ID:", step.id);
+            console.log("🔍 [Step Edit Button] - Step Status:", step.status);
             setStepToEdit(step);
             setShowStepSpecificForm(step.stepName);
           }}
@@ -750,16 +1146,19 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
       );
     } else if (isNextPlannedStep && isPreviousStepCompleted) {
       icon = <PlayCircle className="text-blue-600 text-3xl" />;
-      statusText = 'Ready to start - Click to begin work';
-      cardClasses += ' border-blue-300';
+      statusText = "Ready to start - Click to begin work";
+      cardClasses += " border-blue-300";
       actionButton = (
         <button
           className="ml-auto p-2 rounded-full hover:bg-gray-100"
           onClick={(e) => {
             e.stopPropagation();
-            console.log('🔍 [Start Work Button] - Starting work for step:', step.stepName);
-            console.log('🔍 [Start Work Button] - Step ID:', step.id);
-            console.log('🔍 [Start Work Button] - Step Status:', step.status);
+            console.log(
+              "🔍 [Start Work Button] - Starting work for step:",
+              step.stepName
+            );
+            console.log("🔍 [Start Work Button] - Step ID:", step.id);
+            console.log("🔍 [Start Work Button] - Step Status:", step.status);
             setStepToStart(step);
             setShowStartConfirmModal(true);
           }}
@@ -768,9 +1167,13 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
         </button>
       );
     } else {
-      icon = <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold">{step.stepNo}</div>;
-      statusText = 'Planned';
-      cardClasses += ' border-gray-200';
+      icon = (
+        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold">
+          {step.stepNo}
+        </div>
+      );
+      statusText = "Planned";
+      cardClasses += " border-gray-200";
     }
 
     return { icon, statusText, cardClasses, actionButton, isCompleted };
@@ -788,12 +1191,15 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <div
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
+          role="alert"
+        >
           <strong className="font-bold">Error!</strong>
           <span className="block sm:inline"> {error}</span>
         </div>
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate("/dashboard")}
           className="mt-4 bg-[#00AEEF] text-white px-6 py-2 rounded-lg font-semibold hover:bg-[#0099cc] transition"
         >
           Back to Job Plans
@@ -807,7 +1213,7 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
       <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
         <p className="text-gray-500">Job Plan not found or invalid URL.</p>
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate("/dashboard")}
           className="mt-4 bg-[#00AEEF] text-white px-6 py-2 rounded-lg font-semibold hover:bg-[#0099cc] transition"
         >
           Back to Job Plans
@@ -817,46 +1223,47 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
   }
 
   // Calculate progress
-  const completedStepsCount = jobPlan.steps.filter(step => {
+  const completedStepsCount = jobPlan.steps.filter((step) => {
     let isDetailStatusAccepted = false;
     // Helper function to safely find and check status in detail arrays
 
-
-// Then use it in your switch statement:
-switch (step.stepName) {
-  case 'PaperStore':
-    isDetailStatusAccepted = findDetailStatus(step.paperStoreDetails, step.id);
-    break;
-  case 'Corrugation':
-    isDetailStatusAccepted = findDetailStatus(step.corrugationDetails, step.id);
-    break;
-  case 'PrintingDetails':
-    isDetailStatusAccepted = findDetailStatus(step.printingDetails, step.id);
-    break;
-  case 'FluteLamination':
-    isDetailStatusAccepted = findDetailStatus(step.fluteLaminationDetails, step.id);
-    break;
-  case 'Punching':
-    isDetailStatusAccepted = findDetailStatus(step.punchingDetails, step.id);
-    break;
-  case 'FlapPasting':
-    isDetailStatusAccepted = findDetailStatus(step.flapPastingDetails, step.id);
-    break;
-  case 'QualityDept':
-    isDetailStatusAccepted = findDetailStatus(step.qcDetails, step.id);
-    break;
-  case 'DispatchProcess':
-    isDetailStatusAccepted = findDetailStatus(step.dispatchDetails, step.id);
-    break;
-  default:
-    isDetailStatusAccepted = step.status === 'stop' && step.endDate !== null;
-    break;
-}
+    // Then use it in your switch statement:
+    switch (step.stepName) {
+      case "PaperStore":
+        isDetailStatusAccepted = findDetailStatus(step.paperStoreDetails);
+        break;
+      case "Corrugation":
+        isDetailStatusAccepted = findDetailStatus(step.corrugationDetails);
+        break;
+      case "PrintingDetails":
+        isDetailStatusAccepted = findDetailStatus(step.printingDetails);
+        break;
+      case "FluteLamination":
+        isDetailStatusAccepted = findDetailStatus(step.fluteLaminationDetails);
+        break;
+      case "Punching":
+        isDetailStatusAccepted = findDetailStatus(step.punchingDetails);
+        break;
+      case "FlapPasting":
+        isDetailStatusAccepted = findDetailStatus(step.flapPastingDetails);
+        break;
+      case "QualityDept":
+        isDetailStatusAccepted = findDetailStatus(step.qcDetails);
+        break;
+      case "DispatchProcess":
+        isDetailStatusAccepted = findDetailStatus(step.dispatchDetails);
+        break;
+      default:
+        isDetailStatusAccepted =
+          step.status === "stop" && step.endDate !== null;
+        break;
+    }
 
     return isDetailStatusAccepted;
   }).length;
   const totalSteps = jobPlan.steps.length;
-  const progressPercentage = totalSteps > 0 ? (completedStepsCount / totalSteps) * 100 : 0;
+  const progressPercentage =
+    totalSteps > 0 ? (completedStepsCount / totalSteps) * 100 : 0;
 
   // Find the next planned step for sequential access
   let nextPlannedStep: JobPlanStep | null = null;
@@ -866,52 +1273,60 @@ switch (step.stepName) {
     const step = jobPlan.steps[i];
     let currentStepIsCompletedByDetail = false;
     switch (step.stepName) {
-  case 'PaperStore':
-    currentStepIsCompletedByDetail = findDetailStatus(step.paperStoreDetails, step.id);
-    break;
-  case 'Corrugation':
-    currentStepIsCompletedByDetail = findDetailStatus(step.corrugationDetails, step.id);
-    break;
-  case 'PrintingDetails':
-    currentStepIsCompletedByDetail = findDetailStatus(step.printingDetails, step.id);
-    break;
-  case 'FluteLamination':
-    currentStepIsCompletedByDetail = findDetailStatus(step.fluteLaminationDetails, step.id);
-    break;
-  case 'Punching':
-    currentStepIsCompletedByDetail = findDetailStatus(step.punchingDetails, step.id);
-    break;
-  case 'FlapPasting':
-    currentStepIsCompletedByDetail = findDetailStatus(step.flapPastingDetails, step.id);
-    break;
-  case 'QualityDept':
-    currentStepIsCompletedByDetail = findDetailStatus(step.qcDetails, step.id);
-    break;
-  case 'DispatchProcess':
-    currentStepIsCompletedByDetail = findDetailStatus(step.dispatchDetails, step.id);
-    break;
-  default:
-    currentStepIsCompletedByDetail = step.status === 'stop' && step.endDate !== null;
-    break;
-}
+      case "PaperStore":
+        currentStepIsCompletedByDetail = findDetailStatus(
+          step.paperStoreDetails
+        );
+        break;
+      case "Corrugation":
+        currentStepIsCompletedByDetail = findDetailStatus(
+          step.corrugationDetails
+        );
+        break;
+      case "PrintingDetails":
+        currentStepIsCompletedByDetail = findDetailStatus(step.printingDetails);
+        break;
+      case "FluteLamination":
+        currentStepIsCompletedByDetail = findDetailStatus(
+          step.fluteLaminationDetails
+        );
+        break;
+      case "Punching":
+        currentStepIsCompletedByDetail = findDetailStatus(step.punchingDetails);
+        break;
+      case "FlapPasting":
+        currentStepIsCompletedByDetail = findDetailStatus(
+          step.flapPastingDetails
+        );
+        break;
+      case "QualityDept":
+        currentStepIsCompletedByDetail = findDetailStatus(step.qcDetails);
+        break;
+      case "DispatchProcess":
+        currentStepIsCompletedByDetail = findDetailStatus(step.dispatchDetails);
+        break;
+      default:
+        currentStepIsCompletedByDetail =
+          step.status === "stop" && step.endDate !== null;
+        break;
+    }
 
-
-    if (step.status === 'planned') {
+    if (step.status === "planned") {
       if (previousStepCompleted) {
         nextPlannedStep = step;
         break;
       }
-    } else if (step.status === 'start') {
+    } else if (step.status === "start") {
       nextPlannedStep = step;
       break;
     }
     previousStepCompleted = currentStepIsCompletedByDetail;
   }
 
-     const formatStepName = (stepName: string): string => {
+  const formatStepName = (stepName: string): string => {
     return stepName
-      .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space before capital letters
-      .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2') // Handle consecutive capitals
+      .replace(/([a-z])([A-Z])/g, "$1 $2") // Add space before capital letters
+      .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2") // Handle consecutive capitals
       .trim();
   };
 
@@ -920,9 +1335,11 @@ switch (step.stepName) {
       {/* Header with Job Name and Progress */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold text-gray-800">Job {jobPlan.nrcJobNo}</h1>
+          <h1 className="text-2xl font-bold text-gray-800">
+            Job {jobPlan.nrcJobNo}
+          </h1>
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate("/dashboard")}
             className="text-gray-500 hover:text-gray-700 text-lg font-bold"
             aria-label="Back to Job Plans"
           >
@@ -938,14 +1355,25 @@ switch (step.stepName) {
                 style={{ width: `${progressPercentage}%` }}
               ></div>
             </div>
-            <span className="text-sm font-medium text-gray-700">{Math.round(progressPercentage)}% Complete</span>
+            <span className="text-sm font-medium text-gray-700">
+              {Math.round(progressPercentage)}% Complete
+            </span>
           </div>
-          <p className="text-sm text-gray-500 mt-2">{completedStepsCount} of {totalSteps} steps completed</p>
+          <p className="text-sm text-gray-500 mt-2">
+            {completedStepsCount} of {totalSteps} steps completed
+          </p>
         </div>
       </div>
 
       {message && (
-        <div className={`px-4 py-3 rounded relative mb-6 ${message.includes('Error') ? 'bg-red-100 border border-red-400 text-red-700' : 'bg-green-100 border border-green-400 text-green-700'}`} role="alert">
+        <div
+          className={`px-4 py-3 rounded relative mb-6 ${
+            message.includes("Error")
+              ? "bg-red-100 border border-red-400 text-red-700"
+              : "bg-green-100 border border-green-400 text-green-700"
+          }`}
+          role="alert"
+        >
           <span className="block sm:inline">{message}</span>
         </div>
       )}
@@ -958,71 +1386,106 @@ switch (step.stepName) {
           if (index > 0) {
             const prevStep = jobPlan.steps[index - 1];
             switch (prevStep.stepName) {
-  case 'PaperStore':
-    isPreviousStepCompleted = findDetailStatus(prevStep.paperStoreDetails, prevStep.id);
-    break;
-  case 'Corrugation':
-    isPreviousStepCompleted = findDetailStatus(prevStep.corrugationDetails, prevStep.id);
-    break;
-  case 'PrintingDetails':
-    isPreviousStepCompleted = findDetailStatus(prevStep.printingDetails, prevStep.id);
-    break;
-  case 'FluteLamination':
-    isPreviousStepCompleted = findDetailStatus(prevStep.fluteLaminationDetails, prevStep.id);
-    break;
-  case 'Punching':
-    isPreviousStepCompleted = findDetailStatus(prevStep.punchingDetails, prevStep.id);
-    break;
-  case 'FlapPasting':
-    isPreviousStepCompleted = findDetailStatus(prevStep.flapPastingDetails, prevStep.id);
-    break;
-  case 'QualityDept':
-    isPreviousStepCompleted = findDetailStatus(prevStep.qcDetails, prevStep.id);
-    break;
-  case 'DispatchProcess':
-    isPreviousStepCompleted = findDetailStatus(prevStep.dispatchDetails, prevStep.id);
-    break;
-  default:
-    isPreviousStepCompleted = prevStep.status === 'stop' && prevStep.endDate !== null;
-    break;
-}
-
+              case "PaperStore":
+                isPreviousStepCompleted = findDetailStatus(
+                  prevStep.paperStoreDetails
+                );
+                break;
+              case "Corrugation":
+                isPreviousStepCompleted = findDetailStatus(
+                  prevStep.corrugationDetails
+                );
+                break;
+              case "PrintingDetails":
+                isPreviousStepCompleted = findDetailStatus(
+                  prevStep.printingDetails
+                );
+                break;
+              case "FluteLamination":
+                isPreviousStepCompleted = findDetailStatus(
+                  prevStep.fluteLaminationDetails
+                );
+                break;
+              case "Punching":
+                isPreviousStepCompleted = findDetailStatus(
+                  prevStep.punchingDetails
+                );
+                break;
+              case "FlapPasting":
+                isPreviousStepCompleted = findDetailStatus(
+                  prevStep.flapPastingDetails
+                );
+                break;
+              case "QualityDept":
+                isPreviousStepCompleted = findDetailStatus(prevStep.qcDetails);
+                break;
+              case "DispatchProcess":
+                isPreviousStepCompleted = findDetailStatus(
+                  prevStep.dispatchDetails
+                );
+                break;
+              default:
+                isPreviousStepCompleted =
+                  prevStep.status === "stop" && prevStep.endDate !== null;
+                break;
+            }
           }
 
           const isNextPlannedStep = step.id === nextPlannedStep?.id;
 
-          const { icon, statusText, cardClasses, actionButton } = getStepStatusVisual(step, isPreviousStepCompleted, isNextPlannedStep);
+          const { icon, statusText, cardClasses, actionButton } =
+            getStepStatusVisual(
+              step,
+              isPreviousStepCompleted,
+              isNextPlannedStep
+            );
 
           return (
             <div
               key={step.id}
               className={`flex items-center bg-white rounded-lg shadow-sm p-4 border-l-4 ${cardClasses} flex-wrap sm:flex-nowrap`}
             >
-              <div className="flex-shrink-0 mr-4 mb-2 sm:mb-0">
-                {icon}
-              </div>
+              <div className="flex-shrink-0 mr-4 mb-2 sm:mb-0">{icon}</div>
               <div className="flex-1 min-w-0 pr-4">
-                <h3 className="text-lg font-semibold text-gray-800 break-words">{formatStepName(step.stepName)}</h3>
-                <p className="text-sm text-gray-600 break-words">{statusText}</p>
+                <h3 className="text-lg font-semibold text-gray-800 break-words">
+                  {formatStepName(step.stepName)}
+                </h3>
+                <p className="text-sm text-gray-600 break-words">
+                  {statusText}
+                </p>
                 {step.machineDetails && step.machineDetails.length > 0 && (
                   <p className="text-xs text-gray-500 mt-1 break-words">
-                    Machine: {step.machineDetails.map(md => `${md.machineCode || md.id} (${md.machineType})`).join(', ')}
+                    Machine:{" "}
+                    {step.machineDetails
+                      .map(
+                        (md) => `${md.machineCode || md.id} (${md.machineType})`
+                      )
+                      .join(", ")}
                   </p>
                 )}
               </div>
               <div className="flex items-center ml-auto mt-2 sm:mt-0">
                 {actionButton}
-                {(step.status === 'stop' || step.status === 'start') && (
+                {(step.status === "stop" || step.status === "start") && (
                   <button
                     className="ml-2 p-2 rounded-full hover:bg-gray-100 flex-shrink-0"
-                                      onClick={(e) => {
-                    e.stopPropagation();
-                    console.log('🔍 [View Details Button] - Viewing details for step:', step.stepName);
-                    console.log('🔍 [View Details Button] - Step ID:', step.id);
-                    console.log('🔍 [View Details Button] - Step Status:', step.status);
-                    setSelectedJobPlanForDetail(jobPlan);
-                    setStepToEdit(step);
-                  }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log(
+                        "🔍 [View Details Button] - Viewing details for step:",
+                        step.stepName
+                      );
+                      console.log(
+                        "🔍 [View Details Button] - Step ID:",
+                        step.id
+                      );
+                      console.log(
+                        "🔍 [View Details Button] - Step Status:",
+                        step.status
+                      );
+                      setSelectedJobPlanForDetail(jobPlan);
+                      setStepToEdit(step);
+                    }}
                   >
                     <Eye className="text-gray-600 text-xl" />
                   </button>
@@ -1038,46 +1501,55 @@ switch (step.stepName) {
         <StartWorkConfirmModal
           stepName={stepToStart.stepName}
           onConfirm={async () => {
-            console.log('🔍 [StartWorkConfirmModal] - Confirming start for step:', stepToStart.stepName);
-            console.log('🔍 [StartWorkConfirmModal] - Step ID:', stepToStart.id);
-            console.log('🔍 [StartWorkConfirmModal] - Step Name:', stepToStart.stepName);
-            
-            const success = await updateJobPlanStepStatus(stepToStart, 'start');
+            console.log(
+              "🔍 [StartWorkConfirmModal] - Confirming start for step:",
+              stepToStart.stepName
+            );
+            console.log(
+              "🔍 [StartWorkConfirmModal] - Step ID:",
+              stepToStart.id
+            );
+            console.log(
+              "🔍 [StartWorkConfirmModal] - Step Name:",
+              stepToStart.stepName
+            );
+
+            const success = await updateJobPlanStepStatus(stepToStart, "start");
             setShowStartConfirmModal(false);
             setStepToStart(null);
             if (success) {
               switch (stepToStart.stepName) {
-                case 'PaperStore':
+                case "PaperStore":
                   setStepToEdit(stepToStart);
-                  setShowStepSpecificForm('PaperStore');
+                  setShowStepSpecificForm("PaperStore");
                   break;
-                case 'Corrugation':
+                case "Corrugation":
                   setStepToEdit(stepToStart);
-                  setShowStepSpecificForm('Corrugation');
+                  setShowStepSpecificForm("Corrugation");
                   break;
-                case 'PrintingDetails': // Added for generic form
+                case "PrintingDetails": // Added for generic form
                   setStepToEdit(stepToStart);
-                  setShowStepSpecificForm('PrintingDetails');
+                  setShowStepSpecificForm("PrintingDetails");
                   break;
-                case 'FluteLamination': // Added for generic form
+                case "FluteLamination": // Added for generic form
                   setStepToEdit(stepToStart);
-                  setShowStepSpecificForm('FluteLamination');
+                  setShowStepSpecificForm("FluteLamination");
                   break;
-                case 'Punching': // Added for generic form
+                case "Punching": // Added for generic form
                   setStepToEdit(stepToStart);
-                  setShowStepSpecificForm('Punching');
+                  setShowStepSpecificForm("Punching");
                   break;
-                case 'FlapPasting': // Added for generic form
+                case "FlapPasting": // Added for generic form
                   setStepToEdit(stepToStart);
-                  setShowStepSpecificForm('FlapPasting');
+                  setShowStepSpecificForm("FlapPasting");
                   break;
-                case 'QualityDept': // Added for generic form
+                case "QualityDept": // Added for generic form
                   setStepToEdit(stepToStart);
-                  setShowStepSpecificForm('QualityDept');
+                  setShowStepSpecificForm("QualityDept");
                   break;
-                case 'DispatchProcess': // Added for generic form
+                case "DispatchProcess": // Added for generic form
                   setStepToEdit(stepToStart);
-                  setShowStepSpecificForm('DispatchProcess');
+                  setShowStepSpecificForm("DispatchProcess");
                   break;
                 default:
                   break;
@@ -1091,14 +1563,15 @@ switch (step.stepName) {
         />
       )}
 
-      {showStepSpecificForm && stepToEdit && (
-        renderStepSpecificForm()
-      )}
+      {showStepSpecificForm && stepToEdit && renderStepSpecificForm()}
 
       {selectedJobPlanForDetail && (
         <JobPlanningDetailModal
           jobPlan={selectedJobPlanForDetail}
-          onClose={() => { setSelectedJobPlanForDetail(null); setStepToEdit(null); }}
+          onClose={() => {
+            setSelectedJobPlanForDetail(null);
+            setStepToEdit(null);
+          }}
         />
       )}
     </div>

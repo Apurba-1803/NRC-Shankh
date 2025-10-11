@@ -3,11 +3,11 @@ export interface UserData {
   name: string;
   email: string;
   roles: string[];
+  machineIds?: string[];
   active: boolean;
   lastLogin: string;
   createdAt: string;
   updatedAt: string;
-  machineIds?: string[];
 }
 
 export interface CreateUserPayload {
@@ -24,6 +24,7 @@ export interface UpdateUserPayload {
   email: string;
   roles: string[];
   password?: string;
+  machineId: string[];
 }
 
 // Role options matching the backend expectations

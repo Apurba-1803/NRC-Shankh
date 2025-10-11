@@ -221,7 +221,11 @@ const JobAssigned: React.FC = () => {
                                   : "bg-green-100 text-green-800"
                               }`}
                             >
-                              {jobPlan.jobDemand || "N/A"}
+                              {jobPlan.jobDemand === "high"
+                                ? "Urgent"
+                                : jobPlan.jobDemand === "medium"
+                                ? "Regular"
+                                : jobPlan.jobDemand || "N/A"}
                             </span>
                           </div>
 

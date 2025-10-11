@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Search, User, Edit3, Trash2, Eye } from 'lucide-react';
-import UserDetailsModal from './UserDetailsModal';
-import EditUserModal from './EditUserModal';
-import DeleteWarningModal from './DeleteWarningModal';
-import { type UserData, getRoleDisplayName, formatDate } from './types';
+import React, { useState, useEffect } from "react";
+import { Search, User, Edit3, Trash2, Eye } from "lucide-react";
+import UserDetailsModal from "./UserDetailsModal";
+import EditUserModal from "./EditUserModal";
+import DeleteWarningModal from "./DeleteWarningModal";
+import { type UserData, getRoleDisplayName, formatDate } from "./types";
 
 interface UserDetailsPageProps {
   onClose: () => void;
@@ -12,10 +12,10 @@ interface UserDetailsPageProps {
 const UserDetailsPage: React.FC<UserDetailsPageProps> = ({ onClose }) => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserData[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Modal states
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [showUserDetails, setShowUserDetails] = useState(false);
@@ -25,38 +25,41 @@ const UserDetailsPage: React.FC<UserDetailsPageProps> = ({ onClose }) => {
   // Fetch all users
   const fetchUsers = async () => {
     try {
-      console.log('Fetching users...');
+      console.log("Fetching users...");
       setLoading(true);
       setError(null);
 
-      const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) throw new Error('Authentication token not found.');
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) throw new Error("Authentication token not found.");
 
-      console.log('Making API call to fetch users...');
-      const response = await fetch('https://nrprod.nrcontainers.com/api/auth/users', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
+      console.log("Making API call to fetch users...");
+      const response = await fetch(
+        "https://nrprod.nrcontainers.com/api/auth/users",
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
 
-      console.log('API response status:', response.status);
+      console.log("API response status:", response.status);
       if (!response.ok) {
         throw new Error(`Failed to fetch users: ${response.status}`);
       }
 
       const result = await response.json();
-      console.log('API response result:', result);
-      
+      console.log("API response result:", result);
+
       if (result.success && Array.isArray(result.data)) {
-        console.log('Setting users data:', result.data);
+        console.log("Setting users data:", result.data);
         setUsers(result.data);
         setFilteredUsers(result.data);
       } else {
-        throw new Error('Invalid API response format');
+        throw new Error("Invalid API response format");
       }
     } catch (err) {
-      console.error('Error fetching users:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch users');
+      console.error("Error fetching users:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch users");
     } finally {
       setLoading(false);
     }
@@ -68,34 +71,37 @@ const UserDetailsPage: React.FC<UserDetailsPageProps> = ({ onClose }) => {
 
   // Search functionality
   useEffect(() => {
-    console.log('Search effect triggered:', { searchTerm, usersCount: users.length });
-    
+    console.log("Search effect triggered:", {
+      searchTerm,
+      usersCount: users.length,
+    });
+
     if (!searchTerm.trim()) {
-      console.log('Empty search term, showing all users');
+      console.log("Empty search term, showing all users");
       setFilteredUsers(users);
       return;
     }
 
     try {
-      const filtered = users.filter(user => {
+      const filtered = users.filter((user) => {
         const searchLower = searchTerm.toLowerCase();
         const matchesId = user.id?.toLowerCase().includes(searchLower);
         const matchesName = user.name?.toLowerCase().includes(searchLower);
         const matchesEmail = user.email?.toLowerCase().includes(searchLower);
-        
+
         return matchesId || matchesName || matchesEmail;
       });
-      
-      console.log('Search results:', { 
-        searchTerm, 
-        totalUsers: users.length, 
+
+      console.log("Search results:", {
+        searchTerm,
+        totalUsers: users.length,
         filteredCount: filtered.length,
-        filteredUsers: filtered 
+        filteredUsers: filtered,
       });
-      
+
       setFilteredUsers(filtered);
     } catch (error) {
-      console.error('Error during search:', error);
+      console.error("Error during search:", error);
       // Fallback to showing all users if search fails
       setFilteredUsers(users);
     }
@@ -129,8 +135,6 @@ const UserDetailsPage: React.FC<UserDetailsPageProps> = ({ onClose }) => {
     fetchUsers(); // Refresh the list
   };
 
-
-
   if (loading) {
     return (
       <div className="bg-gray-50 flex items-center justify-center py-20">
@@ -144,14 +148,21 @@ const UserDetailsPage: React.FC<UserDetailsPageProps> = ({ onClose }) => {
 
   // Safety check to prevent crashes
   if (!Array.isArray(users) || !Array.isArray(filteredUsers)) {
-    console.error('Users data is not in expected format:', { users, filteredUsers });
+    console.error("Users data is not in expected format:", {
+      users,
+      filteredUsers,
+    });
     return (
       <div className="bg-gray-50 w-full">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="text-center py-20">
             <div className="text-red-600 text-6xl mb-4">⚠️</div>
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">Data Error</h2>
-            <p className="text-gray-600 mb-4">There was an issue loading the user data.</p>
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">
+              Data Error
+            </h2>
+            <p className="text-gray-600 mb-4">
+              There was an issue loading the user data.
+            </p>
             <button
               onClick={fetchUsers}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -165,27 +176,38 @@ const UserDetailsPage: React.FC<UserDetailsPageProps> = ({ onClose }) => {
   }
 
   return (
-    <div className="bg-gray-50 w-full">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        
+    <div className="bg-gray-50 w-full min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 py-4">
         {/* Header */}
         <div className="flex items-center space-x-4 mb-8">
           <button
             onClick={onClose}
             className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors hover:cursor-pointer"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
             <span>Back</span>
           </button>
-         
         </div>
 
         {/* Search Bar */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={20}
+            />
             <input
               type="text"
               placeholder="Search by ID or First Name"
@@ -203,12 +225,13 @@ const UserDetailsPage: React.FC<UserDetailsPageProps> = ({ onClose }) => {
           </div>
         )}
 
-
-
         {/* Users Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredUsers.map((user) => (
-            <div key={user.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+            <div
+              key={user.id}
+              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+            >
               {/* User Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
@@ -216,14 +239,20 @@ const UserDetailsPage: React.FC<UserDetailsPageProps> = ({ onClose }) => {
                     <User className="h-5 w-5 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-800 text-lg">{user.name}</h3>
+                    <h3 className="font-semibold text-gray-800 text-lg">
+                      {user.name}
+                    </h3>
                     <p className="text-sm text-gray-500">{user.id}</p>
                   </div>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  user.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                }`}>
-                  {user.active ? 'Active' : 'Inactive'}
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    user.active
+                      ? "bg-green-100 text-green-700"
+                      : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {user.active ? "Active" : "Inactive"}
                 </span>
               </div>
 
@@ -233,16 +262,20 @@ const UserDetailsPage: React.FC<UserDetailsPageProps> = ({ onClose }) => {
                   <span className="font-medium">Email:</span> {user.email}
                 </p>
                 <p className="text-sm text-gray-600">
-                  <span className="font-medium">Roles:</span> [{user.roles.map(getRoleDisplayName).join(', ')}]
+                  <span className="font-medium">Roles:</span> [
+                  {user.roles.map(getRoleDisplayName).join(", ")}]
                 </p>
                 <p className="text-sm text-gray-600">
-                  <span className="font-medium">Last Login:</span> {formatDate(user.lastLogin)}
+                  <span className="font-medium">Last Login:</span>{" "}
+                  {formatDate(user.lastLogin)}
                 </p>
                 <p className="text-sm text-gray-600">
-                  <span className="font-medium">Created:</span> {formatDate(user.createdAt)}
+                  <span className="font-medium">Created:</span>{" "}
+                  {formatDate(user.createdAt)}
                 </p>
                 <p className="text-sm text-gray-600">
-                  <span className="font-medium">Updated:</span> {formatDate(user.updatedAt)}
+                  <span className="font-medium">Updated:</span>{" "}
+                  {formatDate(user.updatedAt)}
                 </p>
               </div>
 
@@ -278,9 +311,13 @@ const UserDetailsPage: React.FC<UserDetailsPageProps> = ({ onClose }) => {
         {filteredUsers.length === 0 && !loading && (
           <div className="text-center py-12">
             <User className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No users found
+            </h3>
             <p className="text-gray-500">
-              {searchTerm ? 'Try adjusting your search terms' : 'No users have been created yet'}
+              {searchTerm
+                ? "Try adjusting your search terms"
+                : "No users have been created yet"}
             </p>
           </div>
         )}
@@ -321,4 +358,4 @@ const UserDetailsPage: React.FC<UserDetailsPageProps> = ({ onClose }) => {
   );
 };
 
-export default UserDetailsPage; 
+export default UserDetailsPage;

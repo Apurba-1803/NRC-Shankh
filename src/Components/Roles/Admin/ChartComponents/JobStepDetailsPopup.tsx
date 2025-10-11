@@ -1,4 +1,3 @@
-
 interface JobPlanStep {
   id: number;
   stepNo: number;
@@ -6,6 +5,7 @@ interface JobPlanStep {
   machineDetails: Array<{
     unit: string | null;
     machineId: string | number;
+    id: string | number;
     machineCode: string | null;
     machineType: string;
     machine?: {
@@ -24,7 +24,6 @@ interface JobPlanStep {
   stepDetails?: any; // Step-specific details from API endpoints
 }
 
-
 interface JobPlan {
   jobPlanId: number;
   nrcJobNo: string;
@@ -33,8 +32,6 @@ interface JobPlan {
   updatedAt: string;
   steps: JobPlanStep[];
 }
-
-
 
 interface JobStepDetailsPopupProps {
   isOpen: boolean;
@@ -49,7 +46,7 @@ const JobStepDetailsPopup: React.FC<JobStepDetailsPopupProps> = ({
   onClose,
   jobData,
   stepName,
-  stepInfo
+  stepInfo,
 }) => {
   if (!isOpen) return null;
 
@@ -72,26 +69,41 @@ const JobStepDetailsPopup: React.FC<JobStepDetailsPopupProps> = ({
         {/* Job Info */}
         <div className="p-4">
           <div className="bg-gray-50 rounded-lg p-4 mb-4">
-            <h3 className="font-semibold text-gray-700 mb-3">Job Information</h3>
+            <h3 className="font-semibold text-gray-700 mb-3">
+              Job Information
+            </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <span className="text-sm font-medium text-gray-600">NRC Job No:</span>
-                <p className="text-sm text-gray-800 font-mono break-all">{jobData.nrcJobNo}</p>
+                <span className="text-sm font-medium text-gray-600">
+                  NRC Job No:
+                </span>
+                <p className="text-sm text-gray-800 font-mono break-all">
+                  {jobData.nrcJobNo}
+                </p>
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-600">Job Demand:</span>
-                <span className={`inline-block px-2 py-1 text-xs rounded-full capitalize ml-2 ${
-                  jobData.jobDemand === 'high' ? 'bg-red-100 text-red-800' :
-                  jobData.jobDemand === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-green-100 text-green-800'
-                }`}>
+                <span className="text-sm font-medium text-gray-600">
+                  Job Demand:
+                </span>
+                <span
+                  className={`inline-block px-2 py-1 text-xs rounded-full capitalize ml-2 ${
+                    jobData.jobDemand === "high"
+                      ? "bg-red-100 text-red-800"
+                      : jobData.jobDemand === "medium"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : "bg-green-100 text-green-800"
+                  }`}
+                >
                   {jobData.jobDemand}
                 </span>
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-600">Created At:</span>
+                <span className="text-sm font-medium text-gray-600">
+                  Created At:
+                </span>
                 <p className="text-sm text-gray-800">
-                  {new Date(jobData.createdAt).toLocaleDateString()} {new Date(jobData.createdAt).toLocaleTimeString()}
+                  {new Date(jobData.createdAt).toLocaleDateString()}{" "}
+                  {new Date(jobData.createdAt).toLocaleTimeString()}
                 </p>
               </div>
             </div>
@@ -100,42 +112,63 @@ const JobStepDetailsPopup: React.FC<JobStepDetailsPopupProps> = ({
           {/* Step Specific Details */}
           {stepInfo && (
             <div className="bg-blue-50 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-800 mb-3">{stepName} Step Details</h3>
+              <h3 className="font-semibold text-blue-800 mb-3">
+                {stepName} Step Details
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <span className="text-sm font-medium text-blue-700">Status:</span>
-                  <span className={`inline-block px-2 py-1 text-xs rounded-full ml-2 ${
-                    stepInfo.status === 'stop' ? 'bg-green-100 text-green-800' :
-                    stepInfo.status === 'start' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {stepInfo.status === 'stop' ? 'Completed' : 
-                     stepInfo.status === 'start' ? 'In Progress' : 'Planned'}
+                  <span className="text-sm font-medium text-blue-700">
+                    Status:
+                  </span>
+                  <span
+                    className={`inline-block px-2 py-1 text-xs rounded-full ml-2 ${
+                      stepInfo.status === "stop"
+                        ? "bg-green-100 text-green-800"
+                        : stepInfo.status === "start"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {stepInfo.status === "stop"
+                      ? "Completed"
+                      : stepInfo.status === "start"
+                      ? "In Progress"
+                      : "Planned"}
                   </span>
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-blue-700">Step Number:</span>
+                  <span className="text-sm font-medium text-blue-700">
+                    Step Number:
+                  </span>
                   <p className="text-sm text-blue-800">{stepInfo.stepNo}</p>
                 </div>
                 {stepInfo.startDate && (
                   <div>
-                    <span className="text-sm font-medium text-blue-700">Start Date:</span>
+                    <span className="text-sm font-medium text-blue-700">
+                      Start Date:
+                    </span>
                     <p className="text-sm text-blue-800">
-                      {new Date(stepInfo.startDate).toLocaleDateString()} {new Date(stepInfo.startDate).toLocaleTimeString()}
+                      {new Date(stepInfo.startDate).toLocaleDateString()}{" "}
+                      {new Date(stepInfo.startDate).toLocaleTimeString()}
                     </p>
                   </div>
                 )}
                 {stepInfo.endDate && (
                   <div>
-                    <span className="text-sm font-medium text-blue-700">End Date:</span>
+                    <span className="text-sm font-medium text-blue-700">
+                      End Date:
+                    </span>
                     <p className="text-sm text-blue-800">
-                      {new Date(stepInfo.endDate).toLocaleDateString()} {new Date(stepInfo.endDate).toLocaleTimeString()}
+                      {new Date(stepInfo.endDate).toLocaleDateString()}{" "}
+                      {new Date(stepInfo.endDate).toLocaleTimeString()}
                     </p>
                   </div>
                 )}
                 {stepInfo.user && (
                   <div>
-                    <span className="text-sm font-medium text-blue-700">Assigned User:</span>
+                    <span className="text-sm font-medium text-blue-700">
+                      Assigned User:
+                    </span>
                     <p className="text-sm text-blue-800">{stepInfo.user}</p>
                   </div>
                 )}
@@ -143,71 +176,93 @@ const JobStepDetailsPopup: React.FC<JobStepDetailsPopupProps> = ({
 
               {/* Step Details (like Paper Store details) */}
               {stepInfo.stepDetails?.data && (
-  <div className="mt-4 p-3 bg-white rounded border">
-    <h4 className="font-medium text-gray-700 mb-2">Additional Details:</h4>
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-      {Object.entries(stepInfo.stepDetails?.data).map(([key, value]) => {
-        // ✅ Helper function to check if the value is a valid date
-        const isDateField = (fieldName: string, fieldValue: any): boolean => {
-          // Check if field name suggests it's a date
-          const dateKeywords = ['date', 'time', 'at', 'created', 'updated', 'issued'];
-          const hasDateKeyword = dateKeywords.some(keyword => 
-            fieldName.toLowerCase().includes(keyword)
-          );
-          
-          // Check if the value looks like a date string
-          const isDateString = typeof fieldValue === 'string' && 
-            !isNaN(Date.parse(fieldValue)) && 
-            fieldValue.includes('-'); // Basic ISO date format check
-          
-          return hasDateKeyword && isDateString;
-        };
-
-        // ✅ Format the value based on whether it's a date
-        const formatValue = (fieldName: string, fieldValue: any) => {
-          if (fieldValue === null || fieldValue === undefined) {
-            return 'N/A';
-          }
-          
-          if (isDateField(fieldName, fieldValue)) {
-            try {
-              const date = new Date(fieldValue);
-              return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-            } catch (error) {
-              return String(fieldValue); // Fallback to string if date parsing fails
-            }
-          }
-          
-          return String(fieldValue);
-        };
-
-        return (
-          <div key={key}>
-            <span className="text-xs font-medium text-gray-600 capitalize">
-              {key.replace(/([A-Z])/g, ' $1').trim()}:
-            </span>
-            <p className="text-xs text-gray-800 break-all">
-              {formatValue(key, value)}
-            </p>
-          </div>
-        );
-      })}
-    </div>
-  </div>
-)}
-
-
-              {/* Machine Details */}
-              {stepInfo.machineDetails && stepInfo.machineDetails.length > 0 && (
                 <div className="mt-4 p-3 bg-white rounded border">
-                  <h4 className="font-medium text-gray-700 mb-2">Machine Details:</h4>
-                  {stepInfo.machineDetails.map((machine, index) => (
-                    <div key={index} className="text-xs text-gray-600 mb-1">
-                      Machine ID: {machine.machineId} | Type: {machine.machineType} | Unit: {machine.unit || 'N/A'}
-                    </div>
-                  ))}
+                  <h4 className="font-medium text-gray-700 mb-2">
+                    Additional Details:
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {Object.entries(stepInfo.stepDetails?.data).map(
+                      ([key, value]) => {
+                        // ✅ Helper function to check if the value is a valid date
+                        const isDateField = (
+                          fieldName: string,
+                          fieldValue: any
+                        ): boolean => {
+                          // Check if field name suggests it's a date
+                          const dateKeywords = [
+                            "date",
+                            "time",
+                            "at",
+                            "created",
+                            "updated",
+                            "issued",
+                          ];
+                          const hasDateKeyword = dateKeywords.some((keyword) =>
+                            fieldName.toLowerCase().includes(keyword)
+                          );
+
+                          // Check if the value looks like a date string
+                          const isDateString =
+                            typeof fieldValue === "string" &&
+                            !isNaN(Date.parse(fieldValue)) &&
+                            fieldValue.includes("-"); // Basic ISO date format check
+
+                          return hasDateKeyword && isDateString;
+                        };
+
+                        // ✅ Format the value based on whether it's a date
+                        const formatValue = (
+                          fieldName: string,
+                          fieldValue: any
+                        ) => {
+                          if (fieldValue === null || fieldValue === undefined) {
+                            return "N/A";
+                          }
+
+                          if (isDateField(fieldName, fieldValue)) {
+                            try {
+                              const date = new Date(fieldValue);
+                              return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+                            } catch (error) {
+                              return String(fieldValue); // Fallback to string if date parsing fails
+                            }
+                          }
+
+                          return String(fieldValue);
+                        };
+
+                        return (
+                          <div key={key}>
+                            <span className="text-xs font-medium text-gray-600 capitalize">
+                              {key.replace(/([A-Z])/g, " $1").trim()}:
+                            </span>
+                            <p className="text-xs text-gray-800 break-all">
+                              {formatValue(key, value)}
+                            </p>
+                          </div>
+                        );
+                      }
+                    )}
+                  </div>
                 </div>
               )}
+
+              {/* Machine Details */}
+              {stepInfo.machineDetails &&
+                stepInfo.machineDetails.length > 0 && (
+                  <div className="mt-4 p-3 bg-white rounded border">
+                    <h4 className="font-medium text-gray-700 mb-2">
+                      Machine Details:
+                    </h4>
+                    {stepInfo.machineDetails.map((machine, index) => (
+                      <div key={index} className="text-xs text-gray-600 mb-1">
+                        Machine ID: {machine.machineId || machine.id} | Code:{" "}
+                        {machine.machineCode || "N/A"} | Type:{" "}
+                        {machine.machineType} | Unit: {machine.unit || "N/A"}
+                      </div>
+                    ))}
+                  </div>
+                )}
             </div>
           )}
         </div>

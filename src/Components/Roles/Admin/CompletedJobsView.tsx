@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useLocation } from 'react-router-dom';
-import { ArrowLeft, CheckCircle } from 'lucide-react';
-import JobSearchBar from './JobDetailsComponents/JobSearchBar';
-import JobBarsChart from './JobDetailsComponents/JobBarsChart';
-import DetailedJobModal from './JobDetailsComponents/DetailedJobModal';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import { ArrowLeft, CheckCircle } from "lucide-react";
+import JobSearchBar from "./JobDetailsComponents/JobSearchBar";
+import JobBarsChart from "./JobDetailsComponents/JobBarsChart";
+import DetailedJobModal from "./JobDetailsComponents/DetailedJobModal";
 
 interface CompletedJob {
   id: number;
@@ -88,32 +88,32 @@ interface JobPlanStep {
   stepDetails?: any;
 }
 
-
-
 const CompletedJobsView: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedJob, setSelectedJob] = useState<CompletedJob | JobPlan | null>(null);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedJob, setSelectedJob] = useState<CompletedJob | JobPlan | null>(
+    null
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false); // Set to false initially
   const [error, setError] = useState<string | null>(null);
   const [completedJobs, setCompletedJobs] = useState<CompletedJob[]>([]);
 
   // Extract state data passed from dashboard
-  const { 
-    completedJobs: passedCompletedJobs, 
-    dateFilter, 
-    customDateRange 
+  const {
+    completedJobs: passedCompletedJobs,
+    dateFilter,
+    customDateRange,
   } = location.state || {};
 
   const fetchCompletedJobs = async () => {
     try {
       setLoading(true);
-      const accessToken = localStorage.getItem('accessToken');
+      const accessToken = localStorage.getItem("accessToken");
       if (!accessToken) {
-        throw new Error('Authentication token not found');
+        throw new Error("Authentication token not found");
       }
 
       // Build query parameters for date filtering if available
@@ -128,26 +128,30 @@ const CompletedJobsView: React.FC = () => {
       const completedJobsUrl = `https://nrprod.nrcontainers.com/api/completed-jobs?${queryParams.toString()}`;
       const response = await fetch(completedJobsUrl, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const result = await response.json();
-      console.log('Completed jobs data:', result);
-      
+      console.log("Completed jobs data:", result);
+
       if (result.success && Array.isArray(result.data)) {
         setCompletedJobs(result.data);
       } else {
         setCompletedJobs([]);
       }
     } catch (error) {
-      console.error('Error fetching completed jobs:', error);
-      setError(error instanceof Error ? error.message : 'Failed to fetch completed jobs');
+      console.error("Error fetching completed jobs:", error);
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch completed jobs"
+      );
     } finally {
       setLoading(false);
     }
@@ -156,12 +160,12 @@ const CompletedJobsView: React.FC = () => {
   useEffect(() => {
     // Check if we have passed data from dashboard
     if (passedCompletedJobs && Array.isArray(passedCompletedJobs)) {
-      console.log('Using passed completed jobs data:', passedCompletedJobs);
+      console.log("Using passed completed jobs data:", passedCompletedJobs);
       setCompletedJobs(passedCompletedJobs);
       setLoading(false);
     } else {
       // Fallback: fetch data if no state was passed (direct URL access)
-      console.log('No passed data found, fetching completed jobs...');
+      console.log("No passed data found, fetching completed jobs...");
       fetchCompletedJobs();
     }
   }, [passedCompletedJobs]);
@@ -172,7 +176,12 @@ const CompletedJobsView: React.FC = () => {
   };
 
   const handleBackToDashboard = () => {
-    navigate('/dashboard');
+    navigate("/dashboard", {
+      state: {
+        dateFilter: dateFilter,
+        customDateRange: customDateRange,
+      },
+    });
   };
 
   if (loading) {
@@ -193,7 +202,7 @@ const CompletedJobsView: React.FC = () => {
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             <p className="font-bold">Error</p>
             <p>{error}</p>
-            <button 
+            <button
               onClick={fetchCompletedJobs}
               className="mt-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
             >
@@ -204,11 +213,10 @@ const CompletedJobsView: React.FC = () => {
       </div>
     );
   }
-console.log('Rendering CompletedJobsView with completedJobs:', completedJobs);
+  console.log("Rendering CompletedJobsView with completedJobs:", completedJobs);
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        
         {/* Header with Back Button and Filter Info */}
         <div className="flex items-center justify-between mb-8">
           <button
@@ -218,14 +226,14 @@ console.log('Rendering CompletedJobsView with completedJobs:', completedJobs);
             <ArrowLeft size={20} />
             <span>Back to Dashboard</span>
           </button>
-          
+
           {/* Show current filter if available */}
           {dateFilter && (
             <div className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-full">
-              Filter: {dateFilter === 'custom' 
-                ? `${customDateRange?.start} to ${customDateRange?.end}` 
-                : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)
-              }
+              Filter:{" "}
+              {dateFilter === "custom"
+                ? `${customDateRange?.start} to ${customDateRange?.end}`
+                : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)}
             </div>
           )}
         </div>
@@ -254,7 +262,9 @@ console.log('Rendering CompletedJobsView with completedJobs:', completedJobs);
                   </span>
                 )}
               </h3>
-              <p className="text-3xl font-bold text-green-600">{completedJobs.length}</p>
+              <p className="text-3xl font-bold text-green-600">
+                {completedJobs.length}
+              </p>
             </div>
           </div>
 
@@ -271,12 +281,13 @@ console.log('Rendering CompletedJobsView with completedJobs:', completedJobs);
           <div className="bg-white rounded-lg shadow-md p-8 mt-6 text-center">
             <div className="text-gray-500">
               <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium mb-2">No Completed Jobs Found</h3>
+              <h3 className="text-lg font-medium mb-2">
+                No Completed Jobs Found
+              </h3>
               <p className="text-sm">
-                {dateFilter 
+                {dateFilter
                   ? `No completed jobs found for the selected ${dateFilter} period.`
-                  : 'No completed jobs available at the moment.'
-                }
+                  : "No completed jobs available at the moment."}
               </p>
             </div>
           </div>
@@ -295,5 +306,4 @@ console.log('Rendering CompletedJobsView with completedJobs:', completedJobs);
 
 export default CompletedJobsView;
 
-
-// export default CompletedJobsView; 
+// export default CompletedJobsView;

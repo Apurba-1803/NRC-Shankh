@@ -129,7 +129,9 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       pdf.setFontSize(20);
       pdf.setFont("helvetica", "bold");
       pdf.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-      pdf.text("JOB DETAILS", pageWidth - 20, yPosition + 10, { align: "right" });
+      pdf.text("JOB DETAILS", pageWidth - 20, yPosition + 10, {
+        align: "right",
+      });
 
       yPosition += 25;
 
@@ -140,7 +142,9 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
 
       // Left Column
       pdf.text(
-        `Client's Name : ${String(job.jobDetails?.company || job.jobDetails?.customerName || "N/A")}`,
+        `Client's Name : ${String(
+          job.jobDetails?.company || job.jobDetails?.customerName || "N/A"
+        )}`,
         20,
         yPosition
       );
@@ -156,29 +160,30 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       );
 
       // Right Column
+      // Handle both array and object formats for PO details
+      const poDetails = Array.isArray(job.purchaseOrderDetails)
+        ? job.purchaseOrderDetails[0]
+        : job.purchaseOrderDetails;
+
       pdf.text(
         `Job Card No. : ${String(job.id || "N/A")}`,
         pageWidth / 2 + 20,
         yPosition
       );
       pdf.text(
-        `Quantity : ${String(
-          job.purchaseOrderDetails?.totalPOQuantity || "N/A"
-        )}`,
+        `Quantity : ${String(poDetails?.totalPOQuantity || "N/A")}`,
         pageWidth / 2 + 20,
         yPosition + 6
       );
 
       // Bottom Row
       pdf.text(
-        `PO No. : ${String(job.purchaseOrderDetails?.poNumber || "N/A")}`,
+        `PO No. : ${String(poDetails?.poNumber || "N/A")}`,
         20,
         yPosition + 18
       );
       pdf.text(
-        `No of Sheets: ${String(
-          job.purchaseOrderDetails?.noOfSheets || "N/A"
-        )}`,
+        `No of Sheets: ${String(poDetails?.noOfSheets || "N/A")}`,
         pageWidth / 2 + 20,
         yPosition + 18
       );
@@ -876,7 +881,9 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
             <div>
               <h2 className="text-2xl font-bold">{job.nrcJobNo}</h2>
               <p className="text-blue-100">
-                {job.jobDetails?.company || job.jobDetails?.customerName || "N/A"}
+                {job.jobDetails?.company ||
+                  job.jobDetails?.customerName ||
+                  "N/A"}
               </p>
             </div>
           </div>
@@ -992,84 +999,176 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
                     <Calendar className="h-5 w-5 mr-2" />
                     Purchase Order Details
                   </h3>
-                  <div className="grid grid-cols-1 gap-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">
-                        PO Number:
-                      </span>
-                      <span className="text-gray-900">
-                        {job.purchaseOrderDetails.poNumber || "N/A"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">
-                        Customer:
-                      </span>
-                      <span className="text-gray-900">
-                        {job.purchaseOrderDetails.customer || "N/A"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Unit:</span>
-                      <span className="text-gray-900">
-                        {job.purchaseOrderDetails.unit || "N/A"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">
-                        Total Quantity:
-                      </span>
-                      <span className="text-gray-900">
-                        {job.purchaseOrderDetails.totalPOQuantity || "N/A"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">
-                        No. of Sheets:
-                      </span>
-                      <span className="text-gray-900">
-                        {job.purchaseOrderDetails.noOfSheets || "N/A"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">
-                        PO Date:
-                      </span>
-                      <span className="text-gray-900">
-                        {job.purchaseOrderDetails.poDate
-                          ? new Date(
-                              job.purchaseOrderDetails.poDate
-                            ).toLocaleDateString()
-                          : "N/A"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">
-                        Delivery Date:
-                      </span>
-                      <span className="text-gray-900">
-                        {job.purchaseOrderDetails.deliveryDate
-                          ? new Date(
-                              job.purchaseOrderDetails.deliveryDate
-                            ).toLocaleDateString()
-                          : "N/A"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-700">Status:</span>
-                      <span
-                        className={`px-2 py-1 rounded text-xs font-medium ${
-                          job.purchaseOrderDetails.status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : job.purchaseOrderDetails.status === "pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {job.purchaseOrderDetails.status || "N/A"}
-                      </span>
-                    </div>
-                  </div>
+                  {(() => {
+                    // Handle both array and object formats
+                    const poDetails = Array.isArray(job.purchaseOrderDetails)
+                      ? job.purchaseOrderDetails[0]
+                      : job.purchaseOrderDetails;
+
+                    if (!poDetails)
+                      return (
+                        <p className="text-sm text-gray-500">
+                          No PO details available
+                        </p>
+                      );
+
+                    return (
+                      <div className="grid grid-cols-1 gap-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">
+                            PO Number:
+                          </span>
+                          <span className="text-gray-900">
+                            {poDetails.poNumber || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">
+                            Customer:
+                          </span>
+                          <span className="text-gray-900">
+                            {poDetails.customer || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">
+                            Style:
+                          </span>
+                          <span className="text-gray-900">
+                            {poDetails.style || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">
+                            Unit:
+                          </span>
+                          <span className="text-gray-900">
+                            {poDetails.unit || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">
+                            Board Size:
+                          </span>
+                          <span className="text-gray-900">
+                            {poDetails.boardSize || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">
+                            Flute Type:
+                          </span>
+                          <span className="text-gray-900">
+                            {poDetails.fluteType || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">
+                            Total Quantity:
+                          </span>
+                          <span className="text-gray-900">
+                            {poDetails.totalPOQuantity || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">
+                            Pending Quantity:
+                          </span>
+                          <span className="text-gray-900">
+                            {poDetails.pendingQuantity || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">
+                            No. of Sheets:
+                          </span>
+                          <span className="text-gray-900">
+                            {poDetails.noOfSheets || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">
+                            No. of Ups:
+                          </span>
+                          <span className="text-gray-900">
+                            {poDetails.noOfUps || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">
+                            Die Code:
+                          </span>
+                          <span className="text-gray-900">
+                            {poDetails.dieCode || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">
+                            PO Date:
+                          </span>
+                          <span className="text-gray-900">
+                            {poDetails.poDate
+                              ? new Date(poDetails.poDate).toLocaleDateString()
+                              : "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">
+                            Delivery Date:
+                          </span>
+                          <span className="text-gray-900">
+                            {poDetails.deliveryDate
+                              ? new Date(
+                                  poDetails.deliveryDate
+                                ).toLocaleDateString()
+                              : "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">
+                            NRC Delivery Date:
+                          </span>
+                          <span className="text-gray-900">
+                            {poDetails.nrcDeliveryDate
+                              ? new Date(
+                                  poDetails.nrcDeliveryDate
+                                ).toLocaleDateString()
+                              : "N/A"}
+                          </span>
+                        </div>
+                        {poDetails.shadeCardApprovalDate && (
+                          <div className="flex justify-between">
+                            <span className="font-medium text-gray-700">
+                              Shade Card Approval:
+                            </span>
+                            <span className="text-gray-900">
+                              {new Date(
+                                poDetails.shadeCardApprovalDate
+                              ).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-700">
+                            Status:
+                          </span>
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-medium ${
+                              poDetails.status === "active"
+                                ? "bg-green-100 text-green-800"
+                                : poDetails.status === "pending"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : poDetails.status === "created"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {poDetails.status || "N/A"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -1149,7 +1248,7 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
                     ({job.allSteps?.length || job.steps?.length || 0})
                   </h3>
                   {/* Your existing steps content remains unchanged */}
-                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
                     {(() => {
                       // Define step order for sorting
                       const stepOrder = [

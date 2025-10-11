@@ -9,7 +9,7 @@ import BarChartComponent from "./ChartComponents/BarChartComponent";
 import PieChartComponent from "./ChartComponents/PieChartComponent";
 // import AdvancedDataChart from "./ChartComponents/AdvancedDataChart";
 import JobPlansTable from "./DataTable/JobPlansTable";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import CompletedJobsTable from "./CompletedJobsTable";
 import LoadingSpinner from "../../common/LoadingSpinner";
 import MachineUtilizationDashboard from "./MachineUtilization";
@@ -90,6 +90,73 @@ interface CompletedJob {
   [key: string]: any;
 }
 
+interface HeldMachine {
+  machineId: string;
+  machineCode: string;
+  machineType: string;
+  unit: string;
+  description: string;
+  capacity: number;
+  holdRemark: string | null;
+  heldAt: string;
+  heldBy: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
+  formData: any;
+  startedAt: string;
+}
+
+interface HeldJobStep {
+  stepNo: number;
+  stepName: string;
+  stepStatus: string;
+  stepStartDate: string | null;
+  stepEndDate: string | null;
+  machineDetails: Array<{
+    id?: string;
+    unit: string;
+    machineCode: string | null;
+    machineType: string;
+  }>;
+  hasHeldMachines: boolean;
+  heldMachinesCount: number;
+  heldMachines: HeldMachine[];
+  stepSpecificData: any;
+  stepHoldRemark: string | null;
+}
+
+interface HeldJob {
+  jobDetails: {
+    nrcJobNo: string;
+    customerName: string;
+    styleItemSKU: string;
+    fluteType: string;
+    status: string;
+    jobDemand: string;
+    boxDimensions: string;
+    noOfColor: string;
+    imageURL: string | null;
+    createdAt: string | null;
+  };
+  purchaseOrders: Array<{
+    id: number;
+    poNumber: string;
+    customer: string;
+    totalPOQuantity: number;
+    pendingQuantity: number;
+    deliveryDate: string;
+    nrcDeliveryDate: string;
+    poDate: string;
+    status: string;
+  }>;
+  steps: HeldJobStep[];
+  totalHeldMachines: number;
+  jobPlanningId: number;
+}
+
 interface AdminDashboardData {
   jobPlans: JobPlan[];
   totalJobs: number;
@@ -121,6 +188,7 @@ interface AdminDashboardData {
   }>;
   completedJobsData: CompletedJob[];
   heldJobs: number;
+  heldJobsData: HeldJob[];
 }
 
 interface MachineDetails {
@@ -149,19 +217,31 @@ interface MachineUtilizationData {
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [data, setData] = useState<AdminDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dateFilter, setDateFilter] = useState<DateFilterType>("today");
+
+  // Check if returning from a detail page with filter state
+  const returnedState = location.state as {
+    dateFilter?: DateFilterType;
+    customDateRange?: { start: string; end: string };
+  } | null;
+
+  const [dateFilter, setDateFilter] = useState<DateFilterType>(
+    returnedState?.dateFilter || "today"
+  );
   const [customDateRange, setCustomDateRange] = useState<{
     start: string;
     end: string;
-  }>({
-    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0],
-    end: new Date().toISOString().split("T")[0],
-  });
+  }>(
+    returnedState?.customDateRange || {
+      start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0],
+      end: new Date().toISOString().split("T")[0],
+    }
+  );
   // selectedJobPlan state removed as it's not used
 
   // Color scheme for charts
@@ -201,24 +281,10 @@ const AdminDashboard: React.FC = () => {
   // Add this handler alongside your existing handlers
   const handleHeldJobsClick = () => {
     console.log("Held Jobs card clicked - navigating to held jobs view");
+    console.log("Held jobs data from API:", filteredData?.heldJobsData);
 
-    // Filter jobs that have steps with "hold" status
-    const heldJobPlans =
-      filteredData?.jobPlans?.filter((jobPlan) => {
-        let jobOnHold = false;
-
-        // Check each step to determine if job is on hold
-        jobPlan.steps.forEach((step) => {
-          if (
-            step.stepDetails?.data?.status === "hold" ||
-            step.stepDetails?.status === "hold"
-          ) {
-            jobOnHold = true;
-          }
-        });
-
-        return jobOnHold;
-      }) || [];
+    // Use the held jobs data from the new API
+    const heldJobPlans = filteredData?.heldJobsData || [];
 
     navigate("/dashboard/held-jobs", {
       state: {
@@ -661,6 +727,24 @@ const AdminDashboard: React.FC = () => {
         }
       }
 
+      // Fetch held machines data
+      const heldMachinesUrl = `https://nrprod.nrcontainers.com/api/job-step-machines/held-machines`;
+      const heldMachinesResponse = await fetch(heldMachinesUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      let heldJobsData: HeldJob[] = [];
+      if (heldMachinesResponse.ok) {
+        const heldMachinesResult = await heldMachinesResponse.json();
+        if (
+          heldMachinesResult.success &&
+          heldMachinesResult.data &&
+          Array.isArray(heldMachinesResult.data.heldJobs)
+        ) {
+          heldJobsData = heldMachinesResult.data.heldJobs;
+        }
+      }
+
       if (jobPlanningResult.success && Array.isArray(jobPlanningResult.data)) {
         const jobPlans = jobPlanningResult.data;
 
@@ -693,10 +777,12 @@ const AdminDashboard: React.FC = () => {
         );
 
         console.log("completedJobsData", completedJobsData);
+        console.log("heldJobsData from API", heldJobsData);
         // Process the data to create dashboard statistics - AWAIT this call
         const processedData = await processJobPlanData(
           jobPlansWithDetails,
-          completedJobsData
+          completedJobsData,
+          heldJobsData
         );
 
         setData(processedData);
@@ -716,7 +802,8 @@ const AdminDashboard: React.FC = () => {
   // Updated processJobPlanData - fetch machines once, not in loop
   const processJobPlanData = async (
     jobPlans: JobPlan[],
-    completedJobsData: CompletedJob[]
+    completedJobsData: CompletedJob[],
+    heldJobsData: HeldJob[]
   ): Promise<AdminDashboardData> => {
     // Count completed jobs from the completed jobs API
     const completedJobsCount = completedJobsData.length;
@@ -728,7 +815,11 @@ const AdminDashboard: React.FC = () => {
     const totalJobs = jobPlans.length;
     let inProgressJobs = 0;
     let plannedJobs = 0;
-    let heldJobs = 0;
+    // Get held jobs count from the new API
+    let heldJobs = heldJobsData.length;
+
+    console.log("Processing held jobs data:", heldJobsData);
+    console.log("Total held jobs from API:", heldJobs);
     let totalSteps = 0;
     let completedSteps = 0;
     const uniqueUsers = new Set<string>();
@@ -997,6 +1088,7 @@ const AdminDashboard: React.FC = () => {
       timeSeriesData,
       completedJobsData: completedJobsData,
       heldJobs,
+      heldJobsData,
     };
   };
 
@@ -1011,6 +1103,14 @@ const AdminDashboard: React.FC = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  // Clear location state after it's been read to prevent stale data
+  useEffect(() => {
+    if (returnedState) {
+      // Replace the current history entry without the state
+      window.history.replaceState({}, document.title);
+    }
+  }, [returnedState]);
 
   // Data is now filtered at the API level, so we use the data directly
   // const filteredData = data;
@@ -1110,10 +1210,28 @@ const AdminDashboard: React.FC = () => {
       endDate.toDateString()
     );
 
-    // Filter jobPlans based on createdAt date
+    // Filter jobPlans based on step activity (updatedAt dates)
     const filteredJobPlans = data.jobPlans.filter((jobPlan) => {
-      const jobDate = new Date(jobPlan.createdAt);
-      return isDateInRange(jobDate, new Date(startDate), new Date(endDate));
+      // Check if any step has been updated within the date range
+      const hasRecentStepActivity = jobPlan.steps.some((step) => {
+        if (step.updatedAt) {
+          const stepUpdateDate = new Date(step.updatedAt);
+          return isDateInRange(
+            stepUpdateDate,
+            new Date(startDate),
+            new Date(endDate)
+          );
+        }
+        return false;
+      });
+
+      // If no step activity found, fall back to job creation date
+      if (!hasRecentStepActivity) {
+        const jobDate = new Date(jobPlan.createdAt);
+        return isDateInRange(jobDate, new Date(startDate), new Date(endDate));
+      }
+
+      return hasRecentStepActivity;
     });
 
     // Filter completedJobsData based on completedAt date
@@ -1145,7 +1263,8 @@ const AdminDashboard: React.FC = () => {
     let inProgressJobs = 0;
     let plannedJobs = 0;
     let totalSteps = 0;
-    let heldJobs = 0;
+    // Use held jobs count from the API data, not recalculated
+    const heldJobs = data.heldJobs;
     let completedSteps = 0;
     const uniqueUsers = new Set<string>();
 
@@ -1203,8 +1322,9 @@ const AdminDashboard: React.FC = () => {
         // This job is completed, but we're not counting it here since it comes from completed jobs API
         // NOTE: This case should not happen for job plans
       }
+      // Don't increment heldJobs here - we use the count from the API
       if (jobOnHold) {
-        heldJobs++;
+        // Job is on hold - don't count it as in progress or planned
       } else if (jobInProgress) {
         inProgressJobs++;
       } else {
@@ -1352,6 +1472,7 @@ const AdminDashboard: React.FC = () => {
     console.log("Completed jobs:", completedJobs);
     console.log("In progress jobs:", inProgressJobs);
     console.log("Planned jobs:", plannedJobs);
+    console.log("Held jobs (from API):", heldJobs);
     console.log("Total jobs:", totalJobs + completedJobs);
 
     return {
@@ -1369,6 +1490,7 @@ const AdminDashboard: React.FC = () => {
       timeSeriesData: filteredTimeSeriesData,
       completedJobsData: filteredCompletedJobsData,
       heldJobs,
+      heldJobsData: data.heldJobsData, // Keep the original held jobs data as it's not date-filtered
     };
   }, [data, dateFilter, customDateRange]);
 
@@ -1445,7 +1567,14 @@ const AdminDashboard: React.FC = () => {
         // completedSteps={filteredData.completedSteps}
         activeUsers={filteredData?.activeUsers || 0}
         // efficiency={filteredData?.efficiency || 0}
-        heldJobs={filteredData?.heldJobs || 0}
+        heldJobs={(() => {
+          console.log(
+            "Held jobs count for StatisticsGrid:",
+            filteredData?.heldJobs
+          );
+          console.log("Held jobs data array:", filteredData?.heldJobsData);
+          return filteredData?.heldJobs || 0;
+        })()}
         className="mb-8"
         onTotalJobsClick={handleTotalJobsClick}
         onCompletedJobsClick={handleCompletedJobsClick}
@@ -1924,7 +2053,7 @@ const AdminDashboard: React.FC = () => {
               color: colors.warning,
             },
             {
-              name: "High Demand",
+              name: "Urgent",
               value: filteredData.jobPlans.filter(
                 (jp) => jp.jobDemand === "high"
               ).length,

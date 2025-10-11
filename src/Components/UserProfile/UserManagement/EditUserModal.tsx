@@ -255,6 +255,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
         name: form.name,
         email: form.email,
         roles: selectedRoles,
+        machineId: [], // Empty array since machine assignments are handled separately
       };
 
       // Only include password if it's been set

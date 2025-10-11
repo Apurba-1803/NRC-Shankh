@@ -354,7 +354,12 @@ const JobDetailsContainer: React.FC<JobDetailsContainerProps> = () => {
   };
 
   const handleBackToDashboard = () => {
-    navigate("/dashboard");
+    navigate("/dashboard", {
+      state: {
+        dateFilter: dateFilter,
+        customDateRange: customDateRange,
+      },
+    });
   };
 
   const handleBackToCategories = () => {

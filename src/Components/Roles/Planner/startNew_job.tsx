@@ -14,78 +14,76 @@ const StartNewJob: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>(""); // For search functionality
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]); // For filtered search results
   const [activeVisible, setActiveVisible] = useState(50);
-const [inactiveVisible, setInactiveVisible] = useState(50);
-
+  const [inactiveVisible, setInactiveVisible] = useState(50);
 
   // Function to fetch all jobs
- const fetchJobs = async () => {
-  setLoading(true);
-  setError(null);
-  try {
-    const accessToken = localStorage.getItem("accessToken");
+  const fetchJobs = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const accessToken = localStorage.getItem("accessToken");
 
-    if (!accessToken) {
-      setError("Authentication token not found. Please log in.");
+      if (!accessToken) {
+        setError("Authentication token not found. Please log in.");
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch("https://nrprod.nrcontainers.com/api/jobs", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+          // 🔥 ADD THESE CACHE-BUSTING HEADERS
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      });
+
+      // Rest of your code remains the same...
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message ||
+            `Failed to fetch jobs: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      if (data.success && Array.isArray(data.data)) {
+        const processedJobs: Job[] = data.data.map((j: any) => ({
+          ...j,
+          poNumber: j.poNumber || null,
+          unit: j.unit || null,
+          plant: j.plant || null,
+          totalPOQuantity: j.totalPOQuantity || null,
+          dispatchQuantity: j.dispatchQuantity || null,
+          pendingQuantity: j.pendingQuantity || null,
+          noOfSheets: j.noOfSheets || null,
+          poDate: j.poDate || null,
+          deliveryDate: j.deliveryDate || null,
+          dispatchDate: j.dispatchDate || null,
+          nrcDeliveryDate: j.nrcDeliveryDate || null,
+          jobSteps: j.jobSteps || null,
+          jobDemand: j.jobDemand || null,
+          machineId: j.machineId || null,
+        }));
+        setJobs(processedJobs);
+      } else {
+        setError("Unexpected API response format or data is not an array.");
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred.");
+      }
+      console.error("Fetch Jobs Error:", err);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const response = await fetch("https://nrprod.nrcontainers.com/api/jobs", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-        // 🔥 ADD THESE CACHE-BUSTING HEADERS
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0"
-      },
-    });
-
-    // Rest of your code remains the same...
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        errorData.message ||
-          `Failed to fetch jobs: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const data = await response.json();
-    if (data.success && Array.isArray(data.data)) {
-      const processedJobs: Job[] = data.data.map((j: any) => ({
-        ...j,
-        poNumber: j.poNumber || null,
-        unit: j.unit || null,
-        plant: j.plant || null,
-        totalPOQuantity: j.totalPOQuantity || null,
-        dispatchQuantity: j.dispatchQuantity || null,
-        pendingQuantity: j.pendingQuantity || null,
-        noOfSheets: j.noOfSheets || null,
-        poDate: j.poDate || null,
-        deliveryDate: j.deliveryDate || null,
-        dispatchDate: j.dispatchDate || null,
-        nrcDeliveryDate: j.nrcDeliveryDate || null,
-        jobSteps: j.jobSteps || null,
-        jobDemand: j.jobDemand || null,
-        machineId: j.machineId || null,
-      }));
-      setJobs(processedJobs);
-    } else {
-      setError("Unexpected API response format or data is not an array.");
-    }
-  } catch (err) {
-    if (err instanceof Error) {
-      setError(err.message);
-    } else {
-      setError("An unknown error occurred.");
-    }
-    console.error("Fetch Jobs Error:", err);
-  } finally {
-    setLoading(false);
-  }
-};
-
+  };
 
   // Function to handle updating job status (from JobDetailModal - "Continue with this job")
   const handleContinueJob = async (nrcJobNo: string) => {
@@ -333,102 +331,97 @@ const [inactiveVisible, setInactiveVisible] = useState(50);
             <>
               {/* Active Jobs Section */}
               {/* Active Jobs Section */}
-<section className="mb-10">
-  <h2 className="text-2xl font-semibold text-gray-700 mb-6 border-b pb-2">
-    Active Jobs ({activeJobs.length})
-  </h2>
-  {activeJobs.length === 0 ? (
-    <p className="text-gray-500 text-center py-8">
-      No active jobs found.
-    </p>
-  ) : (
-    <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-        {activeJobs.slice(0, activeVisible).map((job) => (
-          <JobCard
-            key={job.id}
-            job={job}
-            onClick={setSelectedJob}
-          />
-        ))}
-      </div>
+              <section className="mb-10">
+                <h2 className="text-2xl font-semibold text-gray-700 mb-6 border-b pb-2">
+                  Active Jobs ({activeJobs.length})
+                </h2>
+                {activeJobs.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">
+                    No active jobs found.
+                  </p>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                      {activeJobs.slice(0, activeVisible).map((job) => (
+                        <JobCard
+                          key={job.id}
+                          job={job}
+                          onClick={setSelectedJob}
+                        />
+                      ))}
+                    </div>
 
-      {activeVisible < activeJobs.length && (
-        <div className="flex justify-center mt-6">
-          <button
-            onClick={() => setActiveVisible((prev) => prev + 50)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700"
-          >
-            Load More
-          </button>
-        </div>
-      )}
-    </>
-  )}
-</section>
-
+                    {activeVisible < activeJobs.length && (
+                      <div className="flex justify-center mt-6">
+                        <button
+                          onClick={() => setActiveVisible((prev) => prev + 50)}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700"
+                        >
+                          Load More
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
 
               {/* Inactive Jobs Section */}
               {/* Inactive Jobs Section */}
-<section>
-  <h2 className="text-2xl font-semibold text-gray-700 mb-6 border-b pb-2">
-    Inactive Jobs ({inactiveJobs.length})
-  </h2>
-  {inactiveJobs.length === 0 ? (
-    <p className="text-gray-500 text-center py-8">
-      No inactive jobs found.
-    </p>
-  ) : (
-    <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-        {inactiveJobs.slice(0, inactiveVisible).map((job) => (
-          <JobCard
-            key={job.id}
-            job={job}
-            onClick={setSelectedJob}
-          />
-        ))}
-      </div>
+              <section>
+                <h2 className="text-2xl font-semibold text-gray-700 mb-6 border-b pb-2">
+                  Inactive Jobs ({inactiveJobs.length})
+                </h2>
+                {inactiveJobs.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">
+                    No inactive jobs found.
+                  </p>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                      {inactiveJobs.slice(0, inactiveVisible).map((job) => (
+                        <JobCard
+                          key={job.id}
+                          job={job}
+                          onClick={setSelectedJob}
+                        />
+                      ))}
+                    </div>
 
-      {inactiveVisible < inactiveJobs.length && (
-        <div className="flex justify-center mt-6">
-          <button
-            onClick={() => setInactiveVisible((prev) => prev + 50)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700"
-          >
-            Load More
-          </button>
-        </div>
-      )}
-    </>
-  )}
-</section>
-
+                    {inactiveVisible < inactiveJobs.length && (
+                      <div className="flex justify-center mt-6">
+                        <button
+                          onClick={() =>
+                            setInactiveVisible((prev) => prev + 50)
+                          }
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700"
+                        >
+                          Load More
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
             </>
           )}
         </>
       )}
 
-    
-
-{selectedJob && (
-  <JobDetailModal
-    job={selectedJob}
-    onClose={() => {
-      setSelectedJob(null);
-      // Refresh data immediately when modal closes
-      fetchJobs();
-    }}
-    onContinueJob={handleContinueJob}
-    onRefresh={async () => {
-      // Simple refresh - just update the jobs list
-      await fetchJobs();
-    }}
-  />
-)}
-
-
-
+      {selectedJob && (
+        <JobDetailModal
+          job={selectedJob}
+          onClose={() => {
+            setSelectedJob(null);
+            // Refresh data immediately when modal closes
+            fetchJobs();
+          }}
+          onContinueJob={handleContinueJob}
+          onRefresh={async () => {
+            // Simple refresh - just update the jobs list
+            await fetchJobs();
+          }}
+        />
+      )}
     </div>
   );
 };

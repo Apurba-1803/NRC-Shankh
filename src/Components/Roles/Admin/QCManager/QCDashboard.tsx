@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -23,106 +23,17 @@ const QCDashboard: React.FC = () => {
   const [selectedQC, setSelectedQC] = useState<QCData | null>(null);
   const [showDetailPanel, setShowDetailPanel] = useState(false);
   const [showAllData, setShowAllData] = useState(false);
-  const [completedJobs, setCompletedJobs] = useState<any[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const accessToken = localStorage.getItem("accessToken");
-        if (!accessToken) {
-          throw new Error("Authentication token not found");
-        }
-
-        // Fetch completed jobs from current month
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-        const queryParams = new URLSearchParams();
-        queryParams.append(
-          "startDate",
-          startOfMonth.toISOString().split("T")[0]
-        );
-        queryParams.append("endDate", endOfMonth.toISOString().split("T")[0]);
-
-        const [data, summary, completedJobsResponse] = await Promise.all([
+        const [data, summary] = await Promise.all([
           qcService.getAllQCData(),
           qcService.getQCStatistics(),
-          fetch(
-            `https://nrprod.nrcontainers.com/api/completed-jobs?${queryParams.toString()}`,
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "Content-Type": "application/json",
-              },
-            }
-          ),
         ]);
-
         setQcData(data);
         setSummaryData(summary);
-
-        // Process completed jobs data
-        if (completedJobsResponse.ok) {
-          const completedJobsResult = await completedJobsResponse.json();
-          console.log("QC - Completed jobs API response:", completedJobsResult);
-
-          if (
-            completedJobsResult.success &&
-            Array.isArray(completedJobsResult.data)
-          ) {
-            console.log("QC - Completed jobs data:", completedJobsResult.data);
-
-            // Filter for QualityDept steps and map to QCData format
-            const qcCompletedJobs = completedJobsResult.data.flatMap(
-              (job: any) => {
-                console.log(
-                  "QC - Processing job:",
-                  job.nrcJobNo,
-                  "allStepDetails:",
-                  job.allStepDetails
-                );
-                const qcSteps = job.allStepDetails?.qualityDept || [];
-                console.log("QC - Quality steps found:", qcSteps);
-
-                return qcSteps.map((step: any) => ({
-                  id: step.id || 0,
-                  jobNrcJobNo: step.jobNrcJobNo || job.nrcJobNo || "-",
-                  status: step.status || "stop", // Use the actual status from step
-                  date:
-                    step.date || job.completedAt || new Date().toISOString(),
-                  shift: step.shift || null,
-                  operatorName: step.operatorName || null,
-                  checkedBy: step.qcCheckSignBy || "-",
-                  quantity: step.quantity || 0,
-                  rejectedQty: step.rejectedQty || 0,
-                  reasonForRejection: step.reasonForRejection || "-",
-                  remarks: step.remarks || "-",
-                  qcCheckSignBy: step.qcCheckSignBy || null,
-                  jobStepId: step.jobStepId || null,
-                  stepNo: 7,
-                  stepName: "QualityDept",
-                  startDate: step.date || null,
-                  endDate: step.date || null,
-                  user: step.operatorName || null,
-                  machineDetails: [],
-                  jobPlanId: job.jobPlanId || null,
-                  qualityDetails: step,
-                }));
-              }
-            );
-            console.log("QC - Processed completed jobs:", qcCompletedJobs);
-            setCompletedJobs(qcCompletedJobs);
-          } else {
-            console.log("QC - No completed jobs data or invalid format");
-          }
-        } else {
-          console.log(
-            "QC - Completed jobs API failed:",
-            completedJobsResponse.status
-          );
-        }
       } catch (error) {
         console.error("Error loading QC data:", error);
       } finally {
@@ -132,83 +43,8 @@ const QCDashboard: React.FC = () => {
     loadData();
   }, []);
 
-  // Combine qcData with completed jobs
-  const allQCData = [...qcData, ...completedJobs];
-  console.log("QC - Original qc data:", qcData);
-  console.log("QC - Completed jobs data:", completedJobs);
-  console.log("QC - Combined all qc data:", allQCData);
-
-  // Calculate updated summary data including completed jobs
-  const updatedSummaryData = useMemo(() => {
-    if (!summaryData) return null;
-
-    const totalQCChecks = allQCData.length;
-    const totalQuantityChecked = allQCData.reduce(
-      (sum, item) => sum + (item.quantity || 0),
-      0
-    );
-    const totalRejectedQuantity = allQCData.reduce(
-      (sum, item) => sum + (item.rejectedQty || 0),
-      0
-    );
-    const totalAcceptedQuantity = totalQuantityChecked - totalRejectedQuantity;
-    const rejectionPercentage =
-      totalQuantityChecked > 0
-        ? (totalRejectedQuantity / totalQuantityChecked) * 100
-        : 0;
-    const plannedChecks = allQCData.filter(
-      (item) => item.status === "planned"
-    ).length;
-    const inProgressChecks = allQCData.filter(
-      (item) => item.status === "start" || item.status === "pending"
-    ).length;
-    const completedChecks = allQCData.filter(
-      (item) =>
-        item.status === "accept" ||
-        item.status === "rejected" ||
-        item.status === "stop"
-    ).length;
-
-    // Find top rejection reason
-    const rejectionReasons = allQCData
-      .filter((item) => item.rejectedQty > 0)
-      .reduce((acc, item) => {
-        const reason = item.reasonForRejection || "Unknown";
-        acc[reason] = (acc[reason] || 0) + item.rejectedQty;
-        return acc;
-      }, {} as Record<string, number>);
-
-    const topRejectionReason =
-      Object.keys(rejectionReasons).length > 0
-        ? Object.entries(rejectionReasons).sort(
-            ([, a], [, b]) => (b as number) - (a as number)
-          )[0][0]
-        : "No rejections";
-
-    const topRejectionCount =
-      Object.keys(rejectionReasons).length > 0
-        ? Object.entries(rejectionReasons).sort(
-            ([, a], [, b]) => (b as number) - (a as number)
-          )[0][1]
-        : 0;
-
-    return {
-      ...summaryData,
-      totalQCChecks,
-      totalQuantityChecked,
-      totalAcceptedQuantity,
-      totalRejectedQuantity,
-      rejectionPercentage: Math.round(rejectionPercentage * 100) / 100,
-      topRejectionReason,
-      topRejectionCount,
-      plannedChecks,
-      inProgressChecks,
-      completedChecks,
-    };
-  }, [summaryData, allQCData]);
-
   // Filter data based on search and status
-  const filteredData = allQCData.filter((item) => {
+  const filteredData = qcData.filter((item) => {
     const matchesSearch =
       item.jobNrcJobNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.operatorName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -430,7 +266,7 @@ const QCDashboard: React.FC = () => {
                 Total QC Checks
               </p>
               <p className="text-xl font-bold text-blue-600">
-                {updatedSummaryData?.totalQCChecks || 0}
+                {summaryData?.totalQCChecks || 0}
               </p>
             </div>
             <div className="bg-blue-100 p-3 rounded-xl">
@@ -446,9 +282,7 @@ const QCDashboard: React.FC = () => {
                 Quantity Checked
               </p>
               <p className="text-xl font-bold text-indigo-600">
-                {(
-                  updatedSummaryData?.totalQuantityChecked || 0
-                ).toLocaleString()}
+                {(summaryData?.totalQuantityChecked || 0).toLocaleString()}
               </p>
             </div>
             <div className="bg-indigo-100 p-3 rounded-xl">
@@ -462,9 +296,7 @@ const QCDashboard: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Accepted Qty</p>
               <p className="text-xl font-bold text-green-600">
-                {(
-                  updatedSummaryData?.totalAcceptedQuantity || 0
-                ).toLocaleString()}
+                {(summaryData?.totalAcceptedQuantity || 0).toLocaleString()}
               </p>
             </div>
             <div className="bg-green-100 p-3 rounded-xl">
@@ -478,9 +310,7 @@ const QCDashboard: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Rejected Qty</p>
               <p className="text-xl font-bold text-red-600">
-                {(
-                  updatedSummaryData?.totalRejectedQuantity || 0
-                ).toLocaleString()}
+                {(summaryData?.totalRejectedQuantity || 0).toLocaleString()}
               </p>
             </div>
             <div className="bg-red-100 p-3 rounded-xl">
@@ -494,7 +324,7 @@ const QCDashboard: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Rejection %</p>
               <p className="text-xl font-bold text-orange-600">
-                {updatedSummaryData?.rejectionPercentage || 0}%
+                {summaryData?.rejectionPercentage || 0}%
               </p>
             </div>
             <div className="bg-orange-100 p-3 rounded-xl">
@@ -508,11 +338,10 @@ const QCDashboard: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Top Reason</p>
               <p className="text-lg font-bold text-gray-900 truncate">
-                {updatedSummaryData?.topRejectionReason || "N/A"}
+                {summaryData?.topRejectionReason || "N/A"}
               </p>
               <p className="text-sm text-gray-500">
-                {(updatedSummaryData?.topRejectionCount || 0).toLocaleString()}{" "}
-                qty
+                {(summaryData?.topRejectionCount || 0).toLocaleString()} qty
               </p>
             </div>
             <div className="bg-gray-100 p-3 rounded-xl">
@@ -528,7 +357,7 @@ const QCDashboard: React.FC = () => {
                 Pending Checks
               </p>
               <p className="text-xl font-bold text-yellow-600">
-                {updatedSummaryData?.inProgressChecks || 0}
+                {qcData.filter((item) => item.status === "pending").length}
               </p>
             </div>
             <div className="bg-yellow-100 p-3 rounded-xl">

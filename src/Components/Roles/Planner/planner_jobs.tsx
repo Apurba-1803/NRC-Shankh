@@ -69,7 +69,6 @@ interface PurchaseOrder {
   jobPlanUpdatedAt?: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface Job {
   id: number;
   nrcJobNo: string;
@@ -143,6 +142,13 @@ const PlannerJobs: React.FC = () => {
   // State for PO data
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [filteredPOs, setFilteredPOs] = useState<PurchaseOrder[]>([]);
+
+  // State for job search
+  const [searchedJob, setSearchedJob] = useState<Job | null>(null);
+  const [jobOptions, setJobOptions] = useState<Job[]>([]);
+  const [typingTimeout, setTypingTimeout] = useState<ReturnType<
+    typeof setTimeout
+  > | null>(null);
 
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
@@ -461,25 +467,17 @@ const PlannerJobs: React.FC = () => {
   useEffect(() => {
     let basePOs = purchaseOrders;
 
-    // Apply search filter if search term exists
-    if (searchTerm.trim()) {
-      basePOs = basePOs.filter((po) => {
-        const searchLower = searchTerm.toLowerCase();
-        return (
-          po.poNumber?.toLowerCase().includes(searchLower) ||
-          po.style?.toLowerCase().includes(searchLower) ||
-          po.customer?.toLowerCase().includes(searchLower) ||
-          po.jobNrcJobNo?.toLowerCase().includes(searchLower) ||
-          po.job?.nrcJobNo?.toLowerCase().includes(searchLower) ||
-          po.job?.styleItemSKU?.toLowerCase().includes(searchLower)
-        );
-      });
+    // If there's a searched job, filter by that first
+    if (searchedJob) {
+      basePOs = purchaseOrders.filter(
+        (po) => po.jobNrcJobNo === searchedJob.nrcJobNo
+      );
     }
 
     // Apply additional filters
     const filtered = applyFilters(basePOs);
     setFilteredPOs(filtered);
-  }, [filters, purchaseOrders, searchTerm]);
+  }, [filters, purchaseOrders, searchedJob]);
 
   const handleBulkJobPlanning = async (jobPlanningData: any) => {
     try {
@@ -662,9 +660,90 @@ const PlannerJobs: React.FC = () => {
     }
   };
 
-  // Handle search input change - simple client-side search
+  // Handle search input change
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
+    const value = e.target.value;
+    setSearchTerm(value);
+
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+
+    // If empty, clear search results and show all POs
+    if (!value.trim()) {
+      setJobOptions([]);
+      setSearchedJob(null);
+      setFilteredPOs(purchaseOrders); // Reset to all POs
+      return;
+    }
+
+    // Filter POs locally by PO number, job number, style, or customer
+    const filtered = purchaseOrders.filter((po) => {
+      const searchLower = value.toLowerCase();
+
+      // Search in PO number
+      const poNumberMatch = po.poNumber?.toLowerCase().includes(searchLower);
+
+      // Search in Job number (both from job object and direct field)
+      const jobNumberMatch =
+        po.job?.nrcJobNo?.toLowerCase().includes(searchLower) ||
+        po.jobNrcJobNo?.toLowerCase().includes(searchLower);
+
+      // Search in Style (both from PO and job)
+      const styleMatch =
+        po.style?.toLowerCase().includes(searchLower) ||
+        po.job?.styleItemSKU?.toLowerCase().includes(searchLower);
+
+      // Search in Customer name (both from PO and job)
+      const customerMatch =
+        po.customer?.toLowerCase().includes(searchLower) ||
+        po.job?.customerName?.toLowerCase().includes(searchLower);
+
+      return poNumberMatch || jobNumberMatch || styleMatch || customerMatch;
+    });
+
+    setFilteredPOs(filtered);
+
+    // debounce API call for job search dropdown
+    const timeout = setTimeout(() => {
+      if (value.trim()) {
+        searchJob(value);
+      } else {
+        setJobOptions([]);
+        setSearchedJob(null);
+      }
+    }, 300);
+
+    setTypingTimeout(timeout);
+  };
+
+  // modified searchJob (takes term directly instead of using searchTerm state)
+  const searchJob = async (term: string) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) return;
+
+      const response = await fetch("https://nrprod.nrcontainers.com/api/jobs", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) throw new Error(`Failed: ${response.status}`);
+
+      const data = await response.json();
+      if (data.success && Array.isArray(data.data)) {
+        const activeJobs = data.data.filter((job: Job) =>
+          job.nrcJobNo.toLowerCase().includes(term.toLowerCase())
+        );
+        setJobOptions(activeJobs);
+      }
+    } catch (err) {
+      console.error("Search Job Error:", err);
+      setJobOptions([]);
+    }
   };
 
   // Handle PO card click
@@ -1151,6 +1230,7 @@ const PlannerJobs: React.FC = () => {
   };
 
   console.log("filtered pos", filteredPOs);
+  console.log("searched job", searchedJob);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
@@ -1198,7 +1278,7 @@ const PlannerJobs: React.FC = () => {
               type="text"
               value={searchTerm}
               onChange={handleSearchChange}
-              placeholder="Search POs by PO Number, Style, Customer, Job No..."
+              placeholder="Search by PO Number, Job Number, Style, or Customer..."
               className="w-full pl-10 pr-10 py-2 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
             />
             <Search
@@ -1207,11 +1287,45 @@ const PlannerJobs: React.FC = () => {
             />
             {searchTerm && (
               <button
-                onClick={() => setSearchTerm("")}
+                onClick={() => {
+                  setSearchTerm("");
+                  setJobOptions([]);
+                  setSearchedJob(null);
+                  setFilteredPOs(purchaseOrders);
+                }}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 <X size={18} />
               </button>
+            )}
+
+            {/* Job Search Dropdown */}
+            {searchTerm && jobOptions.length > 0 && (
+              <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {jobOptions.map((job) => (
+                  <li
+                    key={job.id}
+                    onClick={() => {
+                      setSearchTerm(job.nrcJobNo);
+                      setSearchedJob(job);
+                      setJobOptions([]);
+                      // Filter POs by the selected job number
+                      const filtered = purchaseOrders.filter((po) => {
+                        const jobNumberMatch =
+                          po.job?.nrcJobNo?.toLowerCase() ===
+                            job.nrcJobNo.toLowerCase() ||
+                          po.jobNrcJobNo?.toLowerCase() ===
+                            job.nrcJobNo.toLowerCase();
+                        return jobNumberMatch;
+                      });
+                      setFilteredPOs(filtered);
+                    }}
+                    className="px-3 py-2 cursor-pointer hover:bg-blue-100 text-sm"
+                  >
+                    {job.nrcJobNo}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 
@@ -1536,6 +1650,59 @@ const PlannerJobs: React.FC = () => {
         />
       )}
 
+      {/* Searched Job Details */}
+      {searchedJob && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-6">
+          <h3 className="text-base sm:text-lg font-semibold text-blue-800 mb-3">
+            Job Details
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div>
+              <p className="text-xs sm:text-sm text-blue-600 font-medium">
+                NRC Job No
+              </p>
+              <p className="text-xs sm:text-sm text-blue-800 truncate">
+                {searchedJob.nrcJobNo}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs sm:text-sm text-blue-600 font-medium">
+                Customer
+              </p>
+              <p className="text-xs sm:text-sm text-blue-800 truncate">
+                {searchedJob.customerName}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs sm:text-sm text-blue-600 font-medium">
+                Style
+              </p>
+              <p className="text-xs sm:text-sm text-blue-800 truncate">
+                {searchedJob.styleItemSKU}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs sm:text-sm text-blue-600 font-medium">
+                Status
+              </p>
+              <p className="text-xs sm:text-sm text-blue-800">
+                {searchedJob.status}
+              </p>
+            </div>
+          </div>
+          <div className="mt-3">
+            <p className="text-xs sm:text-sm text-blue-600 font-medium">
+              Completion Status
+            </p>
+            <p className="text-xs sm:text-sm text-blue-800">
+              {checkPOCompletionStatus(searchedJob)
+                .replace("_", " ")
+                .toUpperCase()}
+            </p>
+          </div>
+        </div>
+      )}
+
       {loading && (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-t-4 border-b-4 border-blue-500"></div>
@@ -1573,7 +1740,7 @@ const PlannerJobs: React.FC = () => {
           {filteredPOs.length === 0 ? (
             <div className="text-center py-8 sm:py-12">
               <p className="text-gray-500 text-base sm:text-lg">
-                {searchTerm || activeFilterCount > 0
+                {searchedJob || activeFilterCount > 0
                   ? "No purchase orders found matching the current search and filters."
                   : "No purchase orders found."}
               </p>

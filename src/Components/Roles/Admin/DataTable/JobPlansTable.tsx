@@ -366,7 +366,9 @@ const JobPlansTable: React.FC<JobPlansTableProps> = ({
                           : "bg-green-100 text-green-800"
                       }`}
                     >
-                      {jobPlan.jobDemand === "medium"
+                      {jobPlan.jobDemand === "high"
+                        ? "Urgent"
+                        : jobPlan.jobDemand === "medium"
                         ? "Regular"
                         : jobPlan.jobDemand}
                     </span>
@@ -463,7 +465,9 @@ const JobPlansTable: React.FC<JobPlansTableProps> = ({
                 {
                   label: "Demand",
                   value:
-                    selectedJobPlan.jobDemand === "medium"
+                    selectedJobPlan.jobDemand === "high"
+                      ? "Urgent"
+                      : selectedJobPlan.jobDemand === "medium"
                       ? "Regular"
                       : selectedJobPlan.jobDemand,
                   color: "purple",

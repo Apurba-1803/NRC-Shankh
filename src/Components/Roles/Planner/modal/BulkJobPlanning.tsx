@@ -309,6 +309,12 @@ export const BulkJobPlanningModal: React.FC<BulkJobPlanningModalProps> = ({
                 <span>&#9660;</span>
               </div>
 
+              {jobDemand === "high" && (
+                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                  <strong>Urgent:</strong> Flexible machine assignment - not all
+                  machines required
+                </div>
+              )}
               {jobDemand === "medium" && (
                 <div className="mt-2 p-2 bg-[#00AEEF]/20 border border-[#00AEEF]/30 rounded text-xs text-[#00AEEF]">
                   <strong>Regular:</strong> Machine assignment is mandatory for
@@ -341,6 +347,12 @@ export const BulkJobPlanningModal: React.FC<BulkJobPlanningModalProps> = ({
                 <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
                   <strong>Required:</strong> All selected steps must have
                   machine assignments for Regular demand
+                </div>
+              )}
+              {jobDemand === "high" && (
+                <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-700">
+                  <strong>Flexible:</strong> Machine assignment is optional for
+                  Urgent demand
                 </div>
               )}
 

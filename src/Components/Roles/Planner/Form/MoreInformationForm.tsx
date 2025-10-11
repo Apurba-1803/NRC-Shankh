@@ -261,11 +261,11 @@ const MoreInformationForm: React.FC<MoreInformationFormProps> = ({
             </div>
 
             {/* Demand-specific info */}
-            {/* {jobDemand === 'high' && (
+            {jobDemand === 'high' && (
               <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
                 <strong>Urgent:</strong> Flexible machine assignment - not all machines required
               </div>
-            )} */}
+            )}
             {jobDemand === "medium" && (
               <div className="mt-2 p-2 bg-[#00AEEF]/20 border border-[#00AEEF]/30 rounded text-xs text-[#00AEEF]">
                 <strong>Regular:</strong> Machine assignment is mandatory for

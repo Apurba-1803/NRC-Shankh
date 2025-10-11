@@ -1,5 +1,11 @@
-import React from 'react';
-import { TrendingUp, CheckCircle, PlayCircle, Clock, PauseCircle } from 'lucide-react';
+import React from "react";
+import {
+  TrendingUp,
+  CheckCircle,
+  PlayCircle,
+  Clock,
+  PauseCircle,
+} from "lucide-react";
 
 interface JobPlan {
   id: number;
@@ -77,25 +83,22 @@ interface CompletedJob {
   createdAt: string;
 }
 
-
-
 interface JobBarsChartProps {
   jobs: (CompletedJob | JobPlan)[];
-  category: 'completed' | 'inProgress' | 'planned' | 'held';
+  category: "completed" | "inProgress" | "planned" | "held";
   onJobClick: (job: CompletedJob | JobPlan) => void;
   searchTerm: string;
 }
 
-const JobBarsChart: React.FC<JobBarsChartProps> = ({ 
-  jobs, 
-  category, 
-  onJobClick, 
-  searchTerm 
+const JobBarsChart: React.FC<JobBarsChartProps> = ({
+  jobs,
+  category,
+  onJobClick,
+  searchTerm,
 }) => {
-
   // Helper function to get company/customer name
   const getCompanyName = (job: CompletedJob | JobPlan) => {
-    if ('company' in job) {
+    if ("company" in job) {
       return job.company;
     } else {
       return job.jobDetails?.customerName;
@@ -104,7 +107,7 @@ const JobBarsChart: React.FC<JobBarsChartProps> = ({
 
   // Helper function to get steps
   const getSteps = (job: CompletedJob | JobPlan) => {
-    if ('steps' in job) {
+    if ("steps" in job) {
       return job.steps;
     } else {
       return job.allSteps;
@@ -112,47 +115,47 @@ const JobBarsChart: React.FC<JobBarsChartProps> = ({
   };
 
   // Filter jobs based on search term
-  const filteredJobs = jobs.filter(job => 
+  const filteredJobs = jobs.filter((job) =>
     job.nrcJobNo.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Get category-specific styling
   const getCategoryStyles = () => {
     switch (category) {
-      case 'completed':
+      case "completed":
         return {
-          bgColor: 'bg-green-500 hover:bg-green-600',
-          borderColor: 'border-green-600',
+          bgColor: "bg-green-500 hover:bg-green-600",
+          borderColor: "border-green-600",
           icon: <CheckCircle className="h-4 w-4 text-white" />,
-          label: 'Completed'
+          label: "Completed",
         };
-      case 'inProgress':
+      case "inProgress":
         return {
-          bgColor: 'bg-yellow-500 hover:bg-yellow-600',
-          borderColor: 'border-yellow-600',
+          bgColor: "bg-yellow-500 hover:bg-yellow-600",
+          borderColor: "border-yellow-600",
           icon: <PlayCircle className="h-4 w-4 text-white" />,
-          label: 'In Progress'
+          label: "In Progress",
         };
-      case 'planned':
+      case "planned":
         return {
-          bgColor: 'bg-gray-500 hover:bg-gray-600',
-          borderColor: 'border-gray-600',
+          bgColor: "bg-gray-500 hover:bg-gray-600",
+          borderColor: "border-gray-600",
           icon: <Clock className="h-4 w-4 text-white" />,
-          label: 'Planned'
+          label: "Planned",
         };
-      case 'held':
+      case "held":
         return {
-          bgColor: 'bg-orange-500 hover:bg-orange-600',
-          borderColor: 'border-orange-600',
+          bgColor: "bg-orange-500 hover:bg-orange-600",
+          borderColor: "border-orange-600",
           icon: <PauseCircle className="h-4 w-4 text-white" />,
-          label: 'Held'
+          label: "Held",
         };
       default:
         return {
-          bgColor: 'bg-blue-500 hover:bg-blue-600',
-          borderColor: 'border-blue-600',
+          bgColor: "bg-blue-500 hover:bg-blue-600",
+          borderColor: "border-blue-600",
           icon: <TrendingUp className="h-4 w-4 text-white" />,
-          label: 'Unknown'
+          label: "Unknown",
         };
     }
   };
@@ -163,7 +166,9 @@ const JobBarsChart: React.FC<JobBarsChartProps> = ({
     return (
       <div className="text-center py-8">
         <p className="text-gray-500">
-          {searchTerm ? 'No jobs found matching your search.' : `No ${styles.label.toLowerCase()} jobs found.`}
+          {searchTerm
+            ? "No jobs found matching your search."
+            : `No ${styles.label.toLowerCase()} jobs found.`}
         </p>
       </div>
     );
@@ -177,7 +182,7 @@ const JobBarsChart: React.FC<JobBarsChartProps> = ({
           {styles.label} Jobs ({filteredJobs.length})
         </h3>
       </div>
-      
+
       <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
         {filteredJobs.map((job, index) => (
           <div
@@ -194,55 +199,110 @@ const JobBarsChart: React.FC<JobBarsChartProps> = ({
               <div className="flex-1">
                 <h4 className="font-bold text-sm mb-1">{job.nrcJobNo}</h4>
                 <p className="text-xs opacity-90">
-                  {getCompanyName(job) || 'N/A'}
+                  {getCompanyName(job) || "N/A"}
                 </p>
-                {'completedBy' in job && job.completedBy && (
+                {"completedBy" in job && job.completedBy && (
                   <p className="text-xs opacity-75 mt-1">
                     Completed by: {job.completedBy}
                   </p>
                 )}
-                
+
                 {/* Show held step information for held jobs */}
-                {category === 'held' && 'steps' in job && (
+                {category === "held" && "steps" in job && (
                   <p className="text-xs opacity-75 mt-1">
                     {(() => {
-                      const heldStep = job.steps.find(step => 
-                        step.stepDetails?.data?.status === 'hold' ||
-                        step.stepDetails?.status === 'hold'
+                      const heldStep = job.steps.find(
+                        (step) =>
+                          step.stepDetails?.data?.status === "hold" ||
+                          step.stepDetails?.status === "hold"
                       );
-                      return heldStep ? `Held at: ${heldStep.stepName.replace(/([a-z])([A-Z])/g, '$1 $2')}` : 'On Hold';
+                      return heldStep
+                        ? `Held at: ${heldStep.stepName.replace(
+                            /([a-z])([A-Z])/g,
+                            "$1 $2"
+                          )}`
+                        : "On Hold";
                     })()}
                   </p>
                 )}
               </div>
-              
+
               <div className="text-right text-xs opacity-90">
                 <div className="mb-1">
                   {job.createdAt && (
-                    <p>Created: {new Date(job.createdAt).toLocaleDateString()}</p>
+                    <p>
+                      Created: {new Date(job.createdAt).toLocaleDateString()}
+                    </p>
                   )}
-                  {'completedAt' in job && job.completedAt && (
-                    <p>Completed: {new Date(job.completedAt).toLocaleDateString()}</p>
+                  {"completedAt" in job && job.completedAt && (
+                    <p>
+                      Completed:{" "}
+                      {new Date(job.completedAt).toLocaleDateString()}
+                    </p>
                   )}
                 </div>
-                {'totalDuration' in job && (job as any).totalDuration && (
+                {"totalDuration" in job && (job as any).totalDuration && (
                   <p>Duration: {(job as any).totalDuration} days</p>
                 )}
               </div>
             </div>
 
             {/* Progress indicator for in-progress jobs */}
-            {category === 'inProgress' && getSteps(job) && (
+            {category === "inProgress" && (
               <div className="mt-2">
                 <div className="flex justify-between text-xs mb-1">
                   <span>Progress</span>
-                  <span>{getSteps(job)?.filter((step: any) => (step.status || step.finalStatus) === 'completed').length || 0}/{getSteps(job)?.length || 0}</span>
+                  <span>
+                    {(() => {
+                      const completedSteps =
+                        getSteps(job)?.filter(
+                          (step: any) =>
+                            step.status === "stop" ||
+                            step.stepDetails?.data?.status === "accept" ||
+                            step.stepDetails?.status === "accept"
+                        ).length || 0;
+                      const totalSteps = getSteps(job)?.length || 0;
+
+                      // Debug logging
+                      console.log(`Job ${job.nrcJobNo} progress:`, {
+                        completedSteps,
+                        totalSteps,
+                        steps: getSteps(job),
+                        percentage:
+                          totalSteps > 0
+                            ? (completedSteps / totalSteps) * 100
+                            : 0,
+                      });
+
+                      return `${completedSteps}/${totalSteps}`;
+                    })()}
+                  </span>
                 </div>
-                <div className="w-full bg-white bg-opacity-30 rounded-full h-2">
-                  <div 
-                    className="bg-white h-2 rounded-full transition-all duration-300"
-                    style={{ 
-                      width: `${((getSteps(job)?.filter((step: any) => (step.status || step.finalStatus) === 'completed').length || 0) / (getSteps(job)?.length || 1)) * 100}%` 
+                <div className="w-full bg-gray-300 bg-opacity-50 rounded-full h-3">
+                  <div
+                    className="bg-white h-3 rounded-full transition-all duration-500 ease-out shadow-lg border border-gray-400"
+                    style={{
+                      width: `${(() => {
+                        const completedSteps =
+                          getSteps(job)?.filter(
+                            (step: any) =>
+                              step.status === "stop" ||
+                              step.stepDetails?.data?.status === "accept" ||
+                              step.stepDetails?.status === "accept"
+                          ).length || 0;
+                        const totalSteps = getSteps(job)?.length || 1;
+                        const percentage = (completedSteps / totalSteps) * 100;
+                        console.log(
+                          `Progress bar width for ${job.nrcJobNo}: ${percentage}%`
+                        );
+                        // Force minimum width to ensure visibility
+                        const finalPercentage = Math.max(percentage, 5); // Increased to 5% for better visibility
+                        console.log(
+                          `Final progress bar percentage: ${finalPercentage}%`
+                        );
+                        return finalPercentage;
+                      })()}%`,
+                      minWidth: "2%", // Ensure minimum visibility
                     }}
                   />
                 </div>
@@ -250,17 +310,61 @@ const JobBarsChart: React.FC<JobBarsChartProps> = ({
             )}
 
             {/* Progress indicator for held jobs - show progress up to hold point */}
-            {category === 'held' && getSteps(job) && (
+            {category === "held" && (
               <div className="mt-2">
                 <div className="flex justify-between text-xs mb-1">
                   <span>Progress (Held)</span>
-                  <span>{getSteps(job)?.filter((step: any) => step.status === 'stop' || step.status === 'completed').length || 0}/{getSteps(job)?.length || 0}</span>
+                  <span>
+                    {(() => {
+                      const completedSteps =
+                        getSteps(job)?.filter(
+                          (step: any) =>
+                            step.status === "stop" ||
+                            step.stepDetails?.data?.status === "accept" ||
+                            step.stepDetails?.status === "accept"
+                        ).length || 0;
+                      const totalSteps = getSteps(job)?.length || 0;
+
+                      // Debug logging
+                      console.log(`Held Job ${job.nrcJobNo} progress:`, {
+                        completedSteps,
+                        totalSteps,
+                        steps: getSteps(job),
+                        percentage:
+                          totalSteps > 0
+                            ? (completedSteps / totalSteps) * 100
+                            : 0,
+                      });
+
+                      return `${completedSteps}/${totalSteps}`;
+                    })()}
+                  </span>
                 </div>
-                <div className="w-full bg-white bg-opacity-30 rounded-full h-2">
-                  <div 
-                    className="bg-orange-300 h-2 rounded-full transition-all duration-300"
-                    style={{ 
-                      width: `${((getSteps(job)?.filter((step: any) => step.status === 'stop' || step.status === 'completed').length || 0) / (getSteps(job)?.length || 1)) * 100}%` 
+                <div className="w-full bg-gray-300 bg-opacity-50 rounded-full h-3">
+                  <div
+                    className="bg-orange-300 h-3 rounded-full transition-all duration-500 ease-out shadow-lg border border-orange-400"
+                    style={{
+                      width: `${(() => {
+                        const completedSteps =
+                          getSteps(job)?.filter(
+                            (step: any) =>
+                              step.status === "stop" ||
+                              step.stepDetails?.data?.status === "accept" ||
+                              step.stepDetails?.status === "accept"
+                          ).length || 0;
+                        const totalSteps = getSteps(job)?.length || 1;
+                        const percentage = (completedSteps / totalSteps) * 100;
+                        console.log(
+                          `Held progress bar width for ${job.nrcJobNo}: ${percentage}%`
+                        );
+                        // Force minimum width to ensure visibility
+                        const finalPercentage = Math.max(percentage, 5); // Increased to 5% for better visibility
+                        console.log(
+                          `Final held progress bar percentage: ${finalPercentage}%`
+                        );
+                        return finalPercentage;
+                      })()}%`,
+                      minWidth: "2%", // Ensure minimum visibility
                     }}
                   />
                 </div>
