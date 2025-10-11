@@ -15,7 +15,7 @@ import {
 import StartWorkConfirmModal from "../modal/StartWorkConfirmModal.tsx";
 import PaperStoreForm from "../Form/StepForms/PaperStoreForm.tsx";
 import GenericStepForm from "../Form/GenericStepForm.tsx"; // IMPORTED: The new Generic Form
-import { CheckCircle, PlayCircle, Pencil, Eye } from "lucide-react";
+import { CheckCircle, PlayCircle, Eye } from "lucide-react";
 import JobPlanningDetailModal from "../modal/JobPlanningDetailModal.tsx";
 
 interface JobStepsViewProps {
@@ -1116,7 +1116,6 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
     let icon = null;
     let statusText = "";
     let cardClasses = "bg-white";
-    let actionButton = null;
 
     if (isCompleted) {
       icon = <CheckCircle className="text-green-600 text-3xl" />;
@@ -1124,48 +1123,12 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
       cardClasses += " border-green-300";
     } else if (isStarted) {
       icon = <PlayCircle className="text-orange-500 text-3xl" />;
-      statusText = "Work started - Click to add/edit details";
+      statusText = "Work started";
       cardClasses += " border-orange-300";
-      actionButton = (
-        <button
-          className="ml-auto p-2 rounded-full hover:bg-gray-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            console.log(
-              "🔍 [Step Edit Button] - Opening form for step:",
-              step.stepName
-            );
-            console.log("🔍 [Step Edit Button] - Step ID:", step.id);
-            console.log("🔍 [Step Edit Button] - Step Status:", step.status);
-            setStepToEdit(step);
-            setShowStepSpecificForm(step.stepName);
-          }}
-        >
-          <Pencil className="text-gray-600 text-xl" />
-        </button>
-      );
     } else if (isNextPlannedStep && isPreviousStepCompleted) {
       icon = <PlayCircle className="text-blue-600 text-3xl" />;
-      statusText = "Ready to start - Click to begin work";
+      statusText = "Ready to start";
       cardClasses += " border-blue-300";
-      actionButton = (
-        <button
-          className="ml-auto p-2 rounded-full hover:bg-gray-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            console.log(
-              "🔍 [Start Work Button] - Starting work for step:",
-              step.stepName
-            );
-            console.log("🔍 [Start Work Button] - Step ID:", step.id);
-            console.log("🔍 [Start Work Button] - Step Status:", step.status);
-            setStepToStart(step);
-            setShowStartConfirmModal(true);
-          }}
-        >
-          <PlayCircle className="text-blue-600 text-xl" />
-        </button>
-      );
     } else {
       icon = (
         <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold">
@@ -1176,7 +1139,7 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
       cardClasses += " border-gray-200";
     }
 
-    return { icon, statusText, cardClasses, actionButton, isCompleted };
+    return { icon, statusText, cardClasses, isCompleted };
   };
 
   if (loading) {
@@ -1433,12 +1396,11 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
 
           const isNextPlannedStep = step.id === nextPlannedStep?.id;
 
-          const { icon, statusText, cardClasses, actionButton } =
-            getStepStatusVisual(
-              step,
-              isPreviousStepCompleted,
-              isNextPlannedStep
-            );
+          const { icon, statusText, cardClasses } = getStepStatusVisual(
+            step,
+            isPreviousStepCompleted,
+            isNextPlannedStep
+          );
 
           return (
             <div
@@ -1465,7 +1427,6 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
                 )}
               </div>
               <div className="flex items-center ml-auto mt-2 sm:mt-0">
-                {actionButton}
                 {(step.status === "stop" || step.status === "start") && (
                   <button
                     className="ml-2 p-2 rounded-full hover:bg-gray-100 flex-shrink-0"

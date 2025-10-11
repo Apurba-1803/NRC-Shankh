@@ -1,7 +1,12 @@
 // src/Components/Roles/Planner/JobPlanningCard.tsx
-import React from 'react';
-import { type JobPlan } from '../Types/job.ts'; // Adjust path as needed
-import { LuClipboardList, LuTruck, LuCalendarDays, LuTrendingUp } from "react-icons/lu"; // Using lucide-react for icons
+import React from "react";
+import { type JobPlan } from "../Types/job.ts"; // Adjust path as needed
+import {
+  LuClipboardList,
+  LuTruck,
+  LuCalendarDays,
+  LuTrendingUp,
+} from "react-icons/lu"; // Using lucide-react for icons
 
 interface JobPlanningCardProps {
   jobPlan: JobPlan;
@@ -9,29 +14,34 @@ interface JobPlanningCardProps {
   onCardClick: (jobPlan: JobPlan) => void; // NEW: For clicking the card itself
 }
 
-const JobPlanningCard: React.FC<JobPlanningCardProps> = ({ jobPlan, onClick, onCardClick }) => {
+const JobPlanningCard: React.FC<JobPlanningCardProps> = ({
+  jobPlan,
+  onClick,
+  onCardClick,
+}) => {
   const formatDate = (dateString: string) => {
-  try {
-    return new Date(dateString).toLocaleString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return 'N/A';
-  }
-};
-
+    try {
+      return new Date(dateString).toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "N/A";
+    }
+  };
 
   return (
     <div
       className="bg-white rounded-lg shadow-md p-4 flex flex-col justify-between h-full cursor-pointer" // Added cursor-pointer
       onClick={() => onCardClick(jobPlan)} // ADDED: Card click navigates to steps view
     >
-      <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">WORK ASSIGNMENT SUMMARY</h3>
+      <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">
+        WORK ASSIGNMENT SUMMARY
+      </h3>
 
       <div className="space-y-3 mb-4">
         <div className="flex items-center bg-blue-50 p-3 rounded-md">
@@ -54,7 +64,13 @@ const JobPlanningCard: React.FC<JobPlanningCardProps> = ({ jobPlan, onClick, onC
           <LuTrendingUp className="text-purple-600 text-xl mr-3" />
           <div className="flex flex-col">
             <p className="text-sm text-gray-600">Job Demand</p>
-            <p className="font-medium text-gray-900 capitalize">{jobPlan.jobDemand || 'N/A'}</p>
+            <p className="font-medium text-gray-900 capitalize">
+              {jobPlan.jobDemand === "high"
+                ? "Urgent"
+                : jobPlan.jobDemand === "medium"
+                ? "Regular"
+                : jobPlan.jobDemand || "N/A"}
+            </p>
           </div>
         </div>
 
@@ -62,7 +78,9 @@ const JobPlanningCard: React.FC<JobPlanningCardProps> = ({ jobPlan, onClick, onC
           <LuCalendarDays className="text-yellow-600 text-xl mr-3" />
           <div className="flex flex-col">
             <p className="text-sm text-gray-600">Created At</p>
-            <p className="font-medium text-gray-900">{formatDate(jobPlan.createdAt)}</p>
+            <p className="font-medium text-gray-900">
+              {formatDate(jobPlan.createdAt)}
+            </p>
           </div>
         </div>
       </div>
