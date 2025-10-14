@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { X, Upload, Image as ImageIcon } from "lucide-react";
+import { X, Image as ImageIcon } from "lucide-react";
 import { type Job } from "../Types/job";
 
 // interface Job {
@@ -45,21 +45,20 @@ interface JobDetailModalProps {
   job: Job;
   onClose: () => void;
   onContinueJob: (nrcJobNo: string) => Promise<void>;
-  onRefresh?: () => void; // Add refresh callback
+  onJobUpdate: (updatedJob: Job) => void; // NEW: Callback for optimistic updates
 }
 
 const JobDetailModal: React.FC<JobDetailModalProps> = ({
   job,
   onClose,
   onContinueJob,
-  onRefresh,
+  onJobUpdate,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editedJob, setEditedJob] = useState<Job>({ ...job });
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const [currentJob, setCurrentJob] = useState<Job>({ ...job });
 
   // Image upload states
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -223,10 +222,13 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({
     }
   }, [imagePreview]);
 
-  // Save changes
+  // Save changes with optimistic updates
   const handleSave = async () => {
     setIsSaving(true);
     setSaveMessage(null);
+
+    // Store original job for rollback on error
+    const originalJob = { ...job };
 
     try {
       const accessToken = localStorage.getItem("accessToken");
@@ -245,9 +247,12 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({
         }
       });
 
-      console.log("Original job imageURL:", job.imageURL);
-      console.log("Edited job imageURL:", editedJob.imageURL);
+      console.log("=== SAVE DEBUG INFO ===");
+      console.log("Original job:", job);
+      console.log("Edited job:", editedJob);
       console.log("Update payload:", updatePayload);
+      console.log("Payload as JSON:", JSON.stringify(updatePayload));
+      console.log("======================");
 
       // If no changes, just exit edit mode
       if (Object.keys(updatePayload).length === 0) {
@@ -256,6 +261,14 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({
         setTimeout(() => setSaveMessage(null), 3000);
         return;
       }
+
+      // 🎯 OPTIMISTIC UPDATE: Immediately update parent with new data
+      console.log("✅ Optimistic update: Updating UI with new data");
+      onJobUpdate(editedJob);
+
+      // Exit edit mode and show saving message
+      setIsEditing(false);
+      setSaveMessage("Saving changes...");
 
       // URL encode the job number for the API endpoint
       const encodedJobNo = encodeURIComponent(job.nrcJobNo);
@@ -276,6 +289,10 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("=== API ERROR RESPONSE ===");
+        console.error("Status:", response.status, response.statusText);
+        console.error("Error data:", errorData);
+        console.error("========================");
         throw new Error(
           errorData.message ||
             `Failed to update job: ${response.status} ${response.statusText}`
@@ -284,66 +301,61 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({
 
       const result = await response.json();
       if (result.success) {
-        setSaveMessage("Job details updated successfully!");
-        setIsEditing(false);
+        // ✅ Success: Fetch the latest data from the API to ensure consistency
+        console.log("✅ Save successful: Fetching latest data from API");
 
-        // Fetch the updated job from the database to ensure we have the latest data
         try {
-          const freshJobResponse = await fetch(
+          const fetchResponse = await fetch(
             `https://nrprod.nrcontainers.com/api/jobs/${encodedJobNo}`,
             {
               headers: {
                 Authorization: `Bearer ${accessToken}`,
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                Pragma: "no-cache",
+                Expires: "0",
               },
             }
           );
 
-          if (freshJobResponse.ok) {
-            const freshJobResult = await freshJobResponse.json();
-            if (freshJobResult.success && freshJobResult.data) {
-              console.log("Fresh job data from API:", freshJobResult.data);
-              console.log("Fresh imageURL:", freshJobResult.data.imageURL);
-
-              // Update both current job and edited job with fresh data
-              setCurrentJob(freshJobResult.data);
-              setEditedJob(freshJobResult.data);
-
-              // Update image preview with fresh data
-              console.log(
-                "Setting imagePreview to:",
-                freshJobResult.data.imageURL || null
-              );
-              setImagePreview(freshJobResult.data.imageURL || null);
-
-              // Clear any existing blob URLs to prevent memory leaks
-              if (imagePreview && imagePreview.startsWith("blob:")) {
-                URL.revokeObjectURL(imagePreview);
-              }
+          if (fetchResponse.ok) {
+            const fetchResult = await fetchResponse.json();
+            if (fetchResult.success && fetchResult.data) {
+              // Update with the actual data from the database
+              const freshJobData = fetchResult.data;
+              console.log("✅ Fresh data from API:", freshJobData);
+              onJobUpdate(freshJobData);
+              setEditedJob(freshJobData);
             }
           }
         } catch (fetchError) {
-          console.error("Error fetching fresh job data:", fetchError);
-          // Even if this fails, still update with what we have
-          setCurrentJob({ ...editedJob });
+          console.warn(
+            "Could not fetch latest data, keeping optimistic update:",
+            fetchError
+          );
         }
 
-        // Refresh parent data (updates the job cards)
-        if (onRefresh) {
-          await onRefresh();
-        }
+        setSaveMessage("Job details updated successfully!");
 
-        // Clear save message after 3 seconds (don't close modal)
+        // Keep modal open to show success message briefly
         setTimeout(() => {
           setSaveMessage(null);
-        }, 3000);
+        }, 2000);
       } else {
         throw new Error(result.message || "Failed to update job details.");
       }
     } catch (error) {
-      console.error("Save job error:", error);
+      console.error("❌ Save failed, reverting changes:", error);
+
+      // ❌ ROLLBACK: Revert to original data on error
+      onJobUpdate(originalJob);
+      setEditedJob(originalJob);
+
       setSaveMessage(
         `Error: ${error instanceof Error ? error.message : "Unknown error"}`
       );
+
+      // Auto-clear error message after 5 seconds
+      setTimeout(() => setSaveMessage(null), 5000);
     } finally {
       setIsSaving(false);
     }
@@ -375,7 +387,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({
     field: keyof Job,
     type: "text" | "number" | "date" = "text"
   ) => {
-    const value = isEditing ? editedJob[field] : currentJob[field];
+    const value = isEditing ? editedJob[field] : job[field];
 
     // Handle complex types that can't be edited directly in inputs
     const isComplexType =
@@ -503,7 +515,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({
           <div className="flex justify-between items-center w-full mb-6">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">
-                Job Details: {currentJob.nrcJobNo}
+                Job Details: {job.nrcJobNo}
               </h2>
 
               <p className="text-gray-500">
@@ -594,20 +606,20 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({
             {renderField("Box Dimensions", "boxDimensions")}
             {renderField("Die Punch Code", "diePunchCode", "number")}
             {renderField("Board Category", "boardCategory")}
-            {renderField("Number of Colors", "noOfColor", "number")}
+            {renderField("Number of Colors", "noOfColor")}
             {renderField("Process Colors", "processColors")}
             {renderField("Special Color 1", "specialColor1")}
             {renderField("Special Color 2", "specialColor2")}
             {renderField("Special Color 3", "specialColor3")}
             {renderField("Special Color 4", "specialColor4")}
             {renderField("Over Print Finishing", "overPrintFinishing")}
-            {renderField("Top Face GSM", "topFaceGSM", "number")}
-            {renderField("Fluting GSM", "flutingGSM", "number")}
-            {renderField("Bottom Liner GSM", "bottomLinerGSM", "number")}
-            {renderField("Decal Board X", "decalBoardX", "number")}
-            {renderField("Length Board Y", "lengthBoardY", "number")}
+            {renderField("Top Face GSM", "topFaceGSM")}
+            {renderField("Fluting GSM", "flutingGSM")}
+            {renderField("Bottom Liner GSM", "bottomLinerGSM")}
+            {renderField("Decal Board X", "decalBoardX")}
+            {renderField("Length Board Y", "lengthBoardY")}
             {renderField("Board Size", "boardSize")}
-            {renderField("No Ups", "noUps", "number")}
+            {renderField("No Ups", "noUps")}
             {renderField(
               "Artwork Received Date",
               "artworkReceivedDate",

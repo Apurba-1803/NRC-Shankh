@@ -15,11 +15,13 @@ const StartNewJob: React.FC = () => {
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]); // For filtered search results
   const [activeVisible, setActiveVisible] = useState(50);
   const [inactiveVisible, setInactiveVisible] = useState(50);
+  const [isRefreshing, setIsRefreshing] = useState(false); // Track refresh state
 
   // Function to fetch all jobs
   const fetchJobs = async () => {
     setLoading(true);
     setError(null);
+    setIsRefreshing(true);
     try {
       const accessToken = localStorage.getItem("accessToken");
 
@@ -82,6 +84,7 @@ const StartNewJob: React.FC = () => {
       console.error("Fetch Jobs Error:", err);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -200,6 +203,48 @@ const StartNewJob: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Smart job click handler that ensures fresh data
+  const handleJobClick = async (job: Job) => {
+    // If we're currently refreshing, wait for it to complete
+    if (isRefreshing) {
+      console.log("Waiting for refresh to complete...");
+      // Wait for refresh to complete
+      while (isRefreshing) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      // Find the fresh job from the updated jobs array
+      const freshJob = jobs.find(
+        (j) => j.id === job.id || j.nrcJobNo === job.nrcJobNo
+      );
+      if (freshJob) {
+        setSelectedJob(freshJob);
+      } else {
+        setSelectedJob(job); // Fallback to original
+      }
+    } else {
+      setSelectedJob(job);
+    }
+  };
+
+  // 🎯 Handle optimistic job updates from modal
+  const handleJobUpdate = useCallback((updatedJob: Job) => {
+    console.log("🎯 Optimistic update received for job:", updatedJob.nrcJobNo);
+
+    // Update the jobs array immediately
+    setJobs((prevJobs) =>
+      prevJobs.map((j) =>
+        j.id === updatedJob.id || j.nrcJobNo === updatedJob.nrcJobNo
+          ? updatedJob
+          : j
+      )
+    );
+
+    // Update the selected job if it's the same one
+    setSelectedJob(updatedJob);
+
+    console.log("✅ Jobs array and selected job updated optimistically");
+  }, []);
+
   const activeJobs = jobs.filter((job) => job.status === "ACTIVE");
   const inactiveJobs = jobs.filter((job) => job.status === "INACTIVE");
 
@@ -287,7 +332,7 @@ const StartNewJob: React.FC = () => {
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                 {filteredJobs.map((job) => (
-                  <JobCard key={job.id} job={job} onClick={setSelectedJob} />
+                  <JobCard key={job.id} job={job} onClick={handleJobClick} />
                 ))}
               </div>
             </section>
@@ -346,7 +391,7 @@ const StartNewJob: React.FC = () => {
                         <JobCard
                           key={job.id}
                           job={job}
-                          onClick={setSelectedJob}
+                          onClick={handleJobClick}
                         />
                       ))}
                     </div>
@@ -382,7 +427,7 @@ const StartNewJob: React.FC = () => {
                         <JobCard
                           key={job.id}
                           job={job}
-                          onClick={setSelectedJob}
+                          onClick={handleJobClick}
                         />
                       ))}
                     </div>
@@ -411,15 +456,12 @@ const StartNewJob: React.FC = () => {
         <JobDetailModal
           job={selectedJob}
           onClose={() => {
+            // Simply close modal - data is already updated optimistically!
+            console.log("🚪 Closing modal (data already updated)");
             setSelectedJob(null);
-            // Refresh data immediately when modal closes
-            fetchJobs();
           }}
           onContinueJob={handleContinueJob}
-          onRefresh={async () => {
-            // Simple refresh - just update the jobs list
-            await fetchJobs();
-          }}
+          onJobUpdate={handleJobUpdate}
         />
       )}
     </div>

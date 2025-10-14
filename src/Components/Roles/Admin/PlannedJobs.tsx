@@ -18,6 +18,10 @@ interface JobPlan {
   status: string;
   steps: JobPlanStep[];
   createdAt: string;
+  // Enhanced with the new API response structure
+  jobDetails?: EnhancedJobDetails;
+  purchaseOrderDetails?: PurchaseOrderDetails[];
+  poJobPlannings?: POJobPlanning[];
 }
 
 interface JobPlanStep {
@@ -25,6 +29,110 @@ interface JobPlanStep {
   stepName: string;
   status: string;
   stepDetails?: any;
+  updatedAt?: string;
+  createdAt?: string;
+  startDate?: string;
+  endDate?: string;
+  user?: string;
+}
+
+// Updated interface to match your new API response
+interface EnhancedJobDetails {
+  nrcJobNo: string;
+  styleItemSKU: string;
+  customerName: string;
+  fluteType: string;
+  status: string;
+  latestRate: number;
+  preRate: number;
+  length: number;
+  width: number;
+  height: string;
+  boxDimensions: string;
+  diePunchCode: number;
+  boardCategory: string;
+  noOfColor: string;
+  processColors: string | null;
+  specialColor1: string | null;
+  specialColor2: string | null;
+  specialColor3: string | null;
+  specialColor4: string | null;
+  overPrintFinishing: string | null;
+  topFaceGSM: string;
+  flutingGSM: string;
+  bottomLinerGSM: string;
+  decalBoardX: string;
+  lengthBoardY: string;
+  boardSize: string;
+  noUps: string;
+  artworkReceivedDate: string;
+  artworkApprovedDate: string;
+  shadeCardApprovalDate: string;
+  sharedCardDiffDate: string | null;
+  srNo: number;
+  jobDemand: string;
+  imageURL: string | null;
+  noOfSheets: number | null;
+  isMachineDetailsFilled: boolean;
+  createdAt: string | null;
+  updatedAt: string;
+  userId: string | null;
+  machineId: string;
+  clientId: string;
+  styleId: string;
+  hasPurchaseOrders: boolean;
+}
+
+interface PurchaseOrderDetails {
+  id: number;
+  boardSize: string;
+  customer: string;
+  deliveryDate: string;
+  dieCode: number;
+  dispatchDate: string;
+  dispatchQuantity: number;
+  fluteType: string;
+  jockeyMonth: string;
+  noOfUps: number;
+  nrcDeliveryDate: string;
+  noOfSheets: number;
+  poDate: string;
+  poNumber: string;
+  pendingQuantity: number;
+  pendingValidity: number;
+  plant: string;
+  shadeCardApprovalDate: string;
+  sharedCardDiffDate: number;
+  srNo: number;
+  style: string;
+  totalPOQuantity: number;
+  unit: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  jobNrcJobNo: string;
+  userId: string | null;
+}
+
+interface POJobPlanning {
+  poId: number;
+  poNumber: string;
+  poQuantity: number;
+  poStatus: string;
+  poDate: string;
+  hasJobPlanning: boolean;
+  jobPlanId: number;
+  steps: JobPOStep[];
+  assignedMachines: any[];
+  completedSteps: number;
+  totalSteps: number;
+}
+
+interface JobPOStep {
+  stepNo: number;
+  stepName: string;
+  status: string;
+  machineDetails: any[];
 }
 
 const PlannedJobs: React.FC = () => {
@@ -44,6 +152,46 @@ const PlannedJobs: React.FC = () => {
     dateFilter,
     customDateRange,
   } = location.state || {};
+
+  // Function to fetch job details with PO information
+  const fetchJobWithPODetails = async (
+    nrcJobNo: string,
+    accessToken: string
+  ) => {
+    try {
+      const response = await fetch(
+        `https://nrprod.nrcontainers.com/api/jobs/${encodeURIComponent(
+          nrcJobNo
+        )}/with-po-details`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          return {
+            jobDetails: result.data,
+            purchaseOrderDetails: result.data.purchaseOrders || [],
+            poJobPlannings: result.data.poJobPlannings || [],
+          };
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching details for job ${nrcJobNo}:`, error);
+    }
+    return {
+      jobDetails: null,
+      purchaseOrderDetails: [],
+      poJobPlannings: [],
+    };
+  };
 
   // Fetch planned jobs data
   const fetchPlannedJobs = async () => {
@@ -88,7 +236,23 @@ const PlannedJobs: React.FC = () => {
                     step.stepDetails.status === "accept"))
             )
         );
-        setPlannedJobs(planned);
+
+        // Fetch additional details for each planned job using the new combined API
+        const jobsWithDetails = await Promise.all(
+          planned.map(async (job: JobPlan) => {
+            const { jobDetails, purchaseOrderDetails, poJobPlannings } =
+              await fetchJobWithPODetails(job.nrcJobNo, accessToken);
+
+            return {
+              ...job,
+              jobDetails,
+              purchaseOrderDetails,
+              poJobPlannings,
+            };
+          })
+        );
+
+        setPlannedJobs(jobsWithDetails);
       } else {
         throw new Error("Invalid API response format");
       }
@@ -102,12 +266,54 @@ const PlannedJobs: React.FC = () => {
     }
   };
 
+  // Function to enhance passed jobs with additional details using the new API
+  const enhancePassedJobsWithDetails = async (jobs: JobPlan[]) => {
+    try {
+      setLoading(true);
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) throw new Error("Authentication token not found.");
+
+      const jobsWithDetails = await Promise.all(
+        jobs.map(async (job: JobPlan) => {
+          // Check if job already has complete details to avoid unnecessary API calls
+          if (
+            job.jobDetails &&
+            job.purchaseOrderDetails &&
+            job.poJobPlannings
+          ) {
+            return job;
+          }
+
+          // Fetch complete details using the new combined API
+          const { jobDetails, purchaseOrderDetails, poJobPlannings } =
+            await fetchJobWithPODetails(job.nrcJobNo, accessToken);
+
+          return {
+            ...job,
+            jobDetails: jobDetails || job.jobDetails,
+            purchaseOrderDetails:
+              purchaseOrderDetails || job.purchaseOrderDetails || [],
+            poJobPlannings: poJobPlannings || job.poJobPlannings || [],
+          };
+        })
+      );
+
+      setPlannedJobs(jobsWithDetails);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to enhance job details"
+      );
+      console.error("Job details enhancement error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     // Check if we have passed data from dashboard
     if (passedPlannedJobs && Array.isArray(passedPlannedJobs)) {
       console.log("Using passed planned jobs data:", passedPlannedJobs);
-      setPlannedJobs(passedPlannedJobs);
-      setLoading(false);
+      enhancePassedJobsWithDetails(passedPlannedJobs);
     } else {
       // Fallback: fetch data if no state was passed (direct URL access)
       console.log("No passed data found, fetching planned jobs...");

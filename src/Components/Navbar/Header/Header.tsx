@@ -10,6 +10,7 @@ import logo from "../../../assets/Login/logo1.png";
 import userIcon from "../../../assets/Icons/user.svg";
 import UserSidebar from "../../UserProfile/UserSidebar";
 import ManageComponent from "../../UserProfile/Options/ManageAccess/ManageComponent";
+import NotificationBell from "../../common/NotificationBell";
 
 interface HeaderProps {
   tabValue: string;
@@ -235,8 +236,12 @@ const Header: React.FC<HeaderProps> = ({
           </div>
         </TabProvider>
 
-        {/* Desktop User Icon */}
-        <div className="hidden sm:flex items-center">
+        {/* Desktop Notifications and User Icon */}
+        <div className="hidden sm:flex items-center space-x-2">
+          {/* Show notification bell for admin and planner only */}
+          {(normalizedRole === "admin" || normalizedRole === "planner") && (
+            <NotificationBell />
+          )}
           <button
             className="rounded-full bg-gray-200 p-2 hover:cursor-pointer"
             onClick={() => setSidebarOpen(true)}
@@ -245,8 +250,12 @@ const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
 
-        {/* Hamburger for mobile */}
-        <div className="sm:hidden flex items-center">
+        {/* Hamburger and Notifications for mobile */}
+        <div className="sm:hidden flex items-center space-x-2">
+          {/* Show notification bell for admin and planner only */}
+          {(normalizedRole === "admin" || normalizedRole === "planner") && (
+            <NotificationBell />
+          )}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="p-2 rounded focus:outline-none"

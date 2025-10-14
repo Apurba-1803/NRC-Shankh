@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import JobStepDetailsPopup from "./JobStepDetailsPopup"
+import React, { useState } from "react";
+import JobStepDetailsPopup from "./JobStepDetailsPopup";
 
 interface JobPlanStep {
   id: number;
@@ -8,6 +8,7 @@ interface JobPlanStep {
   machineDetails: Array<{
     unit: string | null;
     machineId: string | number;
+    id: string | number;
     machineCode: string | null;
     machineType: string;
     machine?: {
@@ -48,26 +49,27 @@ interface StepDetailsPopupProps {
   };
 }
 
-
 const StepDetailsPopup: React.FC<StepDetailsPopupProps> = ({
   isOpen,
   onClose,
   stepName,
-  stepData
+  stepData,
 }) => {
-  const [activeTab, setActiveTab] = useState<'completed' | 'inProgress' | 'planned'>('completed');
-   const [selectedJob, setSelectedJob] = useState<JobPlan | null>(null);
+  const [activeTab, setActiveTab] = useState<
+    "completed" | "inProgress" | "planned"
+  >("completed");
+  const [selectedJob, setSelectedJob] = useState<JobPlan | null>(null);
   const [jobDetailsOpen, setJobDetailsOpen] = useState(false);
 
   if (!isOpen) return null;
 
   const getCurrentData = () => {
     switch (activeTab) {
-      case 'completed':
+      case "completed":
         return stepData.completedData;
-      case 'inProgress':
+      case "inProgress":
         return stepData.inProgressData;
-      case 'planned':
+      case "planned":
         return stepData.plannedData;
       default:
         return [];
@@ -76,33 +78,36 @@ const StepDetailsPopup: React.FC<StepDetailsPopupProps> = ({
 
   const getCurrentCount = () => {
     switch (activeTab) {
-      case 'completed':
+      case "completed":
         return stepData.completed;
-      case 'inProgress':
+      case "inProgress":
         return stepData.inProgress;
-      case 'planned':
+      case "planned":
         return stepData.planned;
       default:
         return 0;
     }
   };
 
-   const handleJobClick = (job: JobPlan) => {
+  const handleJobClick = (job: JobPlan) => {
     setSelectedJob(job);
     setJobDetailsOpen(true);
   };
 
   const getStepInfo = (job: JobPlan) => {
     // Find the specific step info for this stepName in the job's steps
-    return job.steps.find(step => step.stepName === stepName || 
-      (stepName === "Paper Store" && step.stepName === "PaperStore") ||
-      (stepName === "Printing" && step.stepName === "PrintingDetails")||
-      (stepName === "Flap Pasting" && step.stepName === "SideFlapPasting")||
-      (stepName === "Dispatch" && step.stepName === "DispatchProcess")||
-      (stepName === "Quality Control" && step.stepName === "QualityDept")||
-      (stepName === "Flute Lamination" && step.stepName === "FluteLaminateBoardConversion"));
+    return job.steps.find(
+      (step) =>
+        step.stepName === stepName ||
+        (stepName === "Paper Store" && step.stepName === "PaperStore") ||
+        (stepName === "Printing" && step.stepName === "PrintingDetails") ||
+        (stepName === "Flap Pasting" && step.stepName === "SideFlapPasting") ||
+        (stepName === "Dispatch" && step.stepName === "DispatchProcess") ||
+        (stepName === "Quality Control" && step.stepName === "QualityDept") ||
+        (stepName === "Flute Lamination" &&
+          step.stepName === "FluteLaminateBoardConversion")
+    );
   };
-
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -124,31 +129,31 @@ const StepDetailsPopup: React.FC<StepDetailsPopupProps> = ({
         <div className="flex border-b">
           <button
             className={`px-6 py-3 font-medium ${
-              activeTab === 'completed'
-                ? 'border-b-2 border-green-500 text-green-600'
-                : 'text-gray-500 hover:text-gray-700'
+              activeTab === "completed"
+                ? "border-b-2 border-green-500 text-green-600"
+                : "text-gray-500 hover:text-gray-700"
             }`}
-            onClick={() => setActiveTab('completed')}
+            onClick={() => setActiveTab("completed")}
           >
             Completed ({stepData.completed})
           </button>
           <button
             className={`px-6 py-3 font-medium ${
-              activeTab === 'inProgress'
-                ? 'border-b-2 border-yellow-500 text-yellow-600'
-                : 'text-gray-500 hover:text-gray-700'
+              activeTab === "inProgress"
+                ? "border-b-2 border-yellow-500 text-yellow-600"
+                : "text-gray-500 hover:text-gray-700"
             }`}
-            onClick={() => setActiveTab('inProgress')}
+            onClick={() => setActiveTab("inProgress")}
           >
             In Progress ({stepData.inProgress})
           </button>
           <button
             className={`px-6 py-3 font-medium ${
-              activeTab === 'planned'
-                ? 'border-b-2 border-gray-500 text-gray-600'
-                : 'text-gray-500 hover:text-gray-700'
+              activeTab === "planned"
+                ? "border-b-2 border-gray-500 text-gray-600"
+                : "text-gray-500 hover:text-gray-700"
             }`}
-            onClick={() => setActiveTab('planned')}
+            onClick={() => setActiveTab("planned")}
           >
             Planned ({stepData.planned})
           </button>
@@ -170,19 +175,28 @@ const StepDetailsPopup: React.FC<StepDetailsPopupProps> = ({
                   onClick={() => handleJobClick(job)}
                 >
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                   <div>
-                      <span className="font-semibold text-gray-700">NRC Job No:</span>
+                    <div>
+                      <span className="font-semibold text-gray-700">
+                        NRC Job No:
+                      </span>
                       <p className="text-gray-600 font-mono">{job.nrcJobNo}</p>
                     </div>
                     <div>
-                      <span className="font-semibold text-gray-700">Job Demand:</span>
-                      <p className="text-gray-600 capitalize">{job.jobDemand}</p>
+                      <span className="font-semibold text-gray-700">
+                        Job Demand:
+                      </span>
+                      <p className="text-gray-600 capitalize">
+                        {job.jobDemand}
+                      </p>
                     </div>
-                    
-                     <div>
-                      <span className="font-semibold text-gray-700">Created At:</span>
+
+                    <div>
+                      <span className="font-semibold text-gray-700">
+                        Created At:
+                      </span>
                       <p className="text-gray-600">
-                        {new Date(job.createdAt).toLocaleDateString()} {new Date(job.createdAt).toLocaleTimeString()}
+                        {new Date(job.createdAt).toLocaleDateString()}{" "}
+                        {new Date(job.createdAt).toLocaleTimeString()}
                       </p>
                     </div>
                   </div>
@@ -192,17 +206,17 @@ const StepDetailsPopup: React.FC<StepDetailsPopupProps> = ({
           )}
 
           {selectedJob && (
-        <JobStepDetailsPopup
-          isOpen={jobDetailsOpen}
-          onClose={() => {
-            setJobDetailsOpen(false);
-            setSelectedJob(null);
-          }}
-          jobData={selectedJob}
-          stepName={stepName}
-          stepInfo={getStepInfo(selectedJob)}
-        />
-      )}
+            <JobStepDetailsPopup
+              isOpen={jobDetailsOpen}
+              onClose={() => {
+                setJobDetailsOpen(false);
+                setSelectedJob(null);
+              }}
+              jobData={selectedJob}
+              stepName={stepName}
+              stepInfo={getStepInfo(selectedJob)}
+            />
+          )}
         </div>
       </div>
     </div>
