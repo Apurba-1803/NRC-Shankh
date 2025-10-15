@@ -188,7 +188,7 @@ const PrintingDashboard: React.FC = () => {
     ).length;
     const averageWastagePercentage =
       totalQuantityPrinted > 0
-        ? (totalWastage / totalQuantityPrinted) * 100
+        ? Math.round((totalWastage / totalQuantityPrinted) * 100)
         : 0;
 
     return {
@@ -655,7 +655,7 @@ const PrintingDashboard: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex flex-col items-center space-y-1">
                           <div className="text-sm font-medium text-gray-900">
-                            {wastagePercentage.toFixed(1)}%
+                            {Math.round(wastagePercentage)}%
                           </div>
                           <div className="w-20 bg-gray-200 rounded-full h-2">
                             <div
@@ -866,10 +866,10 @@ const PrintingDashboard: React.FC = () => {
                       ></div>
                     </div>
                     <div className="text-xs text-gray-500 text-center">
-                      {(
+                      {Math.round(
                         (selectedPrinting.wastage / selectedPrinting.quantity) *
-                        100
-                      ).toFixed(1)}
+                          100
+                      )}
                       % wastage
                     </div>
                   </div>

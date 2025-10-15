@@ -1,7 +1,7 @@
 export interface PrintingDetails {
   id: number;
   jobNrcJobNo: string;
-  status: 'accept' | 'pending' | 'rejected' | 'in_progress' | 'hold';
+  status: "accept" | "pending" | "rejected" | "in_progress" | "hold";
   date: string;
   shift: string | null;
   oprName: string;
@@ -48,18 +48,18 @@ class PrintingService {
   // Get all printing details
   async getAllPrintingDetails(): Promise<PrintingDetails[]> {
     try {
-      const accessToken = localStorage.getItem('accessToken');
+      const accessToken = localStorage.getItem("accessToken");
       if (!accessToken) {
-        throw new Error('Authentication token not found');
+        throw new Error("Authentication token not found");
       }
 
       const response = await fetch(`${this.baseUrl}/printing-details`, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
         },
       });
 
@@ -68,25 +68,25 @@ class PrintingService {
       }
 
       const result = await response.json();
-      
+
       if (!result.success || !result.data) {
-        throw new Error('Invalid API response format');
+        throw new Error("Invalid API response format");
       }
 
       // Process the data correctly based on your API structure
       return result.data.map((item: any) => {
         // Extract printing details from the nested structure
         const printingDetails = item.printingDetails;
-        
+
         // If printingDetails is null (for planned jobs), create a minimal object
         if (!printingDetails) {
           return {
             id: 0,
-            jobNrcJobNo: item.jobPlanning?.nrcJobNo || '-',
-            status: 'pending',
+            jobNrcJobNo: item.jobPlanning?.nrcJobNo || "-",
+            status: "pending",
             date: item.createdAt || new Date().toISOString(),
             shift: null,
-            oprName: item.user || '-',
+            oprName: item.user || "-",
             noOfColours: null,
             inksUsed: null,
             quantity: 0,
@@ -94,27 +94,32 @@ class PrintingService {
             coatingType: null,
             separateSheets: null,
             extraSheets: null,
-            machine: item.machineDetails?.[0]?.machineCode || '-',
+            machine: item.machineDetails?.[0]?.machineCode || "-",
             jobStepId: item.jobStepId || 0,
             // Add step-level information
-            stepStatus: item.status || 'planned',
-            stepName: item.stepName || 'PrintingDetails',
+            stepStatus: item.status || "planned",
+            stepName: item.stepName || "PrintingDetails",
             user: item.user,
             startDate: item.startDate,
             endDate: item.endDate,
-            jobDemand: item.jobPlanning?.jobDemand || 'medium',
-            machineDetails: item.machineDetails || []
+            jobDemand: item.jobPlanning?.jobDemand || "medium",
+            machineDetails: item.machineDetails || [],
           };
         }
 
         // Map the actual printing details
         return {
           id: printingDetails.id || 0,
-          jobNrcJobNo: printingDetails.jobNrcJobNo || item.jobPlanning?.nrcJobNo || '-',
-          status: printingDetails.status || 'pending',
-          date: printingDetails.date || item.startDate || item.createdAt || new Date().toISOString(),
+          jobNrcJobNo:
+            printingDetails.jobNrcJobNo || item.jobPlanning?.nrcJobNo || "-",
+          status: printingDetails.status || "pending",
+          date:
+            printingDetails.date ||
+            item.startDate ||
+            item.createdAt ||
+            new Date().toISOString(),
           shift: printingDetails.shift,
-          oprName: printingDetails.oprName || item.user || '-',
+          oprName: printingDetails.oprName || item.user || "-",
           noOfColours: printingDetails.noOfColours,
           inksUsed: printingDetails.inksUsed,
           quantity: printingDetails.quantity || 0,
@@ -122,20 +127,23 @@ class PrintingService {
           coatingType: printingDetails.coatingType,
           separateSheets: printingDetails.separateSheets,
           extraSheets: printingDetails.extraSheets,
-          machine: printingDetails.machine || item.machineDetails?.[0]?.machineCode || '-',
+          machine:
+            printingDetails.machine ||
+            item.machineDetails?.[0]?.machineCode ||
+            "-",
           jobStepId: printingDetails.jobStepId || item.jobStepId || 0,
           // Add step-level information
-          stepStatus: item.status || 'planned',
-          stepName: item.stepName || 'PrintingDetails',
+          stepStatus: item.status || "planned",
+          stepName: item.stepName || "PrintingDetails",
           user: item.user,
           startDate: item.startDate,
           endDate: item.endDate,
-          jobDemand: item.jobPlanning?.jobDemand || 'medium',
-          machineDetails: item.machineDetails || []
+          jobDemand: item.jobPlanning?.jobDemand || "medium",
+          machineDetails: item.machineDetails || [],
         };
       });
     } catch (error) {
-      console.error('Error fetching printing details:', error);
+      console.error("Error fetching printing details:", error);
       return [];
     }
   }
@@ -143,43 +151,48 @@ class PrintingService {
   // Get printing details by job number
   async getPrintingDetailsByJob(jobNo: string): Promise<PrintingDetails[]> {
     try {
-      const accessToken = localStorage.getItem('accessToken');
+      const accessToken = localStorage.getItem("accessToken");
       if (!accessToken) {
-        throw new Error('Authentication token not found');
+        throw new Error("Authentication token not found");
       }
 
-      const response = await fetch(`${this.baseUrl}/printing-details/by-job/${encodeURIComponent(jobNo)}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        },
-      });
+      const response = await fetch(
+        `${this.baseUrl}/printing-details/by-job/${encodeURIComponent(jobNo)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        }
+      );
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch printing data for job ${jobNo}: ${response.status}`);
+        throw new Error(
+          `Failed to fetch printing data for job ${jobNo}: ${response.status}`
+        );
       }
 
       const result = await response.json();
-      
+
       if (!result.success || !result.data) {
-        throw new Error('Invalid API response format');
+        throw new Error("Invalid API response format");
       }
 
       // Use the same mapping logic as getAllPrintingDetails
       return result.data.map((item: any) => {
         const printingDetails = item.printingDetails;
-        
+
         if (!printingDetails) {
           return {
             id: 0,
             jobNrcJobNo: item.jobPlanning?.nrcJobNo || jobNo,
-            status: 'pending',
+            status: "pending",
             date: item.createdAt || new Date().toISOString(),
             shift: null,
-            oprName: item.user || '-',
+            oprName: item.user || "-",
             noOfColours: null,
             inksUsed: null,
             quantity: 0,
@@ -187,25 +200,29 @@ class PrintingService {
             coatingType: null,
             separateSheets: null,
             extraSheets: null,
-            machine: item.machineDetails?.[0]?.machineCode || '-',
+            machine: item.machineDetails?.[0]?.machineCode || "-",
             jobStepId: item.jobStepId || 0,
-            stepStatus: item.status || 'planned',
-            stepName: item.stepName || 'PrintingDetails',
+            stepStatus: item.status || "planned",
+            stepName: item.stepName || "PrintingDetails",
             user: item.user,
             startDate: item.startDate,
             endDate: item.endDate,
-            jobDemand: item.jobPlanning?.jobDemand || 'medium',
-            machineDetails: item.machineDetails || []
+            jobDemand: item.jobPlanning?.jobDemand || "medium",
+            machineDetails: item.machineDetails || [],
           };
         }
 
         return {
           id: printingDetails.id || 0,
           jobNrcJobNo: printingDetails.jobNrcJobNo || jobNo,
-          status: printingDetails.status || 'pending',
-          date: printingDetails.date || item.startDate || item.createdAt || new Date().toISOString(),
+          status: printingDetails.status || "pending",
+          date:
+            printingDetails.date ||
+            item.startDate ||
+            item.createdAt ||
+            new Date().toISOString(),
           shift: printingDetails.shift,
-          oprName: printingDetails.oprName || item.user || '-',
+          oprName: printingDetails.oprName || item.user || "-",
           noOfColours: printingDetails.noOfColours,
           inksUsed: printingDetails.inksUsed,
           quantity: printingDetails.quantity || 0,
@@ -213,15 +230,18 @@ class PrintingService {
           coatingType: printingDetails.coatingType,
           separateSheets: printingDetails.separateSheets,
           extraSheets: printingDetails.extraSheets,
-          machine: printingDetails.machine || item.machineDetails?.[0]?.machineCode || '-',
+          machine:
+            printingDetails.machine ||
+            item.machineDetails?.[0]?.machineCode ||
+            "-",
           jobStepId: printingDetails.jobStepId || item.jobStepId || 0,
-          stepStatus: item.status || 'planned',
-          stepName: item.stepName || 'PrintingDetails',
+          stepStatus: item.status || "planned",
+          stepName: item.stepName || "PrintingDetails",
           user: item.user,
           startDate: item.startDate,
           endDate: item.endDate,
-          jobDemand: item.jobPlanning?.jobDemand || 'medium',
-          machineDetails: item.machineDetails || []
+          jobDemand: item.jobPlanning?.jobDemand || "medium",
+          machineDetails: item.machineDetails || [],
         };
       });
     } catch (error) {
@@ -234,7 +254,7 @@ class PrintingService {
   async getPrintingStatistics(): Promise<PrintingSummary> {
     try {
       const printingData = await this.getAllPrintingDetails();
-      
+
       if (printingData.length === 0) {
         return {
           totalPrintJobs: 0,
@@ -250,24 +270,40 @@ class PrintingService {
         };
       }
 
-      const totalQuantityPrinted = printingData.reduce((sum, item) => sum + (item.quantity || 0), 0);
-      const totalWastage = printingData.reduce((sum, item) => sum + (item.wastage || 0), 0);
-      const averageWastagePercentage = totalQuantityPrinted > 0 ? (totalWastage / totalQuantityPrinted) * 100 : 0;
+      const totalQuantityPrinted = printingData.reduce(
+        (sum, item) => sum + (item.quantity || 0),
+        0
+      );
+      const totalWastage = printingData.reduce(
+        (sum, item) => sum + (item.wastage || 0),
+        0
+      );
+      const averageWastagePercentage =
+        totalQuantityPrinted > 0
+          ? (totalWastage / totalQuantityPrinted) * 100
+          : 0;
 
       return {
         totalPrintJobs: printingData.length,
         totalQuantityPrinted,
         totalWastage,
-        acceptedJobs: printingData.filter(item => item.status === 'accept').length,
-        pendingJobs: printingData.filter(item => item.status === 'pending').length,
-        rejectedJobs: printingData.filter(item => item.status === 'rejected').length,
-        inProgressJobs: printingData.filter(item => item.status === 'in_progress').length,
-        holdJobs: printingData.filter(item => item.status === 'hold').length,
-        plannedJobs: printingData.filter(item => item.stepStatus === 'planned').length,
-        averageWastagePercentage: Math.round(averageWastagePercentage * 100) / 100,
+        acceptedJobs: printingData.filter((item) => item.status === "accept")
+          .length,
+        pendingJobs: printingData.filter((item) => item.status === "pending")
+          .length,
+        rejectedJobs: printingData.filter((item) => item.status === "rejected")
+          .length,
+        inProgressJobs: printingData.filter(
+          (item) => item.status === "in_progress"
+        ).length,
+        holdJobs: printingData.filter((item) => item.status === "hold").length,
+        plannedJobs: printingData.filter(
+          (item) => item.stepStatus === "planned"
+        ).length,
+        averageWastagePercentage: Math.round(averageWastagePercentage),
       };
     } catch (error) {
-      console.error('Error calculating printing statistics:', error);
+      console.error("Error calculating printing statistics:", error);
       return {
         totalPrintJobs: 0,
         totalQuantityPrinted: 0,

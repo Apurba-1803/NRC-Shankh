@@ -165,23 +165,24 @@ const QCDashboard: React.FC = () => {
       (sum, item) => sum + (item.quantity || 0),
       0
     );
-    const totalAcceptedQuantity = allQCData
-      .filter((item) => item.status === "accept")
-      .reduce((sum, item) => sum + (item.quantity || 0), 0);
-    const totalRejectedQuantity = allQCData
-      .filter((item) => item.status === "rejected")
-      .reduce((sum, item) => sum + (item.quantity || 0), 0);
+    // Sum rejectedQty from ALL items, not just rejected status items
+    const totalRejectedQuantity = allQCData.reduce(
+      (sum, item) => sum + (item.rejectedQty || 0),
+      0
+    );
+    // Accepted = Total - Rejected
+    const totalAcceptedQuantity = totalQuantityChecked - totalRejectedQuantity;
     const rejectionPercentage =
       totalQuantityChecked > 0
-        ? ((totalRejectedQuantity / totalQuantityChecked) * 100).toFixed(1)
-        : "0";
+        ? Math.round((totalRejectedQuantity / totalQuantityChecked) * 100)
+        : 0;
 
-    // Find top rejection reason
+    // Find top rejection reason - use rejectedQty instead of quantity
     const rejectionReasons = allQCData
-      .filter((item) => item.status === "rejected" && item.remarks)
+      .filter((item) => (item.rejectedQty || 0) > 0 && item.reasonForRejection)
       .reduce((acc, item) => {
-        const reason = item.remarks;
-        acc[reason] = (acc[reason] || 0) + (item.quantity || 0);
+        const reason = item.reasonForRejection || item.remarks || "Unknown";
+        acc[reason] = (acc[reason] || 0) + (item.rejectedQty || 0);
         return acc;
       }, {} as Record<string, number>);
 
@@ -199,7 +200,7 @@ const QCDashboard: React.FC = () => {
       totalQuantityChecked,
       totalAcceptedQuantity,
       totalRejectedQuantity,
-      rejectionPercentage: parseFloat(rejectionPercentage),
+      rejectionPercentage,
       topRejectionReason,
       topRejectionCount,
     };
@@ -707,7 +708,7 @@ const QCDashboard: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex flex-col items-center space-y-1">
                           <div className="text-sm font-medium text-gray-900">
-                            {rejectionPercentage.toFixed(1)}%
+                            {Math.round(rejectionPercentage)}%
                           </div>
                           <div className="w-20 bg-gray-200 rounded-full h-2">
                             <div
@@ -858,10 +859,9 @@ const QCDashboard: React.FC = () => {
                       ></div>
                     </div>
                     <div className="text-xs text-gray-500 text-center">
-                      {(
-                        (selectedQC.rejectedQty / selectedQC.quantity) *
-                        100
-                      ).toFixed(1)}
+                      {Math.round(
+                        (selectedQC.rejectedQty / selectedQC.quantity) * 100
+                      )}
                       % rejected
                     </div>
                   </div>
