@@ -4,12 +4,18 @@ import {
   BellIcon,
   CalendarIcon,
   ExclamationTriangleIcon,
+  PlusCircleIcon,
 } from "@heroicons/react/24/outline";
 import {
   fetchShadeCardNotifications,
   getNotificationPriority,
   type ShadeCardNotification,
 } from "../../services/shadeCardNotificationService";
+import {
+  fetchActivityLogNotifications,
+  dismissActivityLogNotification,
+  type ActivityLogNotification,
+} from "../../services/activityLogNotificationService";
 
 interface ShadeCardNotificationsProps {
   isOpen: boolean;
@@ -20,9 +26,12 @@ const ShadeCardNotifications: React.FC<ShadeCardNotificationsProps> = ({
   isOpen,
   onClose,
 }) => {
-  const [notifications, setNotifications] = useState<ShadeCardNotification[]>(
-    []
-  );
+  const [shadeCardNotifications, setShadeCardNotifications] = useState<
+    ShadeCardNotification[]
+  >([]);
+  const [jobCreationNotifications, setJobCreationNotifications] = useState<
+    ActivityLogNotification[]
+  >([]);
   const [displayedNotifications, setDisplayedNotifications] = useState<
     ShadeCardNotification[]
   >([]);
@@ -30,12 +39,17 @@ const ShadeCardNotifications: React.FC<ShadeCardNotificationsProps> = ({
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
-  const [filter, setFilter] = useState<"all" | "overdue" | "urgent">("all");
+  const [filter, setFilter] = useState<
+    "all" | "overdue" | "urgent" | "jobcreation"
+  >("all");
 
   const ITEMS_PER_PAGE = 100;
 
   const getFilteredNotifications = () => {
-    return notifications.filter((notif) => {
+    if (filter === "jobcreation") {
+      return []; // Job creation notifications shown separately
+    }
+    return shadeCardNotifications.filter((notif) => {
       if (filter === "overdue") return notif.daysRemaining < 0;
       if (filter === "urgent")
         return notif.daysRemaining >= 0 && notif.daysRemaining <= 7;
@@ -51,7 +65,7 @@ const ShadeCardNotifications: React.FC<ShadeCardNotificationsProps> = ({
 
   useEffect(() => {
     // Reset pagination when filter changes
-    if (notifications.length > 0) {
+    if (shadeCardNotifications.length > 0) {
       setCurrentPage(0);
       setDisplayedNotifications([]);
       setHasMore(true);
@@ -62,7 +76,7 @@ const ShadeCardNotifications: React.FC<ShadeCardNotificationsProps> = ({
       setCurrentPage(1);
       setHasMore(filtered.length > ITEMS_PER_PAGE);
     }
-  }, [filter, notifications]);
+  }, [filter, shadeCardNotifications]);
 
   const resetAndLoadNotifications = async () => {
     setLoading(true);
@@ -71,8 +85,12 @@ const ShadeCardNotifications: React.FC<ShadeCardNotificationsProps> = ({
     setHasMore(true);
 
     try {
-      const data = await fetchShadeCardNotifications();
-      setNotifications(data);
+      const [shadeCardData, activityLogData] = await Promise.all([
+        fetchShadeCardNotifications(),
+        fetchActivityLogNotifications(),
+      ]);
+      setShadeCardNotifications(shadeCardData);
+      setJobCreationNotifications(activityLogData);
     } catch (error) {
       console.error("Error loading notifications:", error);
     } finally {
@@ -160,7 +178,7 @@ const ShadeCardNotifications: React.FC<ShadeCardNotificationsProps> = ({
             <div className="flex items-center space-x-3">
               <BellIcon className="h-6 w-6 text-white" />
               <h3 className="text-lg font-medium text-white">
-                Shade Card Approval Notifications (180-day Validity)
+                Notifications Center
               </h3>
             </div>
             <button
@@ -173,31 +191,35 @@ const ShadeCardNotifications: React.FC<ShadeCardNotificationsProps> = ({
 
           {/* Filter Tabs */}
           <div className="border-b border-gray-200 bg-gray-50 px-6 py-3">
-            <div className="flex space-x-4">
+            <div className="flex space-x-2 overflow-x-auto">
               <button
                 onClick={() => setFilter("all")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                   filter === "all"
                     ? "bg-[#00AEEF] text-white"
                     : "bg-white text-gray-700 hover:bg-gray-100"
                 }`}
               >
-                All ({notifications.length})
+                Shade Cards ({shadeCardNotifications.length})
               </button>
               <button
                 onClick={() => setFilter("overdue")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                   filter === "overdue"
                     ? "bg-red-600 text-white"
                     : "bg-white text-gray-700 hover:bg-gray-100"
                 }`}
               >
                 Overdue (
-                {notifications.filter((n) => n.daysRemaining < 0).length})
+                {
+                  shadeCardNotifications.filter((n) => n.daysRemaining < 0)
+                    .length
+                }
+                )
               </button>
               <button
                 onClick={() => setFilter("urgent")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                   filter === "urgent"
                     ? "bg-orange-600 text-white"
                     : "bg-white text-gray-700 hover:bg-gray-100"
@@ -205,11 +227,24 @@ const ShadeCardNotifications: React.FC<ShadeCardNotificationsProps> = ({
               >
                 Urgent (≤7 days) (
                 {
-                  notifications.filter(
+                  shadeCardNotifications.filter(
                     (n) => n.daysRemaining >= 0 && n.daysRemaining <= 7
                   ).length
                 }
                 )
+              </button>
+              <button
+                onClick={() => setFilter("jobcreation")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                  filter === "jobcreation"
+                    ? "bg-green-600 text-white"
+                    : "bg-white text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                <div className="flex items-center space-x-1">
+                  <PlusCircleIcon className="h-4 w-4" />
+                  <span>Job Creation ({jobCreationNotifications.length})</span>
+                </div>
               </button>
             </div>
           </div>
@@ -224,6 +259,90 @@ const ShadeCardNotifications: React.FC<ShadeCardNotificationsProps> = ({
               <div className="flex items-center justify-center py-12">
                 <div className="text-gray-500">Loading notifications...</div>
               </div>
+            ) : filter === "jobcreation" ? (
+              // Job Creation Notifications View
+              jobCreationNotifications.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <PlusCircleIcon className="h-16 w-16 text-gray-300 mb-4" />
+                  <p className="text-gray-500 text-lg">
+                    No job creation requests
+                  </p>
+                  <p className="text-gray-400 text-sm mt-2">
+                    All styles from bulk uploads have matching jobs!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {jobCreationNotifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className="border rounded-lg p-4 bg-green-50 border-l-4 border-l-green-600"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-start space-x-3">
+                          <PlusCircleIcon className="h-6 w-6 text-green-700 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <h4 className="text-lg font-semibold text-gray-900">
+                              New Job Creation Required
+                            </h4>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {new Date(
+                                notification.createdAt
+                              ).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            const success =
+                              await dismissActivityLogNotification(
+                                notification.id
+                              );
+                            if (success) {
+                              setJobCreationNotifications((prev) =>
+                                prev.filter((n) => n.id !== notification.id)
+                              );
+                            }
+                          }}
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                          title="Dismiss notification"
+                        >
+                          <XMarkIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm bg-white rounded p-3">
+                        <div className="text-gray-700">
+                          <span className="font-medium">Style:</span>{" "}
+                          <strong className="text-gray-900">
+                            {notification.style || "N/A"}
+                          </strong>
+                        </div>
+                        <div className="text-gray-700">
+                          <span className="font-medium">Customer:</span>{" "}
+                          <strong className="text-gray-900">
+                            {notification.customer || "N/A"}
+                          </strong>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t border-green-200">
+                        <p className="text-sm font-medium text-green-800">
+                          ⚠️ This PO was uploaded but no matching job exists.
+                          Please create a job for this style to proceed with job
+                          planning.
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
             ) : filteredNotifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <BellIcon className="h-16 w-16 text-gray-300 mb-4" />

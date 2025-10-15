@@ -912,6 +912,120 @@ const PlannerJobs: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Check and remove resolved notifications when POs are loaded
+  useEffect(() => {
+    checkAndRemoveResolvedNotifications();
+    checkForMissingJobs();
+  }, [purchaseOrders]);
+
+  const checkAndRemoveResolvedNotifications = () => {
+    try {
+      const notifications = JSON.parse(
+        localStorage.getItem("jobCreationNotifications") || "[]"
+      );
+
+      if (notifications.length === 0) return;
+
+      // Get all current POs with jobNrcJobNo
+      const posWithJobs = purchaseOrders.filter(
+        (po) => po.jobNrcJobNo || po.job?.nrcJobNo
+      );
+
+      // Get all unique styles that now have jobs
+      const stylesWithJobs = new Set(
+        posWithJobs.map((po) => po.style).filter(Boolean)
+      );
+
+      // Mark notifications as resolved if their style now has a job
+      const updatedNotifications = notifications.map((notif: any) => {
+        if (notif.status === "pending" && stylesWithJobs.has(notif.style)) {
+          return { ...notif, status: "resolved" };
+        }
+        return notif;
+      });
+
+      // Only update if there were changes
+      if (
+        JSON.stringify(notifications) !== JSON.stringify(updatedNotifications)
+      ) {
+        localStorage.setItem(
+          "jobCreationNotifications",
+          JSON.stringify(updatedNotifications)
+        );
+        console.log(
+          "✅ Auto-resolved notifications for styles that now have jobs"
+        );
+      }
+    } catch (error) {
+      console.error("Error checking resolved notifications:", error);
+    }
+  };
+
+  // Check for POs with nrcJobNo: null and create notifications
+  const checkForMissingJobs = () => {
+    try {
+      // Get all POs that have nrcJobNo: null (no matching job)
+      const posWithoutJobs = purchaseOrders.filter(
+        (po) => !po.jobNrcJobNo && !po.job?.nrcJobNo && po.style && po.customer
+      );
+
+      if (posWithoutJobs.length === 0) return;
+
+      // Get existing notifications
+      const existingNotifications = JSON.parse(
+        localStorage.getItem("jobCreationNotifications") || "[]"
+      );
+
+      // Get existing notification styles to avoid duplicates
+      const existingStyles = new Set(
+        existingNotifications
+          .filter((notif: any) => notif.status === "pending")
+          .map((notif: any) => notif.style)
+      );
+
+      // Create notifications for POs without jobs
+      const newNotifications = posWithoutJobs
+        .filter((po) => !existingStyles.has(po.style))
+        .map((po) => ({
+          id: `job-creation-${Date.now()}-${Math.random()
+            .toString(36)
+            .substr(2, 9)}`,
+          style: po.style || "N/A",
+          customer: po.customer || "N/A",
+          createdAt: new Date().toISOString(),
+          status: "pending",
+        }));
+
+      if (newNotifications.length > 0) {
+        const updatedNotifications = [
+          ...existingNotifications,
+          ...newNotifications,
+        ];
+        localStorage.setItem(
+          "jobCreationNotifications",
+          JSON.stringify(updatedNotifications)
+        );
+        console.log(
+          `✅ Created ${newNotifications.length} notifications for POs without jobs`
+        );
+      }
+    } catch (error) {
+      console.error("Error checking for missing jobs:", error);
+    }
+  };
+
+  // Debug function to manually check notifications
+  const debugNotifications = () => {
+    const notifications = JSON.parse(
+      localStorage.getItem("jobCreationNotifications") || "[]"
+    );
+    console.log("Current notifications:", notifications);
+    return notifications;
+  };
+
+  // Make debug function available globally for testing
+  (window as any).debugNotifications = debugNotifications;
+
   const parseDate = (value: any) => {
     if (!value) return new Date().toISOString();
 
@@ -1105,20 +1219,10 @@ const PlannerJobs: React.FC = () => {
         // Log all matching results for debugging
         console.log("Style matching results:", styleMatchResults);
 
-        // If there are unmatched styles, stop and show error
-        if (unmatchedStyles.length > 0) {
-          const errorMessage = `❌ Upload stopped! ${
-            unmatchedStyles.length
-          } style(s) could not be matched with any job:\n\n${unmatchedStyles.join(
-            "\n"
-          )}\n\nPlease ensure all styles in the Excel file match exactly with the styleItemSKU in the Job table.\n\nNote: Matching is case-insensitive and ignores leading/trailing spaces.`;
-          alert(errorMessage);
-          console.error("Unmatched styles:", unmatchedStyles);
-          console.log("Available job styles:", Array.from(jobMap.keys()));
-          return;
-        }
+        // Collect unmatched styles for notification
+        const unmatchedItems: Array<{ style: string; customer: string }> = [];
 
-        // All styles matched, proceed with formatting
+        // Proceed with formatting - include ALL rows (matched and unmatched)
         const formattedData = parsedData
           .map((row: any, idx: number) => {
             if (!row["Customer"]) return null;
@@ -1129,11 +1233,24 @@ const PlannerJobs: React.FC = () => {
             const normalizedStyle = styleValue.trim().toUpperCase();
             const matchedJobNo = jobMap.get(normalizedStyle);
 
-            console.log(
-              `Row ${
-                idx + 1
-              }: style="${styleValue}" (normalized: "${normalizedStyle}") -> jobNo="${matchedJobNo}"`
-            );
+            // Track unmatched styles for notification
+            if (!matchedJobNo) {
+              unmatchedItems.push({
+                style: styleValue,
+                customer: row["Customer"],
+              });
+              console.warn(
+                `Row ${
+                  idx + 1
+                }: style "${styleValue}" has no matching job - will be added to database and notification created`
+              );
+            } else {
+              console.log(
+                `Row ${
+                  idx + 1
+                }: style="${styleValue}" (normalized: "${normalizedStyle}") -> jobNo="${matchedJobNo}"`
+              );
+            }
 
             return {
               id: nextId + idx,
@@ -1180,19 +1297,21 @@ const PlannerJobs: React.FC = () => {
               status: "created",
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
-              jobNrcJobNo: matchedJobNo, // This will always have a value now
+              jobNrcJobNo: matchedJobNo || null, // Allow null for unmatched styles
               userId: null,
             };
           })
           .filter((row) => row !== null);
 
         if (formattedData.length === 0) {
-          alert("No valid rows with customer found!");
+          alert(
+            "No valid rows found! Please ensure the Excel file has customer data."
+          );
           return;
         }
 
         console.log(
-          `✅ All ${formattedData.length} POs matched successfully with jobs. Proceeding with upload...`
+          `✅ ${formattedData.length} POs prepared for upload (${unmatchedItems.length} need job creation). Proceeding with upload...`
         );
 
         const { error } = await supabase
@@ -1203,7 +1322,27 @@ const PlannerJobs: React.FC = () => {
           console.error("Bulk upload failed:", error);
           alert("Upload failed. Check console for details.");
         } else {
-          alert(`Successfully uploaded ${formattedData.length} POs!`);
+          // Notifications will be created automatically by checkForMissingJobs()
+          // when the POs are loaded and displayed
+
+          // Show success message with details
+          let successMessage = `Successfully uploaded ${formattedData.length} POs!`;
+
+          if (unmatchedItems.length > 0) {
+            successMessage += `\n\n⚠️ ${unmatchedItems.length} PO(s) need new jobs to be created:\n\n`;
+            unmatchedItems.forEach((item, idx) => {
+              if (idx < 5) {
+                // Show first 5
+                successMessage += `• Style: ${item.style} | Customer: ${item.customer}\n`;
+              }
+            });
+            if (unmatchedItems.length > 5) {
+              successMessage += `\n... and ${unmatchedItems.length - 5} more`;
+            }
+            successMessage += `\n\nNotifications have been created. Please create jobs for these styles.`;
+          }
+
+          alert(successMessage);
         }
       };
     } catch (err) {

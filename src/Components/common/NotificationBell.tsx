@@ -5,6 +5,10 @@ import {
   fetchShadeCardNotifications,
   getNotificationCount,
 } from "../../services/shadeCardNotificationService";
+import {
+  fetchActivityLogNotifications,
+  getActivityLogCount,
+} from "../../services/activityLogNotificationService";
 import ShadeCardNotifications from "./ShadeCardNotifications";
 
 interface NotificationBellProps {
@@ -32,8 +36,17 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
 
   const loadNotificationCount = async () => {
     try {
-      const notifications = await fetchShadeCardNotifications();
-      setNotificationCount(getNotificationCount(notifications));
+      const [shadeCardNotifications, activityLogNotifications] =
+        await Promise.all([
+          fetchShadeCardNotifications(),
+          fetchActivityLogNotifications(),
+        ]);
+
+      const totalCount =
+        getNotificationCount(shadeCardNotifications) +
+        getActivityLogCount(activityLogNotifications);
+
+      setNotificationCount(totalCount);
     } catch (error) {
       console.error("Error loading notification count:", error);
     }
