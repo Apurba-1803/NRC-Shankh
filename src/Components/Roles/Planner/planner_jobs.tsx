@@ -1019,17 +1019,89 @@ const PlannerJobs: React.FC = () => {
   (window as any).debugNotifications = debugNotifications;
 
   const parseDate = (value: any) => {
-    if (!value) return new Date().toISOString();
+    if (!value) return null;
 
+    console.log(`🔍 Parsing date: "${value}" (type: ${typeof value})`);
+
+    // Handle the DD-MMM-YY format (e.g., "8-Nov-25", "14-Oct-25")
+    const ddmmyyPattern = /^(\d{1,2})-([A-Za-z]{3})-(\d{2})$/;
+    const match = String(value).match(ddmmyyPattern);
+
+    if (match) {
+      const [, day, month, year] = match;
+      console.log(
+        `🔍 Matched DD-MMM-YY pattern: day=${day}, month=${month}, year=${year}`
+      );
+
+      // Convert 2-digit year to 4-digit year (assuming 20xx for years 00-99)
+      const fullYear =
+        parseInt(year) < 50 ? 2000 + parseInt(year) : 1900 + parseInt(year);
+
+      // Month name to number mapping
+      const monthMap: { [key: string]: number } = {
+        Jan: 0,
+        Feb: 1,
+        Mar: 2,
+        Apr: 3,
+        May: 4,
+        Jun: 5,
+        Jul: 6,
+        Aug: 7,
+        Sep: 8,
+        Oct: 9,
+        Nov: 10,
+        Dec: 11,
+      };
+
+      const monthNum = monthMap[month];
+      if (monthNum !== undefined) {
+        const d = new Date(fullYear, monthNum, parseInt(day));
+        console.log(`🔍 Created date object: ${d.toISOString()}`);
+
+        if (!isNaN(d.getTime())) {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, "0");
+          const day = String(d.getDate()).padStart(2, "0");
+          const result = `${year}-${month}-${day}`;
+          console.log(`✅ Parsed date result: ${result}`);
+          return result;
+        }
+      }
+    }
+
+    // Check if it's an Excel date serial number (e.g., 45000)
+    if (typeof value === "number" && value > 25569) {
+      // Excel epoch starts at 1900-01-01
+      console.log(`🔍 Detected Excel date serial number: ${value}`);
+      const excelEpoch = new Date(1900, 0, 1); // January 1, 1900
+      const d = new Date(
+        excelEpoch.getTime() + (value - 2) * 24 * 60 * 60 * 1000
+      );
+
+      if (!isNaN(d.getTime())) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        const result = `${year}-${month}-${day}`;
+        console.log(`✅ Excel serial date result: ${result}`);
+        return result;
+      }
+    }
+
+    // Fallback to standard date parsing for other formats
+    console.log(`🔍 Using fallback date parsing for: "${value}"`);
     const d = new Date(value);
-
-    if (isNaN(d.getTime())) return new Date().toISOString();
+    if (isNaN(d.getTime())) {
+      console.log(`❌ Invalid date: ${value}`);
+      return null;
+    }
 
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
+    const result = `${year}-${month}-${day}`;
+    console.log(`✅ Fallback date result: ${result}`);
+    return result;
   };
 
   const handleBulkUpload = async () => {
@@ -1062,6 +1134,58 @@ const PlannerJobs: React.FC = () => {
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
           parsedData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
+        }
+
+        // Normalize headers by trimming spaces and standardizing column names
+        parsedData = parsedData.map((row: any) => {
+          const normalizedRow: any = {};
+          Object.keys(row).forEach((key) => {
+            const trimmedKey = key.trim();
+            // Additional normalization for common variations
+            let normalizedKey = trimmedKey;
+
+            // Handle common variations in column names
+            if (trimmedKey.toLowerCase().includes("delivery date")) {
+              normalizedKey = "Delivery Date";
+            } else if (trimmedKey.toLowerCase().includes("po date")) {
+              normalizedKey = "PO Date";
+            } else if (trimmedKey.toLowerCase().includes("dispatch date")) {
+              normalizedKey = "Dispatch Date";
+            } else if (trimmedKey.toLowerCase().includes("shade card")) {
+              normalizedKey = "Shade Card Approval Date";
+            } else if (trimmedKey.toLowerCase().includes("total po quantity")) {
+              normalizedKey = "Total PO Quantity";
+            } else if (trimmedKey.toLowerCase().includes("dispatch quantity")) {
+              normalizedKey = "Dispatch Quantity";
+            } else if (trimmedKey.toLowerCase().includes("pending quantity")) {
+              normalizedKey = "Pending Quantity";
+            } else if (trimmedKey.toLowerCase().includes("no. of sheets")) {
+              normalizedKey = "No. Of Sheets";
+            } else if (trimmedKey.toLowerCase().includes("board size")) {
+              normalizedKey = "Board Size";
+            } else if (trimmedKey.toLowerCase().includes("die code")) {
+              normalizedKey = "Die Code";
+            } else if (trimmedKey.toLowerCase().includes("jockey month")) {
+              normalizedKey = "Jockey Month";
+            } else if (trimmedKey.toLowerCase().includes("pending validity")) {
+              normalizedKey = "Pending Validity";
+            } else if (trimmedKey.toLowerCase().includes("no.of ups")) {
+              normalizedKey = "NO.of ups";
+            } else if (trimmedKey.toLowerCase().includes("flute type")) {
+              normalizedKey = "Flute Type";
+            }
+
+            normalizedRow[normalizedKey] = row[key];
+          });
+          return normalizedRow;
+        });
+
+        // Debug: Log available headers to see what we're working with
+        if (parsedData.length > 0) {
+          console.log(
+            "🔍 Available headers in Excel file:",
+            Object.keys(parsedData[0])
+          );
         }
 
         if (parsedData.length === 0) {
@@ -1304,6 +1428,18 @@ const PlannerJobs: React.FC = () => {
 
         console.log(
           `✅ ${formattedData.length} POs prepared for upload (${unmatchedItems.length} need job creation). Proceeding with upload...`
+        );
+
+        // Debug: Log sample data to check date parsing
+        console.log(
+          "🔍 Sample formatted data with dates:",
+          formattedData.slice(0, 2).map((po) => ({
+            poNumber: po.poNumber,
+            poDate: po.poDate,
+            deliveryDate: po.deliveryDate,
+            dispatchDate: po.dispatchDate,
+            shadeCardApprovalDate: po.shadeCardApprovalDate,
+          }))
         );
 
         const { error } = await supabase
