@@ -912,78 +912,61 @@ const PlannerJobs: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Check and remove resolved notifications when POs are loaded
+  // Sync notifications with current POs when POs are loaded
   useEffect(() => {
-    checkAndRemoveResolvedNotifications();
-    checkForMissingJobs();
+    syncNotificationsWithCurrentPOs();
   }, [purchaseOrders]);
 
-  const checkAndRemoveResolvedNotifications = () => {
+  // Completely sync notifications with current PO state
+  const syncNotificationsWithCurrentPOs = () => {
     try {
-      const notifications = JSON.parse(
-        localStorage.getItem("jobCreationNotifications") || "[]"
-      );
-
-      if (notifications.length === 0) return;
-
-      // Get all current POs with jobNrcJobNo
-      const posWithJobs = purchaseOrders.filter(
-        (po) => po.jobNrcJobNo || po.job?.nrcJobNo
-      );
-
-      // Get all unique styles that now have jobs
-      const stylesWithJobs = new Set(
-        posWithJobs.map((po) => po.style).filter(Boolean)
-      );
-
-      // Mark notifications as resolved if their style now has a job
-      const updatedNotifications = notifications.map((notif: any) => {
-        if (notif.status === "pending" && stylesWithJobs.has(notif.style)) {
-          return { ...notif, status: "resolved" };
-        }
-        return notif;
-      });
-
-      // Only update if there were changes
-      if (
-        JSON.stringify(notifications) !== JSON.stringify(updatedNotifications)
-      ) {
-        localStorage.setItem(
-          "jobCreationNotifications",
-          JSON.stringify(updatedNotifications)
-        );
-        console.log(
-          "✅ Auto-resolved notifications for styles that now have jobs"
-        );
-      }
-    } catch (error) {
-      console.error("Error checking resolved notifications:", error);
-    }
-  };
-
-  // Check for POs with nrcJobNo: null and create notifications
-  const checkForMissingJobs = () => {
-    try {
-      // Get all POs that have nrcJobNo: null (no matching job)
+      // Get all current POs that don't have a job
       const posWithoutJobs = purchaseOrders.filter(
         (po) => !po.jobNrcJobNo && !po.job?.nrcJobNo && po.style && po.customer
       );
 
-      if (posWithoutJobs.length === 0) return;
+      console.log(
+        `🔄 Syncing notifications: Found ${posWithoutJobs.length} POs without jobs out of ${purchaseOrders.length} total POs`
+      );
+
+      // If there are no POs without jobs, clear all pending notifications
+      if (posWithoutJobs.length === 0) {
+        localStorage.setItem("jobCreationNotifications", JSON.stringify([]));
+        console.log(
+          "✅ Cleared all job creation notifications (no POs without jobs)"
+        );
+        return;
+      }
+
+      // Get all current styles from POs (to validate notifications)
+      const currentPOStyles = new Set(
+        purchaseOrders.map((po) => po.style).filter(Boolean)
+      );
 
       // Get existing notifications
       const existingNotifications = JSON.parse(
         localStorage.getItem("jobCreationNotifications") || "[]"
       );
 
-      // Get existing notification styles to avoid duplicates
+      // Filter out notifications for styles that no longer exist in current POs
+      const validNotifications = existingNotifications.filter((notif: any) => {
+        const styleExistsInCurrentPOs = currentPOStyles.has(notif.style);
+        const poStillNeedsJob = posWithoutJobs.some(
+          (po) => po.style === notif.style
+        );
+        return (
+          notif.status === "pending" &&
+          styleExistsInCurrentPOs &&
+          poStillNeedsJob
+        );
+      });
+
+      // Get existing notification styles
       const existingStyles = new Set(
-        existingNotifications
-          .filter((notif: any) => notif.status === "pending")
-          .map((notif: any) => notif.style)
+        validNotifications.map((notif: any) => notif.style)
       );
 
-      // Create notifications for POs without jobs
+      // Create notifications for new POs without jobs
       const newNotifications = posWithoutJobs
         .filter((po) => !existingStyles.has(po.style))
         .map((po) => ({
@@ -994,23 +977,32 @@ const PlannerJobs: React.FC = () => {
           customer: po.customer || "N/A",
           createdAt: new Date().toISOString(),
           status: "pending",
+          // Include full PO details
+          poNumber: po.poNumber || "N/A",
+          poDate: po.poDate || null,
+          deliveryDate: po.deliveryDate || null,
+          totalPOQuantity: po.totalPOQuantity || null,
+          unit: po.unit || "N/A",
+          plant: po.plant || "N/A",
+          boardSize: po.boardSize || po.jobBoardSize || "N/A",
+          noOfColor: po.noOfColor || "N/A",
+          fluteType: po.fluteType || "N/A",
         }));
 
-      if (newNotifications.length > 0) {
-        const updatedNotifications = [
-          ...existingNotifications,
-          ...newNotifications,
-        ];
-        localStorage.setItem(
-          "jobCreationNotifications",
-          JSON.stringify(updatedNotifications)
-        );
-        console.log(
-          `✅ Created ${newNotifications.length} notifications for POs without jobs`
-        );
-      }
+      // Combine valid existing notifications with new ones
+      const finalNotifications = [...validNotifications, ...newNotifications];
+
+      // Update localStorage
+      localStorage.setItem(
+        "jobCreationNotifications",
+        JSON.stringify(finalNotifications)
+      );
+
+      console.log(
+        `✅ Synced notifications: ${validNotifications.length} existing + ${newNotifications.length} new = ${finalNotifications.length} total`
+      );
     } catch (error) {
-      console.error("Error checking for missing jobs:", error);
+      console.error("Error syncing notifications with POs:", error);
     }
   };
 
@@ -1322,7 +1314,7 @@ const PlannerJobs: React.FC = () => {
           console.error("Bulk upload failed:", error);
           alert("Upload failed. Check console for details.");
         } else {
-          // Notifications will be created automatically by checkForMissingJobs()
+          // Notifications will be created automatically by syncNotificationsWithCurrentPOs()
           // when the POs are loaded and displayed
 
           // Show success message with details
@@ -1343,6 +1335,9 @@ const PlannerJobs: React.FC = () => {
           }
 
           alert(successMessage);
+
+          // Reload POs to sync with database and trigger notification sync
+          await fetchPurchaseOrders();
         }
       };
     } catch (err) {

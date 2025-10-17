@@ -6,6 +6,16 @@ export interface ActivityLogNotification {
   customer: string;
   createdAt: string;
   status: "pending" | "resolved";
+  // Additional PO details
+  poNumber?: string;
+  poDate?: string;
+  deliveryDate?: string;
+  totalPOQuantity?: number;
+  unit?: string;
+  plant?: string;
+  boardSize?: string;
+  noOfColor?: string;
+  fluteType?: string;
 }
 
 /**

@@ -317,26 +317,93 @@ const ShadeCardNotifications: React.FC<ShadeCardNotificationsProps> = ({
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm bg-white rounded p-3">
-                        <div className="text-gray-700">
-                          <span className="font-medium">Style:</span>{" "}
-                          <strong className="text-gray-900">
-                            {notification.style || "N/A"}
-                          </strong>
+                      <div className="bg-white rounded p-4 space-y-3">
+                        {/* Primary Information */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm pb-3 border-b border-gray-200">
+                          <div className="text-gray-700">
+                            <span className="font-medium">Style:</span>{" "}
+                            <strong className="text-gray-900">
+                              {notification.style || "N/A"}
+                            </strong>
+                          </div>
+                          <div className="text-gray-700">
+                            <span className="font-medium">Customer:</span>{" "}
+                            <strong className="text-gray-900">
+                              {notification.customer || "N/A"}
+                            </strong>
+                          </div>
                         </div>
-                        <div className="text-gray-700">
-                          <span className="font-medium">Customer:</span>{" "}
-                          <strong className="text-gray-900">
-                            {notification.customer || "N/A"}
-                          </strong>
+
+                        {/* PO Details */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                          <div className="text-gray-700">
+                            <span className="font-medium">PO Number:</span>{" "}
+                            <strong className="text-gray-900">
+                              {notification.poNumber || "N/A"}
+                            </strong>
+                          </div>
+                          <div className="text-gray-700">
+                            <span className="font-medium">PO Date:</span>{" "}
+                            <strong className="text-gray-900">
+                              {notification.poDate
+                                ? formatDate(notification.poDate)
+                                : "N/A"}
+                            </strong>
+                          </div>
+                          <div className="text-gray-700">
+                            <span className="font-medium">Delivery Date:</span>{" "}
+                            <strong className="text-gray-900">
+                              {notification.deliveryDate
+                                ? formatDate(notification.deliveryDate)
+                                : "N/A"}
+                            </strong>
+                          </div>
+                          <div className="text-gray-700">
+                            <span className="font-medium">Quantity:</span>{" "}
+                            <strong className="text-gray-900">
+                              {notification.totalPOQuantity
+                                ? notification.totalPOQuantity.toLocaleString()
+                                : "N/A"}
+                            </strong>
+                          </div>
+                          <div className="text-gray-700">
+                            <span className="font-medium">Unit:</span>{" "}
+                            <strong className="text-gray-900">
+                              {notification.unit || "N/A"}
+                            </strong>
+                          </div>
+                          <div className="text-gray-700">
+                            <span className="font-medium">Plant:</span>{" "}
+                            <strong className="text-gray-900">
+                              {notification.plant || "N/A"}
+                            </strong>
+                          </div>
+                          <div className="text-gray-700">
+                            <span className="font-medium">Board Size:</span>{" "}
+                            <strong className="text-gray-900">
+                              {notification.boardSize || "N/A"}
+                            </strong>
+                          </div>
+                          <div className="text-gray-700">
+                            <span className="font-medium">No of Colors:</span>{" "}
+                            <strong className="text-gray-900">
+                              {notification.noOfColor || "N/A"}
+                            </strong>
+                          </div>
+                          <div className="text-gray-700">
+                            <span className="font-medium">Flute Type:</span>{" "}
+                            <strong className="text-gray-900">
+                              {notification.fluteType || "N/A"}
+                            </strong>
+                          </div>
                         </div>
                       </div>
 
                       <div className="mt-3 pt-3 border-t border-green-200">
                         <p className="text-sm font-medium text-green-800">
-                          ⚠️ This PO was uploaded but no matching job exists.
-                          Please create a job for this style to proceed with job
-                          planning.
+                          ⚠️ This PO was uploaded but no matching job (NRC Job
+                          Number) exists. Please create a job for this style to
+                          proceed with job planning.
                         </p>
                       </div>
                     </div>
