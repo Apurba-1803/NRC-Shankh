@@ -23,6 +23,10 @@ interface Job {
   totalDuration?: number;
   jobDetails?: any;
   purchaseOrderDetails?: any;
+  jobPlanningDetails?: {
+    purchaseOrderDetails?: any[];
+    allStepsDetails?: any[];
+  };
   allSteps?: any[];
   allStepDetails?: {
     paperStore?: any[];
@@ -171,12 +175,18 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       // Left Column
       pdf.text(
         `Client's Name : ${String(
-          job.jobDetails?.company || job.jobDetails?.customerName || "N/A"
+          job.jobDetails?.customerName || job.jobDetails?.company || "N/A"
         )}`,
         20,
         yPosition
       );
-      pdf.text(`Job Name : ${String(job.nrcJobNo)}`, 20, yPosition + 6);
+      pdf.text(
+        `Job Name : ${String(
+          job.nrcJobNo || job.jobDetails?.nrcJobNo || "N/A"
+        )}`,
+        20,
+        yPosition + 6
+      );
       pdf.text(
         `Date : ${new Date().toLocaleDateString("en-US", {
           year: "numeric",
@@ -188,10 +198,14 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       );
 
       // Right Column
-      // Handle both array and object formats for PO details
-      const poDetails = Array.isArray(job.purchaseOrderDetails)
-        ? job.purchaseOrderDetails[0]
-        : job.purchaseOrderDetails;
+      // Handle new data structure: jobPlanningDetails.purchaseOrderDetails (array)
+      // or fallback to old structure: job.purchaseOrderDetails
+      let poDetailsArray =
+        job.jobPlanningDetails?.purchaseOrderDetails ||
+        job.purchaseOrderDetails;
+      const poDetails = Array.isArray(poDetailsArray)
+        ? poDetailsArray[0]
+        : poDetailsArray;
 
       pdf.text(
         `Job Card No. : ${String(job.id || "N/A")}`,
@@ -796,7 +810,11 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
 
       // Save the PDF
       pdf.save(
-        `NRC_Job_${job.nrcJobNo.replace(/[^a-zA-Z0-9]/g, "_")}_${
+        `NRC_Job_${(
+          job.nrcJobNo ||
+          job.jobDetails?.nrcJobNo ||
+          "Unknown"
+        ).replace(/[^a-zA-Z0-9]/g, "_")}_${
           new Date().toISOString().split("T")[0]
         }.pdf`
       );
@@ -820,10 +838,12 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
               <TrendingUp className="h-6 w-6 text-black" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold">{job.nrcJobNo}</h2>
+              <h2 className="text-2xl font-bold">
+                {job.nrcJobNo || job.jobDetails?.nrcJobNo || "N/A"}
+              </h2>
               <p className="text-blue-100">
-                {job.jobDetails?.company ||
-                  job.jobDetails?.customerName ||
+                {job.jobDetails?.customerName ||
+                  job.jobDetails?.company ||
                   "N/A"}
               </p>
             </div>
@@ -868,7 +888,9 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
                         Style ID:
                       </span>
                       <span className="text-gray-900">
-                        {job.jobDetails.styleId || "N/A"}
+                        {job.jobDetails.styleItemSKU ||
+                          job.jobDetails.styleId ||
+                          "N/A"}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -893,6 +915,22 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
                       </span>
                       <span className="text-gray-900">
                         {job.jobDetails.processColors || "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-gray-700">
+                        Flute Type:
+                      </span>
+                      <span className="text-gray-900">
+                        {job.jobDetails.fluteType || "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-gray-700">
+                        No. of Colors:
+                      </span>
+                      <span className="text-gray-900">
+                        {job.jobDetails.noOfColor || "N/A"}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -934,17 +972,24 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
               )}
 
               {/* Purchase Order Details */}
-              {job.purchaseOrderDetails && (
+              {(job.purchaseOrderDetails ||
+                job.jobPlanningDetails?.purchaseOrderDetails) && (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h3 className="font-semibold text-blue-800 mb-3 flex items-center">
                     <Calendar className="h-5 w-5 mr-2" />
                     Purchase Order Details
                   </h3>
                   {(() => {
+                    // Handle new data structure: jobPlanningDetails.purchaseOrderDetails (array)
+                    // or fallback to old structure: job.purchaseOrderDetails
+                    let poDetailsArray =
+                      job.jobPlanningDetails?.purchaseOrderDetails ||
+                      job.purchaseOrderDetails;
+
                     // Handle both array and object formats
-                    const poDetails = Array.isArray(job.purchaseOrderDetails)
-                      ? job.purchaseOrderDetails[0]
-                      : job.purchaseOrderDetails;
+                    const poDetails = Array.isArray(poDetailsArray)
+                      ? poDetailsArray[0]
+                      : poDetailsArray;
 
                     if (!poDetails)
                       return (

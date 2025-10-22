@@ -197,6 +197,9 @@ interface JobPlan {
   jobDetails?: EnhancedJobDetails;
   purchaseOrderDetails?: PurchaseOrderDetails[];
   poJobPlannings?: POJobPlanning[];
+  // Additional properties from the actual data
+  jobPlanningId?: number;
+  totalHeldMachines?: number;
 }
 
 interface JobPlanStep {
@@ -209,6 +212,27 @@ interface JobPlanStep {
   startDate?: string;
   endDate?: string;
   user?: string;
+  // Additional properties for held jobs
+  jobStepMachineStatus?: string;
+  heldMachines?: Array<{
+    machineId: string;
+    machineCode: string;
+    machineType: string;
+    unit: string;
+    jobStepMachineStatus?: string;
+    status?: string;
+    heldAt?: string;
+    heldBy?: any;
+    holdRemark?: string;
+    startedAt?: string;
+    completedAt?: string | null;
+    capacity?: number;
+    description?: string;
+    formData?: any;
+  }>;
+  hasHeldMachines?: boolean;
+  heldMachinesCount?: number;
+  totalHeldMachines?: number;
 }
 
 // ... (copy the other interfaces from your InProgressJobs component)
@@ -223,6 +247,7 @@ const HeldJobs: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [heldJobs, setHeldJobs] = useState<JobPlan[]>([]);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   // Extract state data passed from dashboard
   const {
@@ -239,12 +264,74 @@ const HeldJobs: React.FC = () => {
   ) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
+    const jobIdentifier =
+      job.nrcJobNo || job.jobDetails?.nrcJobNo || job.id?.toString();
+
+    console.log(
+      `🔍 Checking step activity for job ${jobIdentifier} between ${startDate} and ${endDate}`
+    );
 
     return job.steps.some((step) => {
+      // Check step.updatedAt
       if (step.updatedAt) {
         const stepUpdateDate = new Date(step.updatedAt);
-        return stepUpdateDate >= start && stepUpdateDate <= end;
+        if (!isNaN(stepUpdateDate.getTime())) {
+          const isInRange = stepUpdateDate >= start && stepUpdateDate <= end;
+          if (isInRange) {
+            console.log(
+              `✅ Found recent step activity in ${step.stepName}: ${step.updatedAt}`
+            );
+            return true;
+          } else {
+            console.log(
+              `❌ Step ${step.stepName} update ${step.updatedAt} not in range`
+            );
+          }
+        }
       }
+
+      // Check held machines activity
+      if (step.heldMachines && step.heldMachines.length > 0) {
+        console.log(
+          `🔍 Checking ${step.heldMachines.length} held machines in step ${step.stepName}`
+        );
+        const hasHeldActivity = step.heldMachines.some((machine: any) => {
+          if (machine.heldAt) {
+            const heldDate = new Date(machine.heldAt);
+            if (!isNaN(heldDate.getTime())) {
+              // Convert to date strings for comparison (ignore time)
+              const heldDateStr = heldDate.toISOString().split("T")[0];
+              const startStr = start.toISOString().split("T")[0];
+              const endStr = end.toISOString().split("T")[0];
+              const isInRange =
+                heldDateStr >= startStr && heldDateStr <= endStr;
+
+              console.log(
+                `🔍 Machine ${machine.machineCode} held at ${machine.heldAt}`
+              );
+              console.log(
+                `🔍 Date comparison: ${heldDateStr} >= ${startStr} && ${heldDateStr} <= ${endStr} = ${isInRange}`
+              );
+
+              if (isInRange) {
+                console.log(
+                  `✅ Found recent held machine activity in ${step.stepName}: ${machine.heldAt}`
+                );
+                return true;
+              }
+            } else {
+              console.log(`❌ Invalid held date: ${machine.heldAt}`);
+            }
+          } else {
+            console.log(`❌ No heldAt date for machine ${machine.machineCode}`);
+          }
+          return false;
+        });
+        if (hasHeldActivity) return true;
+      } else {
+        console.log(`❌ No held machines in step ${step.stepName}`);
+      }
+
       return false;
     });
   };
@@ -294,9 +381,7 @@ const HeldJobs: React.FC = () => {
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            Pragma: "no-cache",
-            Expires: "0",
+            "Content-Type": "application/json",
           },
         }
       );
@@ -358,13 +443,46 @@ const HeldJobs: React.FC = () => {
 
       if (jobPlanningResult.success && Array.isArray(jobPlanningResult.data)) {
         // Filter only held jobs
-        const heldJobsData = jobPlanningResult.data.filter((job: JobPlan) =>
-          job.steps.some(
-            (step) =>
+        const heldJobsData = jobPlanningResult.data.filter((job: JobPlan) => {
+          const isHeld = job.steps.some((step) => {
+            // Check for held status in various possible locations
+            const hasHeldStatus =
               step.stepDetails?.data?.status === "hold" ||
-              step.stepDetails?.status === "hold"
-          )
-        );
+              step.stepDetails?.status === "hold" ||
+              step.jobStepMachineStatus === "hold" ||
+              (step.heldMachines &&
+                step.heldMachines.length > 0 &&
+                step.heldMachines.some(
+                  (machine: any) =>
+                    machine.jobStepMachineStatus === "hold" ||
+                    machine.status === "hold"
+                )) ||
+              step.hasHeldMachines === true;
+
+            if (hasHeldStatus) {
+              console.log(
+                `🔍 Found held job: ${job.nrcJobNo} in step: ${step.stepName}`,
+                {
+                  stepDetails: step.stepDetails,
+                  jobStepMachineStatus: step.jobStepMachineStatus,
+                  heldMachines: step.heldMachines,
+                  hasHeldMachines: step.hasHeldMachines,
+                }
+              );
+            }
+
+            return hasHeldStatus;
+          });
+
+          if (isHeld) {
+            console.log(`✅ Job ${job.nrcJobNo} is held`);
+          }
+
+          return isHeld;
+        });
+
+        console.log(`🔍 Total jobs from API: ${jobPlanningResult.data.length}`);
+        console.log(`🔍 Filtered held jobs: ${heldJobsData.length}`);
 
         // Fetch additional details for each held job using the combined API
         const jobsWithDetails = await Promise.all(
@@ -381,6 +499,9 @@ const HeldJobs: React.FC = () => {
           })
         );
 
+        console.log(
+          `🔍 Final held jobs with details: ${jobsWithDetails.length}`
+        );
         setHeldJobs(jobsWithDetails);
       } else {
         throw new Error("Invalid API response format");
@@ -404,6 +525,8 @@ const HeldJobs: React.FC = () => {
 
       // Apply step-based date filtering if dateFilter is available
       let filteredJobs = jobs;
+      console.log(`🔍 Starting with ${jobs.length} held jobs before filtering`);
+
       if (dateFilter) {
         const dateRange = getDateRangeFromFilter(dateFilter, customDateRange);
         if (dateRange) {
@@ -412,28 +535,59 @@ const HeldJobs: React.FC = () => {
             dateRange
           );
           filteredJobs = jobs.filter((job: JobPlan) => {
+            const jobIdentifier =
+              job.nrcJobNo || job.jobDetails?.nrcJobNo || job.id?.toString();
+            console.log(`🔍 Checking job: ${jobIdentifier}`);
+
             // Check if job has recent step activity within the date range
             const hasActivity = hasRecentStepActivity(
               job,
               dateRange.start,
               dateRange.end
             );
-            if (!hasActivity) {
-              console.log(
-                `Held job ${job.nrcJobNo} has no recent step activity, falling back to creation date`
-              );
-              // Fallback to job creation date if no step activity
-              const jobDate = new Date(job.createdAt)
-                .toISOString()
-                .split("T")[0];
-              return jobDate >= dateRange.start && jobDate <= dateRange.end;
+
+            if (hasActivity) {
+              console.log(`✅ Job ${jobIdentifier} has recent step activity`);
+              return true;
             }
-            return hasActivity;
+
+            console.log(
+              `Held job ${jobIdentifier} has no recent step activity, checking creation date`
+            );
+
+            // For held jobs, be more lenient with date filtering
+            if (!job.createdAt) {
+              console.log(
+                `Job ${jobIdentifier} has no createdAt date, including it anyway (it's held)`
+              );
+              return true; // Always include held jobs without creation date
+            }
+
+            const jobDate = new Date(job.createdAt);
+            if (isNaN(jobDate.getTime())) {
+              console.warn(
+                `Invalid job creation date: ${job.createdAt}, including anyway`
+              );
+              return true; // Include held jobs even with invalid creation date
+            }
+
+            const jobDateStr = jobDate.toISOString().split("T")[0];
+            const isInDateRange =
+              jobDateStr >= dateRange.start && jobDateStr <= dateRange.end;
+            console.log(
+              `Job ${jobIdentifier} creation date ${jobDateStr} in range: ${isInDateRange}`
+            );
+
+            return isInDateRange;
           });
           console.log(
             `Filtered ${jobs.length} held jobs to ${filteredJobs.length} based on step activity`
           );
         }
+      } else {
+        console.log(
+          `No date filter applied, keeping all ${jobs.length} held jobs`
+        );
       }
 
       const jobsWithDetails = await Promise.all(
@@ -447,9 +601,32 @@ const HeldJobs: React.FC = () => {
             return job;
           }
 
+          // Debug: Check job structure
+          console.log(`🔍 Processing job:`, {
+            nrcJobNo: job.nrcJobNo,
+            jobDetailsNrcJobNo: job.jobDetails?.nrcJobNo,
+            id: job.id,
+            jobPlanningId: job.jobPlanningId,
+            fullJob: job,
+          });
+
+          // Use the correct job identifier - check multiple possible locations
+          const jobIdentifier =
+            job.nrcJobNo ||
+            job.jobDetails?.nrcJobNo ||
+            job.id?.toString() ||
+            job.jobPlanningId?.toString();
+
+          console.log(`🔍 Selected job identifier: ${jobIdentifier}`);
+
+          if (!jobIdentifier) {
+            console.error(`❌ No valid job identifier found for job:`, job);
+            return job; // Return job as-is if no identifier
+          }
+
           // Fetch complete details using the new combined API
           const { jobDetails, purchaseOrderDetails, poJobPlannings } =
-            await fetchJobWithPODetails(job.nrcJobNo, accessToken);
+            await fetchJobWithPODetails(jobIdentifier, accessToken);
 
           return {
             ...job,
@@ -461,7 +638,15 @@ const HeldJobs: React.FC = () => {
         })
       );
 
+      console.log(
+        `🔍 Final result: ${jobsWithDetails.length} held jobs after processing`
+      );
+      console.log(`🔍 Jobs with details:`, jobsWithDetails);
+      console.log(
+        `🔍 About to set heldJobs state with ${jobsWithDetails.length} jobs`
+      );
       setHeldJobs(jobsWithDetails);
+      console.log(`🔍 setHeldJobs called with:`, jobsWithDetails);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to enhance job details"
@@ -473,15 +658,26 @@ const HeldJobs: React.FC = () => {
   };
 
   useEffect(() => {
+    // Prevent multiple initializations
+    if (hasInitialized) {
+      console.log("Already initialized, skipping useEffect");
+      return;
+    }
+
+    console.log("useEffect running - hasInitialized:", hasInitialized);
+    console.log("passedHeldJobs:", passedHeldJobs);
+
     // Check if we have passed data from dashboard
     if (passedHeldJobs && Array.isArray(passedHeldJobs)) {
       console.log("Using passed held jobs data:", passedHeldJobs);
+      setHasInitialized(true);
       enhancePassedJobsWithDetails(passedHeldJobs);
     } else {
       console.log("No passed data found, fetching held jobs...");
+      setHasInitialized(true);
       fetchHeldJobsWithDetails();
     }
-  }, [passedHeldJobs]);
+  }, [passedHeldJobs, hasInitialized]);
 
   const handleJobClick = (job: CompletedJob | JobPlan) => {
     setSelectedJob(job as JobPlan); // Type assertion since we know it's JobPlan for held jobs
@@ -498,12 +694,21 @@ const HeldJobs: React.FC = () => {
   };
 
   const handleRetry = () => {
+    console.log("Retry clicked - resetting initialization");
+    setHasInitialized(false);
+    setHeldJobs([]);
+    setError(null);
+
     if (passedHeldJobs && Array.isArray(passedHeldJobs)) {
       enhancePassedJobsWithDetails(passedHeldJobs);
     } else {
       fetchHeldJobsWithDetails();
     }
   };
+
+  // Debug: Log heldJobs state before render
+  console.log(`🔍 RENDER: heldJobs.length = ${heldJobs.length}`);
+  console.log(`🔍 RENDER: heldJobs =`, heldJobs);
 
   if (loading) {
     return (

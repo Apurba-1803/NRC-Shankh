@@ -115,9 +115,21 @@ const JobBarsChart: React.FC<JobBarsChartProps> = ({
   };
 
   // Filter jobs based on search term
-  const filteredJobs = jobs.filter((job) =>
-    job.nrcJobNo.toLowerCase().includes(searchTerm.toLowerCase())
+  console.log(
+    `🔍 JobBarsChart: Received ${jobs.length} jobs for category ${category}`
   );
+  console.log(`🔍 JobBarsChart: Jobs data:`, jobs);
+
+  const filteredJobs = jobs.filter((job) => {
+    const jobNumber =
+      job.nrcJobNo || (job as any).jobDetails?.nrcJobNo || job.id?.toString();
+    console.log(`🔍 JobBarsChart: Job number for filtering: ${jobNumber}`);
+    return (
+      jobNumber && jobNumber.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+
+  console.log(`🔍 JobBarsChart: Filtered to ${filteredJobs.length} jobs`);
 
   // Get category-specific styling
   const getCategoryStyles = () => {
