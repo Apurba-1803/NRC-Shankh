@@ -32,7 +32,7 @@ import CreateNewJob from "../../Components/Roles/Planner/CreateNewJob";
 import PlannerNotifications from "../../Components/Roles/Planner/planner_notifications";
 import PlannerJobs from "../../Components/Roles/Planner/planner_jobs";
 import JobAssigned from "../../Components/Roles/Planner/job_assigned"; // IMPORTED: New component
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 interface DashboardProps {
   tabValue: string;
@@ -62,6 +62,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
   // 🔥 BETTER LOGIC: Get the actual user role from localStorage
   const getActualUserRole = () => {
@@ -79,6 +80,27 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const actualUserRole = getActualUserRole();
   const isOnPlannerDashboardRoute = location.pathname === "/planner-dashboard";
+
+  // Handle URL parameters for navigation
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "create-new-job") {
+      // Set the correct tab based on user role
+      if (actualUserRole === "admin") {
+        setTabValue("admin-create-new-job");
+      } else if (actualUserRole === "planner") {
+        setTabValue("create new job");
+      }
+
+      // Clear the URL parameter to allow subsequent clicks to work
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete("tab");
+      const newUrl = newSearchParams.toString()
+        ? `${location.pathname}?${newSearchParams.toString()}`
+        : location.pathname;
+      navigate(newUrl, { replace: true });
+    }
+  }, [searchParams, setTabValue, actualUserRole, navigate, location.pathname]);
 
   console.log(
     "Dashboard Debug - actualUserRole:",

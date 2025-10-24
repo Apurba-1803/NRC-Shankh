@@ -65,6 +65,7 @@ interface PurchaseOrder {
   jobDemand?: string;
   machineId?: string | null;
   jobPlanId?: number;
+  jobPlanningId?: string | null;
   jobPlanCreatedAt?: string;
   jobPlanUpdatedAt?: string;
 }
@@ -190,11 +191,11 @@ const PlannerJobs: React.FC = () => {
   ): "artwork_pending" | "po_pending" | "more_info_pending" | "completed" => {
     console.log("po in check po completion function", po);
 
-    // Check if job plan exists using hasJobPlan flag, steps, or jobSteps
+    // Check if THIS specific PO has job planning (not just any PO with same nrcJobNo)
     const hasJobPlan =
-      po.hasJobPlan ||
-      (po.steps && po.steps.length > 0) ||
-      (po.jobSteps && po.jobSteps.length > 0);
+      (po.steps && po.steps.length > 0 && po.jobPlanningId) ||
+      (po.jobSteps && po.jobSteps.length > 0 && po.jobPlanningId) ||
+      (po.hasJobPlan && po.jobPlanningId);
 
     if (hasJobPlan) {
       return "completed";
@@ -217,104 +218,208 @@ const PlannerJobs: React.FC = () => {
     jobPlannings: any[],
     jobs: any[]
   ) => {
-    return purchaseOrders.map((po) => {
-      // Debug logging for the specific PO
-      if (
-        po.jobNrcJobNo === "NON-1 KG X 10 PKT-5 PLAY" ||
-        po.poNumber === "test1234" ||
-        po.poNumber === "12345" ||
-        po.id === 3558
-      ) {
-        console.log("🔍 DEBUGGING PO:", {
-          poNumber: po.poNumber,
-          jobNrcJobNo: po.jobNrcJobNo,
-          nrcJobNo: po.nrcJobNo,
-          customer: po.customer,
-        });
-        console.log(
-          "🔍 Available job plannings:",
-          jobPlannings.map((jp) => ({
-            nrcJobNo: jp.nrcJobNo,
-            purchaseOrderId: jp.purchaseOrderId,
-          }))
-        );
-      }
-
-      // Find matching job planning by nrcJobNo (prioritize nrcJobNo matching)
-      const matchingJobPlan = jobPlannings.find((jp) => {
-        const matchesJobNrcJobNo = jp.nrcJobNo === po.jobNrcJobNo;
-        const matchesNrcJobNo = jp.nrcJobNo === po.nrcJobNo;
-        const matchesPurchaseOrderId = jp.purchaseOrderId === po.id;
-
+    return purchaseOrders
+      .map((po) => {
+        // Debug logging for the specific POs
         if (
-          po.jobNrcJobNo === "NON-1 KG X 10 PKT-5 PLAY" ||
-          po.poNumber === "12345" ||
-          po.id === 3558
+          po.poNumber === "4525021678" ||
+          po.poNumber === "4525021684" ||
+          po.poNumber === "4525019639" ||
+          po.id === 3693 ||
+          po.id === 3668 ||
+          po.id === 3665
         ) {
-          console.log("🔍 Job Planning Match Check:", {
-            jpNrcJobNo: jp.nrcJobNo,
+          console.log("🔍 DEBUGGING PO:", {
+            poId: po.id,
+            poNumber: po.poNumber,
+            jobNrcJobNo: po.jobNrcJobNo,
+            nrcJobNo: po.nrcJobNo,
+            customer: po.customer,
+          });
+          console.log(
+            "🔍 Available job plannings:",
+            jobPlannings.map((jp) => ({
+              jobPlanId: jp.jobPlanId,
+              nrcJobNo: jp.nrcJobNo,
+              purchaseOrderId: jp.purchaseOrderId,
+            }))
+          );
+        }
+
+        // Find matching job planning by purchaseOrderId ONLY (strict PO-specific matching)
+        const matchingJobPlan = jobPlannings.find((jp) => {
+          const matchesPurchaseOrderId = jp.purchaseOrderId === po.id;
+
+          if (
+            po.poNumber === "4525021678" ||
+            po.poNumber === "4525021684" ||
+            po.poNumber === "4525019639" ||
+            po.id === 3693 ||
+            po.id === 3668 ||
+            po.id === 3665
+          ) {
+            console.log("🔍 Job Planning Match Check:", {
+              jpJobPlanId: jp.jobPlanId,
+              jpNrcJobNo: jp.nrcJobNo,
+              jpPurchaseOrderId: jp.purchaseOrderId,
+              poId: po.id,
+              poNumber: po.poNumber,
+              matchesPurchaseOrderId,
+              finalMatch: matchesPurchaseOrderId,
+            });
+          }
+
+          // ONLY match by purchaseOrderId - no fallback to nrcJobNo
+          // This ensures each PO gets its own specific job plan
+          return matchesPurchaseOrderId;
+        });
+
+        // Find matching job details by nrcJobNo - try multiple matching strategies
+        const matchingJob = jobs.find(
+          (job) =>
+            job.nrcJobNo === po.jobNrcJobNo ||
+            job.nrcJobNo === po.nrcJobNo ||
+            (job.styleItemSKU === po.style && job.nrcJobNo === po.jobNrcJobNo)
+        );
+
+        // Additional debug for job matching
+        if (po.poNumber === "4525020507") {
+          console.log("🔍 Job Matching Details:", {
             poJobNrcJobNo: po.jobNrcJobNo,
             poNrcJobNo: po.nrcJobNo,
-            jpPurchaseOrderId: jp.purchaseOrderId,
-            poId: po.id,
-            matchesJobNrcJobNo,
-            matchesNrcJobNo,
-            matchesPurchaseOrderId,
-            finalMatch: matchesJobNrcJobNo || matchesNrcJobNo,
+            poStyle: po.style,
+            jobsCount: jobs.length,
+            jobsWithMatchingNrcJobNo: jobs.filter(
+              (j) => j.nrcJobNo === po.jobNrcJobNo
+            ),
+            jobsWithMatchingStyle: jobs.filter(
+              (j) => j.styleItemSKU === po.style
+            ),
+            foundMatchingJob: !!matchingJob,
           });
         }
 
-        // Prioritize nrcJobNo matching over purchaseOrderId matching
-        // This handles cases where purchaseOrderId is null but nrcJobNo matches
-        return matchesJobNrcJobNo || matchesNrcJobNo;
+        // Debug logging for job matching
+        if (po.poNumber === "4525020507") {
+          console.log("🔍 PO Job Matching Debug:", {
+            poNumber: po.poNumber,
+            poJobNrcJobNo: po.jobNrcJobNo,
+            poNrcJobNo: po.nrcJobNo,
+            poStyle: po.style,
+            availableJobs: jobs.map((j) => ({
+              nrcJobNo: j.nrcJobNo,
+              style: j.styleItemSKU,
+            })),
+            matchingJob: matchingJob
+              ? {
+                  nrcJobNo: matchingJob.nrcJobNo,
+                  style: matchingJob.styleItemSKU,
+                  boardSize: matchingJob.boardSize,
+                  noOfColor: matchingJob.noOfColor,
+                  fluteType: matchingJob.fluteType,
+                  boxDimensions: matchingJob.boxDimensions,
+                  processColors: matchingJob.processColors,
+                  topFaceGSM: matchingJob.topFaceGSM,
+                  flutingGSM: matchingJob.flutingGSM,
+                  bottomLinerGSM: matchingJob.bottomLinerGSM,
+                }
+              : null,
+            poData: {
+              boardSize: po.boardSize,
+              noOfColor: po.noOfColor,
+              boxDimensions: po.boxDimensions,
+              processColors: po.processColors,
+              topFaceGSM: po.topFaceGSM,
+              flutingGSM: po.flutingGSM,
+              bottomLinerGSM: po.bottomLinerGSM,
+            },
+          });
+        }
+
+        if (
+          po.poNumber === "4525021678" ||
+          po.poNumber === "4525021684" ||
+          po.poNumber === "4525019639" ||
+          po.id === 3693 ||
+          po.id === 3668 ||
+          po.id === 3665
+        ) {
+          console.log("🔍 Matching job plan:", matchingJobPlan);
+          console.log("🔍 Matching job plan steps:", matchingJobPlan?.steps);
+          console.log("🔍 Matching job:", matchingJob);
+          console.log("🔍 Has job plan:", !!matchingJobPlan);
+          console.log("🔍 Job plan jobDemand:", matchingJobPlan?.jobDemand);
+          console.log("🔍 Job plan ID:", matchingJobPlan?.jobPlanId);
+        }
+
+        // Merge all the data
+        return {
+          ...po,
+          // Add job planning fields
+          jobDemand: matchingJobPlan?.jobDemand || null,
+          machineId:
+            matchingJobPlan?.steps?.[0]?.machineDetails?.[0]?.machineId ||
+            matchingJobPlan?.steps?.[1]?.machineDetails?.[0]?.machineId ||
+            null,
+          jobSteps: matchingJobPlan?.steps || [],
+          jobPlanId: matchingJobPlan?.jobPlanId || null,
+          jobPlanningId: matchingJobPlan?.jobPlanId || null, // Track which PO has job planning
+          jobPlanCreatedAt: matchingJobPlan?.createdAt || null,
+          jobPlanUpdatedAt: matchingJobPlan?.updatedAt || null,
+          hasJobPlan: !!matchingJobPlan,
+
+          // Add job details fields for display and filtering - PRIORITIZE JOB DATA
+          boxDimensions: matchingJob?.boxDimensions || po.boxDimensions || null,
+          processColors: matchingJob?.processColors || po.processColors || null,
+          jobBoardSize: matchingJob?.boardSize || po.boardSize || null,
+          // Additional job fields that might be useful - prioritize job data over PO data
+          fluteType: matchingJob?.fluteType || po.fluteType,
+          noOfColor: matchingJob?.noOfColor || po.noOfColor || null,
+          overPrintFinishing:
+            matchingJob?.overPrintFinishing || po.overPrintFinishing || null,
+          topFaceGSM: matchingJob?.topFaceGSM || po.topFaceGSM || null,
+          flutingGSM: matchingJob?.flutingGSM || po.flutingGSM || null,
+          bottomLinerGSM:
+            matchingJob?.bottomLinerGSM || po.bottomLinerGSM || null,
+          // Add more job fields that should be populated - PRIORITIZE JOB DATA
+          boardSize: matchingJob?.boardSize || po.boardSize || null,
+          diePunchCode: matchingJob?.diePunchCode || po.diePunchCode || null,
+          boardCategory: matchingJob?.boardCategory || po.boardCategory || null,
+          specialColor1: matchingJob?.specialColor1 || po.specialColor1 || null,
+          specialColor2: matchingJob?.specialColor2 || po.specialColor2 || null,
+          specialColor3: matchingJob?.specialColor3 || po.specialColor3 || null,
+          specialColor4: matchingJob?.specialColor4 || po.specialColor4 || null,
+        };
+      })
+      .map((mergedPO) => {
+        // Debug logging for the final merged data
+        if (mergedPO.poNumber === "4525020507") {
+          console.log("🔍 Final Merged PO Data:", {
+            poNumber: mergedPO.poNumber,
+            boardSize: mergedPO.boardSize,
+            noOfColor: mergedPO.noOfColor,
+            fluteType: mergedPO.fluteType,
+            boxDimensions: mergedPO.boxDimensions,
+            processColors: mergedPO.processColors,
+            topFaceGSM: mergedPO.topFaceGSM,
+            flutingGSM: mergedPO.flutingGSM,
+            bottomLinerGSM: mergedPO.bottomLinerGSM,
+            hasJobPlan: mergedPO.hasJobPlan,
+            jobDemand: mergedPO.jobDemand,
+            // Show the job object to verify it's there
+            job: mergedPO.job,
+            // Show what should be populated from job
+            expectedFromJob: {
+              noOfColor: "N/A",
+              boxDimensions: "460x460x460",
+              topFaceGSM: "300",
+              flutingGSM: "120",
+              bottomLinerGSM: "120",
+            },
+          });
+        }
+        return mergedPO;
       });
-
-      // Find matching job details by nrcJobNo
-      const matchingJob = jobs.find(
-        (job) => job.nrcJobNo === po.jobNrcJobNo || job.nrcJobNo === po.nrcJobNo
-      );
-
-      if (
-        po.jobNrcJobNo === "NON-1 KG X 10 PKT-5 PLAY" ||
-        po.poNumber === "test1234" ||
-        po.poNumber === "12345" ||
-        po.id === 3558
-      ) {
-        console.log("🔍 Matching job plan:", matchingJobPlan);
-        console.log("🔍 Matching job plan steps:", matchingJobPlan?.steps);
-        console.log("🔍 Matching job:", matchingJob);
-        console.log("🔍 Has job plan:", !!matchingJobPlan);
-        console.log("🔍 Job plan jobDemand:", matchingJobPlan?.jobDemand);
-      }
-
-      // Merge all the data
-      return {
-        ...po,
-        // Add job planning fields
-        jobDemand: matchingJobPlan?.jobDemand || null,
-        machineId:
-          matchingJobPlan?.steps?.[0]?.machineDetails?.[0]?.machineId ||
-          matchingJobPlan?.steps?.[1]?.machineDetails?.[0]?.machineId ||
-          null,
-        jobSteps: matchingJobPlan?.steps || [],
-        jobPlanId: matchingJobPlan?.jobPlanId || null,
-        jobPlanCreatedAt: matchingJobPlan?.createdAt || null,
-        jobPlanUpdatedAt: matchingJobPlan?.updatedAt || null,
-        hasJobPlan: !!matchingJobPlan,
-
-        // Add job details fields for display and filtering
-        boxDimensions: matchingJob?.boxDimensions || null,
-        processColors: matchingJob?.processColors || null,
-        jobBoardSize: matchingJob?.boardSize || null,
-        // Additional job fields that might be useful
-        fluteType: matchingJob?.fluteType || po.fluteType,
-        noOfColor: matchingJob?.noOfColor || null,
-        overPrintFinishing: matchingJob?.overPrintFinishing || null,
-        topFaceGSM: matchingJob?.topFaceGSM || null,
-        flutingGSM: matchingJob?.flutingGSM || null,
-        bottomLinerGSM: matchingJob?.bottomLinerGSM || null,
-      };
-    });
   };
 
   // Extract unique values for filter options
@@ -467,16 +572,27 @@ const PlannerJobs: React.FC = () => {
   useEffect(() => {
     let basePOs = purchaseOrders;
 
-    // If there's a searched job, filter by that first
+    // If there's a searched job, filter by PO number first
     if (searchedJob) {
       basePOs = purchaseOrders.filter(
-        (po) => po.jobNrcJobNo === searchedJob.nrcJobNo
+        (po) => po.poNumber === searchedJob.poNumber
       );
+      console.log("🔍 useEffect Filter Debug:", {
+        searchedJob: searchedJob,
+        searchedJobPoNumber: searchedJob.poNumber,
+        basePOsCount: basePOs.length,
+        basePOs: basePOs,
+      });
     }
 
     // Apply additional filters
     const filtered = applyFilters(basePOs);
     setFilteredPOs(filtered);
+
+    console.log("🔍 Final Filtered POs:", {
+      filteredCount: filtered.length,
+      filteredPOs: filtered,
+    });
   }, [filters, purchaseOrders, searchedJob]);
 
   const handleBulkJobPlanning = async (jobPlanningData: any) => {
@@ -704,10 +820,41 @@ const PlannerJobs: React.FC = () => {
 
     setFilteredPOs(filtered);
 
-    // debounce API call for job search dropdown
+    // Debug logging for search filtering
+    if (value.toLowerCase().includes("us82")) {
+      console.log("🔍 Search Filter Debug:", {
+        searchTerm: value,
+        filteredCount: filtered.length,
+        filteredPOs: filtered.map((po) => ({
+          poNumber: po.poNumber,
+          style: po.style,
+          customer: po.customer,
+        })),
+        totalPOs: purchaseOrders.length,
+      });
+    }
+
+    // Create PO options for dropdown based on filtered results
     const timeout = setTimeout(() => {
       if (value.trim()) {
-        searchJob(value);
+        // Create unique PO options for dropdown
+        const poOptions = filtered.map((po) => ({
+          id: po.id,
+          poNumber: po.poNumber,
+          style: po.style || po.job?.styleItemSKU,
+          customer: po.customer || po.job?.customerName,
+          nrcJobNo: po.jobNrcJobNo || po.job?.nrcJobNo,
+        }));
+        setJobOptions(poOptions as any); // Cast to match existing interface
+
+        // Debug logging for dropdown options
+        if (value.toLowerCase().includes("us82")) {
+          console.log("🔍 Dropdown Options Debug:", {
+            searchTerm: value,
+            poOptionsCount: poOptions.length,
+            poOptions: poOptions,
+          });
+        }
       } else {
         setJobOptions([]);
         setSearchedJob(null);
@@ -715,35 +862,6 @@ const PlannerJobs: React.FC = () => {
     }, 300);
 
     setTypingTimeout(timeout);
-  };
-
-  // modified searchJob (takes term directly instead of using searchTerm state)
-  const searchJob = async (term: string) => {
-    try {
-      const accessToken = localStorage.getItem("accessToken");
-      if (!accessToken) return;
-
-      const response = await fetch("https://nrprod.nrcontainers.com/api/jobs", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) throw new Error(`Failed: ${response.status}`);
-
-      const data = await response.json();
-      if (data.success && Array.isArray(data.data)) {
-        const activeJobs = data.data.filter((job: Job) =>
-          job.nrcJobNo.toLowerCase().includes(term.toLowerCase())
-        );
-        setJobOptions(activeJobs);
-      }
-    } catch (err) {
-      console.error("Search Job Error:", err);
-      setJobOptions([]);
-    }
   };
 
   // Handle PO card click
@@ -1569,30 +1687,52 @@ const PlannerJobs: React.FC = () => {
               </button>
             )}
 
-            {/* Job Search Dropdown */}
+            {/* PO Search Dropdown */}
             {searchTerm && jobOptions.length > 0 && (
               <ul className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                {jobOptions.map((job) => (
+                {jobOptions.map((po) => (
                   <li
-                    key={job.id}
+                    key={po.id}
                     onClick={() => {
-                      setSearchTerm(job.nrcJobNo);
-                      setSearchedJob(job);
+                      setSearchTerm(po.poNumber || "");
                       setJobOptions([]);
-                      // Filter POs by the selected job number
-                      const filtered = purchaseOrders.filter((po) => {
-                        const jobNumberMatch =
-                          po.job?.nrcJobNo?.toLowerCase() ===
-                            job.nrcJobNo.toLowerCase() ||
-                          po.jobNrcJobNo?.toLowerCase() ===
-                            job.nrcJobNo.toLowerCase();
-                        return jobNumberMatch;
+                      // Filter POs by the selected PO number - use exact match
+                      const filtered = purchaseOrders.filter(
+                        (p) => p.poNumber === po.poNumber
+                      );
+                      console.log("🔍 Dropdown Click Debug:", {
+                        clickedPO: po,
+                        filteredPOs: filtered,
+                        filteredCount: filtered.length,
+                        purchaseOrdersCount: purchaseOrders.length,
                       });
                       setFilteredPOs(filtered);
+                      // Set the full PO object as searchedJob, not the simplified dropdown object
+                      if (filtered.length > 0) {
+                        setSearchedJob(filtered[0] as any);
+                        console.log("✅ Set searchedJob to:", filtered[0]);
+                      } else {
+                        setSearchedJob(null);
+                        console.log(
+                          "❌ No matching PO found, set searchedJob to null"
+                        );
+                      }
                     }}
-                    className="px-3 py-2 cursor-pointer hover:bg-blue-100 text-sm"
+                    className="px-3 py-2 cursor-pointer hover:bg-blue-100 text-sm border-b border-gray-100 last:border-b-0"
                   >
-                    {job.nrcJobNo}
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {po.poNumber}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {(po as any).style} • {(po as any).customer}
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-400 ml-2">
+                        {po.nrcJobNo}
+                      </div>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -1898,79 +2038,40 @@ const PlannerJobs: React.FC = () => {
             )}
           </div>
 
-          {/* Bulk Job Planning Button - Only show if there are filtered POs */}
-          {filteredPOs.length > 0 && activeFilterCount > 0 && (
-            <button
-              onClick={() => setShowBulkPlanningModal(true)}
-              className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 text-sm"
-            >
-              <Settings size={16} />
-              <span>Bulk Job Planning ({filteredPOs.length})</span>
-            </button>
-          )}
+          {/* Bulk Job Planning Button - Show if there are filtered POs with filters OR multiple POs from search */}
+          {(() => {
+            // Filter out completed POs for bulk planning
+            const pendingPOs = filteredPOs.filter(
+              (po) => checkPOCompletionStatus(po) !== "completed"
+            );
+            const shouldShowBulkButton =
+              filteredPOs.length > 0 &&
+              (activeFilterCount > 0 || (searchedJob && pendingPOs.length > 1));
+
+            return (
+              shouldShowBulkButton && (
+                <button
+                  onClick={() => setShowBulkPlanningModal(true)}
+                  className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 text-sm"
+                >
+                  <Settings size={16} />
+                  <span>Bulk Job Planning ({pendingPOs.length})</span>
+                </button>
+              )
+            );
+          })()}
         </div>
       )}
 
       {showBulkPlanningModal && (
         <BulkJobPlanningModal
-          filteredPOs={filteredPOs}
+          filteredPOs={filteredPOs.filter(
+            (po) => checkPOCompletionStatus(po) !== "completed"
+          )}
           onSave={handleBulkJobPlanning}
           onClose={() => setShowBulkPlanningModal(false)}
           onRefresh={fetchPurchaseOrders}
         />
-      )}
-
-      {/* Searched Job Details */}
-      {searchedJob && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-6">
-          <h3 className="text-base sm:text-lg font-semibold text-blue-800 mb-3">
-            Job Details
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div>
-              <p className="text-xs sm:text-sm text-blue-600 font-medium">
-                NRC Job No
-              </p>
-              <p className="text-xs sm:text-sm text-blue-800 truncate">
-                {searchedJob.nrcJobNo}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm text-blue-600 font-medium">
-                Customer
-              </p>
-              <p className="text-xs sm:text-sm text-blue-800 truncate">
-                {searchedJob.customerName}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm text-blue-600 font-medium">
-                Style
-              </p>
-              <p className="text-xs sm:text-sm text-blue-800 truncate">
-                {searchedJob.styleItemSKU}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm text-blue-600 font-medium">
-                Status
-              </p>
-              <p className="text-xs sm:text-sm text-blue-800">
-                {searchedJob.status}
-              </p>
-            </div>
-          </div>
-          <div className="mt-3">
-            <p className="text-xs sm:text-sm text-blue-600 font-medium">
-              Completion Status
-            </p>
-            <p className="text-xs sm:text-sm text-blue-800">
-              {checkPOCompletionStatus(searchedJob)
-                .replace("_", " ")
-                .toUpperCase()}
-            </p>
-          </div>
-        </div>
       )}
 
       {loading && (

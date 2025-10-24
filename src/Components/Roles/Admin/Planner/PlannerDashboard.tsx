@@ -58,6 +58,7 @@ interface PurchaseOrder {
   jobBoardSize: string | null;
   steps?: any[];
   jobDemand?: string;
+  jobPlanningId?: string | null;
 }
 
 interface FilterState {
@@ -232,43 +233,41 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
       const mergedPOs = (pos || []).map((po: any) => {
         const matchingJob = jobsData?.data?.find(
           (job: any) =>
-            job.nrcJobNo === po.jobNrcJobNo || job.nrcJobNo === po.nrcJobNo
+            job.nrcJobNo === po.jobNrcJobNo ||
+            job.nrcJobNo === po.nrcJobNo ||
+            (job.styleItemSKU === po.style && job.nrcJobNo === po.jobNrcJobNo)
         );
 
-        // Match job planning by nrcJobNo from PO or from the matched job
-        const nrcJobNoToMatch =
-          po.jobNrcJobNo || po.nrcJobNo || matchingJob?.nrcJobNo;
-
+        // Match job planning by purchaseOrderId (unique) instead of nrcJobNo (can be shared)
         const matchingJobPlan = jobPlanningData?.data?.find(
-          (jp: any) => jp.nrcJobNo === nrcJobNoToMatch
+          (jp: any) => jp.purchaseOrderId === po.id
         );
-
-        // Debug logging for specific PO
-        if (
-          po.poNumber === "12345" ||
-          po.id === 3558 ||
-          matchingJob?.nrcJobNo === "NON-100 GM X 100 PKT-5 PLAY "
-        ) {
-          console.log("🔍 PO Matching Debug:", {
-            poId: po.id,
-            poNumber: po.poNumber,
-            poJobNrcJobNo: po.jobNrcJobNo,
-            poNrcJobNo: po.nrcJobNo,
-            matchingJobNrcJobNo: matchingJob?.nrcJobNo,
-            nrcJobNoToMatch,
-            foundJobPlan: !!matchingJobPlan,
-            jobPlanSteps: matchingJobPlan?.steps?.length || 0,
-          });
-        }
 
         return {
           ...po,
           job: matchingJob || null,
+          // Enhanced job data merging - prioritize job data over PO data
           boxDimensions: matchingJob?.boxDimensions || po.boxDimensions || null,
           noOfColor: matchingJob?.noOfColor || po.noOfColor || null,
           jobBoardSize: matchingJob?.boardSize || po.boardSize || null,
+          boardSize: matchingJob?.boardSize || po.boardSize || null,
+          fluteType: matchingJob?.fluteType || po.fluteType,
+          processColors: matchingJob?.processColors || po.processColors || null,
+          overPrintFinishing:
+            matchingJob?.overPrintFinishing || po.overPrintFinishing || null,
+          topFaceGSM: matchingJob?.topFaceGSM || po.topFaceGSM || null,
+          flutingGSM: matchingJob?.flutingGSM || po.flutingGSM || null,
+          bottomLinerGSM:
+            matchingJob?.bottomLinerGSM || po.bottomLinerGSM || null,
+          diePunchCode: matchingJob?.diePunchCode || po.diePunchCode || null,
+          boardCategory: matchingJob?.boardCategory || po.boardCategory || null,
+          specialColor1: matchingJob?.specialColor1 || po.specialColor1 || null,
+          specialColor2: matchingJob?.specialColor2 || po.specialColor2 || null,
+          specialColor3: matchingJob?.specialColor3 || po.specialColor3 || null,
+          specialColor4: matchingJob?.specialColor4 || po.specialColor4 || null,
           steps: matchingJobPlan?.steps || [],
           jobDemand: matchingJobPlan?.jobDemand || null,
+          jobPlanningId: matchingJobPlan?.jobPlanId || null, // Track which PO has job planning
         };
       });
 
@@ -310,7 +309,8 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
   const checkPOCompletionStatus = (
     po: PurchaseOrder
   ): "artwork_pending" | "po_pending" | "more_info_pending" | "completed" => {
-    const hasJobPlan = po.steps && po.steps.length > 0;
+    // Check if THIS specific PO has job planning (not just any PO with same nrcJobNo)
+    const hasJobPlan = po.steps && po.steps.length > 0 && po.jobPlanningId;
 
     if (hasJobPlan) {
       return "completed";

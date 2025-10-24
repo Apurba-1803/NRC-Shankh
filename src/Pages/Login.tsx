@@ -23,7 +23,11 @@ interface LoginProps {
   setTabValue: (tab: string) => void; // Add this
 }
 
-export default function Login({ setIsAuthenticated, setUserRole, setTabValue }: LoginProps) {
+export default function Login({
+  setIsAuthenticated,
+  setUserRole,
+  setTabValue,
+}: LoginProps) {
   const navigate = useNavigate();
 
   // ---------------------- State Declarations ---------------------- //
@@ -34,99 +38,120 @@ export default function Login({ setIsAuthenticated, setUserRole, setTabValue }: 
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<"success" | "error" | null>(null);
+  const [submitStatus, setSubmitStatus] = useState<
+    "success" | "error" | "already_logged_in" | null
+  >(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showAlreadyLoggedInModal, setShowAlreadyLoggedInModal] =
+    useState(false);
 
   // ---------------------- Handlers ---------------------- //
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  setIsSubmitting(true);
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
 
-  const { email, password } = formData;
+    const { email, password } = formData;
 
-  try {
-    // Simple frontend validation
-    if (!email.trim() || !password.trim()) {
-      throw new Error("All fields are required.");
-    }
+    try {
+      // Simple frontend validation
+      if (!email.trim() || !password.trim()) {
+        throw new Error("All fields are required.");
+      }
 
-    // API endpoint
-    const API_ENDPOINT = "https://nrprod.nrcontainers.com/api/auth/login";
+      // API endpoint
+      const API_ENDPOINT = "https://nrprod.nrcontainers.com/api/auth/login";
 
-    // 🔥 Make the API call - this was missing!
-    const response = await axios.post(API_ENDPOINT, { email, password });
+      // 🔥 Make the API call - this was missing!
+      const response = await axios.post(API_ENDPOINT, { email, password });
 
-    // If login successful
-    if (response.data.success) {
-      setSubmitStatus("success");
-      
-      // Log the response for debugging
-      console.log('Login response:', response.data);
+      // If login successful
+      if (response.data.success) {
+        setSubmitStatus("success");
 
-      // Store the access token in localStorage
-      localStorage.setItem("accessToken", response.data.acessToken);
+        // Log the response for debugging
+        console.log("Login response:", response.data);
 
-      // Store user data in localStorage for persistence
-      localStorage.setItem("userData", JSON.stringify(response.data.data));
+        // Store the access token in localStorage
+        localStorage.setItem("accessToken", response.data.acessToken);
 
-      const userData = response.data.data;
+        // Store user data in localStorage for persistence
+        localStorage.setItem("userData", JSON.stringify(response.data.data));
 
-      // Set authentication state and user role
-      setIsAuthenticated(true);
+        const userData = response.data.data;
 
-      // Handle roles array from backend response
-      if (userData.roles && userData.roles.length > 0) {
-        const userRole = userData.roles[0];
-        setUserRole(userRole);
-        
-        // 🔥 Initialize default tab based on role
-        setTabValue('dashboard'); // Always start with dashboard tab
-        
-        console.log('User role set to:', userRole);
-        console.log('Tab value initialized to: dashboard');
+        // Set authentication state and user role
+        setIsAuthenticated(true);
 
-        // Clear form first
-        setFormData({ email: "", password: "", role: "planner" });
+        // Handle roles array from backend response
+        if (userData.roles && userData.roles.length > 0) {
+          const userRole = userData.roles[0];
+          setUserRole(userRole);
 
-        // 🔥 UPDATED: Role-based navigation
-        if (userRole === 'planner') {
-          console.log('Planner role detected, navigating to /planner-dashboard');
-          navigate('/planner-dashboard');
-          setTabValue('planner');
+          // 🔥 Initialize default tab based on role
+          setTabValue("dashboard"); // Always start with dashboard tab
+
+          console.log("User role set to:", userRole);
+          console.log("Tab value initialized to: dashboard");
+
+          // Clear form first
+          setFormData({ email: "", password: "", role: "planner" });
+
+          // 🔥 UPDATED: Role-based navigation
+          if (userRole === "planner") {
+            console.log(
+              "Planner role detected, navigating to /planner-dashboard"
+            );
+            navigate("/planner-dashboard");
+            setTabValue("planner");
+          } else {
+            console.log("Admin/other role detected, navigating to /dashboard");
+            navigate("/dashboard");
+          }
         } else {
-          console.log('Admin/other role detected, navigating to /dashboard');
-          navigate('/dashboard');
+          console.error("No roles found in user data:", userData);
+          setUserRole(null);
+          setTabValue("dashboard"); // Default fallback
+
+          // Clear form and navigate to default dashboard
+          setFormData({ email: "", password: "", role: "planner" });
+          navigate("/dashboard");
         }
       } else {
-        console.error('No roles found in user data:', userData);
-        setUserRole(null);
-        setTabValue('dashboard'); // Default fallback
-        
-        // Clear form and navigate to default dashboard
-        setFormData({ email: "", password: "", role: "planner" });
-        navigate('/dashboard');
+        setSubmitStatus("error");
+        setTimeout(() => setSubmitStatus(null), 3000);
       }
-    } else {
-      setSubmitStatus("error");
-      setTimeout(() => setSubmitStatus(null), 3000);
+    } catch (error: any) {
+      console.error("Login Error:", error);
+
+      // Check if the error is due to user already being logged in
+      const errorMessage =
+        error?.response?.data?.message || error?.message || "";
+      const isAlreadyLoggedIn =
+        errorMessage.toLowerCase().includes("already logged in") ||
+        errorMessage.toLowerCase().includes("user already logged in") ||
+        errorMessage.toLowerCase().includes("session exists") ||
+        errorMessage.toLowerCase().includes("already active") ||
+        error?.response?.status === 409; // Conflict status code often used for "already exists" scenarios
+
+      if (isAlreadyLoggedIn) {
+        setSubmitStatus("already_logged_in");
+        setShowAlreadyLoggedInModal(true);
+      } else {
+        setSubmitStatus("error");
+        setTimeout(() => setSubmitStatus(null), 3000);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-  } catch (error) {
-    console.error("Login Error:", error);
-    setSubmitStatus("error");
-    setTimeout(() => setSubmitStatus(null), 3000);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-
-
-
+  };
 
   // ---------------------- JSX ---------------------- //
 
@@ -141,7 +166,9 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            <h2 className="text-2xl font-bold text-center text-[#00AEEF]">Login</h2>
+            <h2 className="text-2xl font-bold text-center text-[#00AEEF]">
+              Login
+            </h2>
 
             {/* ID Input */}
             <input
@@ -195,7 +222,14 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               disabled={isSubmitting}
               className="w-full bg-[#00AEEF] hover:bg-[#0095cc] text-white font-medium py-3 px-4 rounded-lg transition duration-300 flex justify-center items-center hover:cursor-pointer"
             >
-              {isSubmitting && <LoadingSpinner size="sm" variant="button" color="white" text="" />}
+              {isSubmitting && (
+                <LoadingSpinner
+                  size="sm"
+                  variant="button"
+                  color="white"
+                  text=""
+                />
+              )}
               {isSubmitting ? "Logging in..." : "Login"}
             </button>
 
@@ -252,6 +286,55 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           </form>
         </div>
       </div>
+
+      {/* Already Logged In Modal */}
+      {showAlreadyLoggedInModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-8 w-8 text-orange-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-lg font-medium text-gray-900">
+                  User Already Logged In
+                </h3>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-sm text-gray-600">
+                This user is already logged in on another device. For security
+                reasons, only one active session is allowed per user.
+              </p>
+            </div>
+
+            <div className="flex justify-center">
+              <button
+                onClick={() => {
+                  setShowAlreadyLoggedInModal(false);
+                  setSubmitStatus(null);
+                }}
+                className="bg-[#00AEEF] hover:bg-[#0095cc] text-white font-medium py-2 px-6 rounded-lg transition duration-300"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

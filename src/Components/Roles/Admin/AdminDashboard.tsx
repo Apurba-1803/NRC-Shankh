@@ -13,6 +13,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import CompletedJobsTable from "./CompletedJobsTable";
 import LoadingSpinner from "../../common/LoadingSpinner";
 import MachineUtilizationDashboard from "./MachineUtilization";
+import ActiveUsersModal from "./Modals/ActiveUsersModal";
 
 // Types based on the API response structure
 interface JobPlanStep {
@@ -166,6 +167,7 @@ interface AdminDashboardData {
   totalSteps: number;
   completedSteps: number;
   activeUsers: number;
+  activeUserIds: Set<string>;
   efficiency: number;
   stepCompletionStats: {
     [key: string]: {
@@ -221,6 +223,7 @@ const AdminDashboard: React.FC = () => {
   const [data, setData] = useState<AdminDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showActiveUsersModal, setShowActiveUsersModal] = useState(false);
 
   // Check if returning from a detail page with filter state
   const returnedState = location.state as {
@@ -293,6 +296,12 @@ const AdminDashboard: React.FC = () => {
         customDateRange: customDateRange,
       },
     });
+  };
+
+  // Handle Active Users card click
+  const handleActiveUsersClick = () => {
+    console.log("Active Users card clicked - opening users modal");
+    setShowActiveUsersModal(true);
   };
 
   // Handle Completed Jobs card click
@@ -1082,6 +1091,7 @@ const AdminDashboard: React.FC = () => {
       totalSteps,
       completedSteps,
       activeUsers: uniqueUsers.size,
+      activeUserIds: uniqueUsers,
       efficiency,
       stepCompletionStats: mergedStepStats,
       machineUtilization: machineStats,
@@ -1485,6 +1495,7 @@ const AdminDashboard: React.FC = () => {
       totalSteps,
       completedSteps,
       activeUsers: uniqueUsers.size,
+      activeUserIds: uniqueUsers,
       efficiency,
       stepCompletionStats: mergedStepStats,
       timeSeriesData: filteredTimeSeriesData,
@@ -1579,6 +1590,7 @@ const AdminDashboard: React.FC = () => {
         onTotalJobsClick={handleTotalJobsClick}
         onCompletedJobsClick={handleCompletedJobsClick}
         onInProgressJobsClick={handleInProgressJobsClick}
+        onActiveUsersClick={handleActiveUsersClick}
         onPlannedJobsClick={handlePlannedJobsClick}
         onHeldJobsClick={handleHeldJobsClick}
       />
@@ -2092,6 +2104,13 @@ const AdminDashboard: React.FC = () => {
           showValues={true}
         />
       </div>
+
+      {/* Active Users Modal */}
+      <ActiveUsersModal
+        isOpen={showActiveUsersModal}
+        onClose={() => setShowActiveUsersModal(false)}
+        activeUserIds={filteredData?.activeUserIds || new Set()}
+      />
     </div>
   );
 };

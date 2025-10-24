@@ -10,6 +10,7 @@ import {
   getActivityLogCount,
 } from "../../services/activityLogNotificationService";
 import ShadeCardNotifications from "./ShadeCardNotifications";
+import { useNavigate } from "react-router-dom";
 
 interface NotificationBellProps {
   className?: string;
@@ -18,6 +19,7 @@ interface NotificationBellProps {
 const NotificationBell: React.FC<NotificationBellProps> = ({
   className = "",
 }) => {
+  const navigate = useNavigate();
   const [notificationCount, setNotificationCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -64,6 +66,20 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
     loadNotificationCount();
   };
 
+  const handleNavigateToCreateJob = (notificationData: any) => {
+    // Store the notification data in localStorage for the CreateNewJob component
+    localStorage.setItem(
+      "createJobPrefilledData",
+      JSON.stringify(notificationData)
+    );
+
+    // Navigate to the create new job form
+    navigate("/dashboard?tab=create-new-job");
+
+    // Close the notifications modal
+    setShowNotifications(false);
+  };
+
   return (
     <>
       <button
@@ -94,6 +110,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({
       <ShadeCardNotifications
         isOpen={showNotifications}
         onClose={handleClose}
+        onNavigateToCreateJob={handleNavigateToCreateJob}
       />
     </>
   );

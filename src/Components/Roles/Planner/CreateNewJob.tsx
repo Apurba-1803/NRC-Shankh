@@ -52,39 +52,57 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
 
-  const [formData, setFormData] = useState<CreateNewJobFormData>({
-    nrcJobNo: "",
-    styleItemSKU: "",
-    customerName: "",
-    fluteType: "5PLY", // Set default value
-    status: "ACTIVE", // Changed to uppercase enum value
-    latestRate: null,
-    preRate: 0,
-    length: 0,
-    width: 0,
-    height: 0,
-    boxDimensions: "",
-    diePunchCode: 0,
-    boardCategory: "",
-    noOfColor: "",
-    processColors: "",
-    specialColor1: "",
-    specialColor2: "",
-    specialColor3: "",
-    specialColor4: "",
-    overPrintFinishing: "",
-    topFaceGSM: "",
-    flutingGSM: "",
-    bottomLinerGSM: "",
-    decalBoardX: "",
-    lengthBoardY: "",
-    boardSize: "",
-    noUps: null,
-    artworkReceivedDate: "", // Use empty string for date inputs
-    artworkApprovedDate: "", // Use empty string for date inputs
-    shadeCardApprovalDate: "", // Use empty string for date inputs
-    srNo: 0,
-    imageURL: "",
+  // Check for pre-filled data from notification
+  const getPrefilledData = () => {
+    try {
+      const prefilledData = localStorage.getItem("createJobPrefilledData");
+      if (prefilledData) {
+        const data = JSON.parse(prefilledData);
+        localStorage.removeItem("createJobPrefilledData"); // Clear after use
+        return data;
+      }
+    } catch (error) {
+      console.error("Error parsing prefilled data:", error);
+    }
+    return null;
+  };
+
+  const [formData, setFormData] = useState<CreateNewJobFormData>(() => {
+    const prefilledData = getPrefilledData();
+    return {
+      nrcJobNo: "",
+      styleItemSKU: prefilledData?.style || "",
+      customerName: prefilledData?.customer || "",
+      fluteType: prefilledData?.fluteType || "5PLY", // Set default value
+      status: "ACTIVE", // Changed to uppercase enum value
+      latestRate: null,
+      preRate: 0,
+      length: 0,
+      width: 0,
+      height: 0,
+      boxDimensions: "",
+      diePunchCode: 0,
+      boardCategory: "",
+      noOfColor: prefilledData?.noOfColor || "",
+      processColors: "",
+      specialColor1: "",
+      specialColor2: "",
+      specialColor3: "",
+      specialColor4: "",
+      overPrintFinishing: "",
+      topFaceGSM: "",
+      flutingGSM: "",
+      bottomLinerGSM: "",
+      decalBoardX: "",
+      lengthBoardY: "",
+      boardSize: prefilledData?.boardSize || "",
+      noUps: null,
+      artworkReceivedDate: "", // Use empty string for date inputs
+      artworkApprovedDate: "", // Use empty string for date inputs
+      shadeCardApprovalDate: "", // Use empty string for date inputs
+      srNo: 0,
+      imageURL: "",
+    };
   });
 
   const handleInputChange = (
@@ -205,6 +223,105 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
     }
   };
 
+  // Function to update POs with matching style and remove notifications
+  const updatePOsAndRemoveNotifications = async (
+    nrcJobNo: string,
+    styleItemSKU: string
+  ) => {
+    try {
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        console.error("No access token found");
+        return;
+      }
+
+      // Step 1: Find POs with matching style and null nrcJobNo
+      const poResponse = await fetch(
+        "https://nrprod.nrcontainers.com/api/purchase-orders",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!poResponse.ok) {
+        console.error("Failed to fetch POs:", poResponse.status);
+        return;
+      }
+
+      const poData = await poResponse.json();
+      if (!poData.success || !Array.isArray(poData.data)) {
+        console.error("Invalid PO data structure");
+        return;
+      }
+
+      // Find POs with matching style and no NRC job number
+      const matchingPOs = poData.data.filter(
+        (po: any) =>
+          po.style === styleItemSKU &&
+          (!po.jobNrcJobNo || po.jobNrcJobNo === null)
+      );
+
+      console.log(
+        `Found ${matchingPOs.length} POs with matching style: ${styleItemSKU}`
+      );
+
+      // Step 2: Update each matching PO with the new NRC job number
+      for (const po of matchingPOs) {
+        try {
+          const updateResponse = await fetch(
+            `https://nrprod.nrcontainers.com/api/purchase-orders/${po.id}`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({
+                jobNrcJobNo: nrcJobNo,
+              }),
+            }
+          );
+
+          if (updateResponse.ok) {
+            console.log(
+              `✅ Updated PO ${po.poNumber} with NRC job number: ${nrcJobNo}`
+            );
+          } else {
+            console.error(
+              `❌ Failed to update PO ${po.poNumber}:`,
+              updateResponse.status
+            );
+          }
+        } catch (error) {
+          console.error(`❌ Error updating PO ${po.poNumber}:`, error);
+        }
+      }
+
+      // Step 3: Remove job creation notifications for this style
+      try {
+        const notifications = JSON.parse(
+          localStorage.getItem("activityLogNotifications") || "[]"
+        );
+        const updatedNotifications = notifications.filter(
+          (notification: any) => notification.style !== styleItemSKU
+        );
+        localStorage.setItem(
+          "activityLogNotifications",
+          JSON.stringify(updatedNotifications)
+        );
+        console.log(`✅ Removed notifications for style: ${styleItemSKU}`);
+      } catch (error) {
+        console.error("❌ Error removing notifications:", error);
+      }
+    } catch (error) {
+      console.error("❌ Error in updatePOsAndRemoveNotifications:", error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -321,7 +438,17 @@ const CreateNewJob: React.FC<CreateNewJobProps> = ({ onBack }) => {
       }
 
       const result = await response.json();
-      setMessage({ type: "success", text: "Job created successfully!" });
+
+      // Auto-update POs with matching style and remove notifications
+      await updatePOsAndRemoveNotifications(
+        result.data?.nrcJobNo,
+        formData.styleItemSKU
+      );
+
+      setMessage({
+        type: "success",
+        text: "Job created successfully! POs updated and notifications cleared.",
+      });
 
       // Reset form immediately after successful creation
       resetForm();

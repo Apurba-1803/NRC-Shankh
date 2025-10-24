@@ -20,11 +20,13 @@ import {
 interface ShadeCardNotificationsProps {
   isOpen: boolean;
   onClose: () => void;
+  onNavigateToCreateJob?: (notificationData: any) => void;
 }
 
 const ShadeCardNotifications: React.FC<ShadeCardNotificationsProps> = ({
   isOpen,
   onClose,
+  onNavigateToCreateJob,
 }) => {
   const [shadeCardNotifications, setShadeCardNotifications] = useState<
     ShadeCardNotification[]
@@ -276,7 +278,12 @@ const ShadeCardNotifications: React.FC<ShadeCardNotificationsProps> = ({
                   {jobCreationNotifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className="border rounded-lg p-4 bg-green-50 border-l-4 border-l-green-600"
+                      className="border rounded-lg p-4 bg-green-50 border-l-4 border-l-green-600 cursor-pointer hover:bg-green-100 transition-colors"
+                      onClick={() => {
+                        if (onNavigateToCreateJob) {
+                          onNavigateToCreateJob(notification);
+                        }
+                      }}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-start space-x-3">
