@@ -50,12 +50,14 @@ interface POdetailCardProps {
     | "po_pending"
     | "more_info_pending"
     | "completed";
+  hasJobCreationNotification?: boolean;
 }
 
 const POdetailCard: React.FC<POdetailCardProps> = ({
   po,
   onClick,
   jobCompletionStatus,
+  hasJobCreationNotification = false,
 }) => {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -134,9 +136,23 @@ const POdetailCard: React.FC<POdetailCardProps> = ({
       {/* Header with PO Number and Status */}
       <div className="flex flex-col sm:flex-row justify-between items-start mb-3 gap-2">
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-800 text-xs sm:text-sm truncate">
-            PO: {po.poNumber}
-          </h3>
+          <div className="flex items-center space-x-2">
+            <h3 className="font-semibold text-gray-800 text-xs sm:text-sm truncate">
+              PO: {po.poNumber}
+            </h3>
+            {hasJobCreationNotification && (
+              <div
+                className="relative group"
+                title="Job needs to be created for this PO"
+              >
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                  Job needs to be created for this PO
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                </div>
+              </div>
+            )}
+          </div>
           <p className="text-xs text-gray-500 truncate">
             {po.job?.nrcJobNo || "No Job Assigned"}
           </p>
@@ -176,13 +192,7 @@ const POdetailCard: React.FC<POdetailCardProps> = ({
       </div>
 
       {/* Key Details Grid */}
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        <div>
-          <p className="text-xs text-gray-500">Dimensions</p>
-          <p className="text-xs sm:text-sm font-medium text-gray-700 truncate">
-            {po.boxDimensions || "N/A"}
-          </p>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
         <div>
           <p className="text-xs text-gray-500">Board Size</p>
           <p className="text-xs sm:text-sm font-medium text-gray-700 truncate">
@@ -211,6 +221,12 @@ const POdetailCard: React.FC<POdetailCardProps> = ({
           <p className="text-xs text-gray-500">No. of Colors</p>
           <p className="text-xs sm:text-sm font-medium text-gray-700">
             {po.noOfColor || "0"}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Die Code</p>
+          <p className="text-xs sm:text-sm font-medium text-gray-700">
+            {po.dieCode || "N/A"}
           </p>
         </div>
       </div>

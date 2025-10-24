@@ -86,7 +86,7 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       const pdf = new jsPDF("p", "mm", "a4");
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      let yPosition = 20;
+      let yPosition = 15; // Reduced from 20
 
       // Colors - Job Card Style
       const colors = {
@@ -130,47 +130,54 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       drawRect(0, 0, pageWidth, 2, colors.primary);
       drawRect(0, pageHeight - 2, pageWidth, 2, colors.primary);
 
-      // Header Section - Company Logo and Name
-      drawRect(15, yPosition, 25, 15, colors.primary);
-      drawBorder(15, yPosition, 25, 15, 1);
+      // Header Section - Company Logo and Name - REDUCED HEIGHT
+      const headerHeight = 12; // Reduced from 15
+      drawRect(15, yPosition, 22, headerHeight, colors.primary); // Reduced width
+      drawBorder(15, yPosition, 22, headerHeight, 1);
 
-      // Add NRC Logo
+      // Add NRC Logo - SMALLER
       try {
-        // Convert logo to base64 and add to PDF
         const logoBase64 = await getLogoAsBase64();
-        pdf.addImage(logoBase64, "JPEG", 17, yPosition + 2, 21, 11);
+        pdf.addImage(logoBase64, "JPEG", 16, yPosition + 1, 20, 10); // Smaller logo
       } catch (error) {
         console.warn("Could not load logo, using text fallback:", error);
-        // Fallback to text if logo fails
-        pdf.setFontSize(8);
+        pdf.setFontSize(7); // Reduced font size
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
-        pdf.text("NRC", 27.5, yPosition + 8, { align: "center" });
+        pdf.text("NRC", 26, yPosition + 7, { align: "center" });
       }
 
-      // Company Name
-      pdf.setFontSize(10);
+      // Company Name - SMALLER
+      pdf.setFontSize(9); // Reduced from 10
       pdf.setFont("helvetica", "bold");
       pdf.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
-      pdf.text("NRCONTAINERS PRIVATE LIMITED", 50, yPosition + 5);
-      pdf.setFontSize(6);
+      pdf.text("NRCONTAINERS PRIVATE LIMITED", 45, yPosition + 4); // Adjusted position
+      pdf.setFontSize(5); // Reduced from 6
       pdf.setFont("helvetica", "normal");
-      pdf.text("INTELLIGENT PACKAGING", 50, yPosition + 10);
+      pdf.text("INTELLIGENT PACKAGING", 45, yPosition + 8); // Adjusted position
 
-      // Job Card Title
-      pdf.setFontSize(20);
+      // Job Card Title - SMALLER
+      pdf.setFontSize(16); // Reduced from 20
       pdf.setFont("helvetica", "bold");
       pdf.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-      pdf.text("JOB DETAILS", pageWidth - 20, yPosition + 10, {
+      pdf.text("JOB DETAILS", pageWidth - 20, yPosition + 8, { // Adjusted position
         align: "right",
       });
 
-      yPosition += 25;
+      yPosition += headerHeight + 8; // Reduced spacing
 
-      // Main Information Section
-      pdf.setFontSize(10);
+      // Main Information Section - SMALLER FONTS
+      pdf.setFontSize(8); // Reduced from 10
       pdf.setFont("helvetica", "normal");
       pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+
+      // Handle purchase order details
+      let poDetailsArray =
+        job.jobPlanningDetails?.purchaseOrderDetails ||
+        job.purchaseOrderDetails;
+      const poDetails = Array.isArray(poDetailsArray)
+        ? poDetailsArray[0]
+        : poDetailsArray;
 
       // Left Column
       pdf.text(
@@ -185,7 +192,7 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
           job.nrcJobNo || job.jobDetails?.nrcJobNo || "N/A"
         )}`,
         20,
-        yPosition + 6
+        yPosition + 5 // Reduced spacing from 6
       );
       pdf.text(
         `Date : ${new Date().toLocaleDateString("en-US", {
@@ -194,19 +201,10 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
           day: "numeric",
         })}`,
         20,
-        yPosition + 12
+        yPosition + 10 // Reduced spacing from 12
       );
 
       // Right Column
-      // Handle new data structure: jobPlanningDetails.purchaseOrderDetails (array)
-      // or fallback to old structure: job.purchaseOrderDetails
-      let poDetailsArray =
-        job.jobPlanningDetails?.purchaseOrderDetails ||
-        job.purchaseOrderDetails;
-      const poDetails = Array.isArray(poDetailsArray)
-        ? poDetailsArray[0]
-        : poDetailsArray;
-
       pdf.text(
         `Job Card No. : ${String(job.id || "N/A")}`,
         pageWidth / 2 + 20,
@@ -215,523 +213,89 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       pdf.text(
         `Quantity : ${String(poDetails?.totalPOQuantity || "N/A")}`,
         pageWidth / 2 + 20,
-        yPosition + 6
+        yPosition + 5 // Reduced spacing from 6
       );
 
       // Bottom Row
       pdf.text(
         `PO No. : ${String(poDetails?.poNumber || "N/A")}`,
         20,
-        yPosition + 18
+        yPosition + 15 // Reduced spacing from 18
       );
       pdf.text(
         `No of Sheets: ${String(poDetails?.noOfSheets || "N/A")}`,
         pageWidth / 2 + 20,
-        yPosition + 18
+        yPosition + 15 // Reduced spacing from 18
       );
 
-      yPosition += 35;
+      yPosition += 25; // Reduced spacing from 35
 
-      // Job Card Style Section Function - Match UI structure exactly
-      const addJobCardSection = (title: string, step: any) => {
-        // Check if we need a new page
-        if (yPosition > pageHeight - 80) {
-          pdf.addPage();
-          yPosition = 20;
-        }
+      // PAPER STORE Section Header
+      drawRect(15, yPosition, pageWidth - 30, 6, colors.primary); // Reduced height from 8
+      pdf.setFontSize(10); // Reduced from 12
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
+      pdf.text("STEP DETAILS", pageWidth / 2, yPosition + 4, { align: "center" }); // Adjusted position
+      yPosition += 8; // Reduced spacing from 12
 
-        // Section Header with blue background
-        drawRect(15, yPosition, pageWidth - 30, 8, colors.primary);
-        pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
-        pdf.text(title, pageWidth / 2, yPosition + 5.5, { align: "center" });
-        yPosition += 12;
-
-        // Create a beautiful step box
-        const stepBoxHeight = 25;
-        const stepBoxWidth = pageWidth - 30;
-        const stepBoxX = 15;
-
-        // Draw step box with border
-        drawRect(
-          stepBoxX,
-          yPosition,
-          stepBoxWidth,
-          stepBoxHeight,
-          colors.white
-        );
-        drawBorder(stepBoxX, yPosition, stepBoxWidth, stepBoxHeight, 0.3);
-
-        // Add step name on the left
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(
-          colors.primary[0],
-          colors.primary[1],
-          colors.primary[2]
-        );
-        pdf.text(
-          step.stepName.replace(/([a-z])([A-Z])/g, "$1 $2"),
-          stepBoxX + 5,
-          yPosition + 8
-        );
-
-        // Add status on the right
-        const statusText = step.status || "planned";
-        const statusColor =
-          statusText === "completed"
-            ? [34, 197, 94]
-            : statusText === "in-progress"
-            ? [251, 191, 36]
-            : [107, 114, 128];
-
-        pdf.setFontSize(9);
-        pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
-        pdf.text(
-          statusText.toUpperCase(),
-          stepBoxX + stepBoxWidth - 5,
-          yPosition + 8,
-          { align: "right" }
-        );
-
-        // Add timeline info below
-        pdf.setFontSize(8);
-        pdf.setFont("helvetica", "normal");
-        pdf.setTextColor(
-          colors.darkGray[0],
-          colors.darkGray[1],
-          colors.darkGray[2]
-        );
-
-        let timelineText = "";
-        if (step.startDate) {
-          timelineText += `Start: ${new Date(
-            step.startDate
-          ).toLocaleDateString()}`;
-        }
-        if (step.endDate) {
-          timelineText += timelineText
-            ? ` | End: ${new Date(step.endDate).toLocaleDateString()}`
-            : `End: ${new Date(step.endDate).toLocaleDateString()}`;
-        }
-        if (timelineText) {
-          pdf.text(timelineText, stepBoxX + 5, yPosition + 15);
-        }
-
-        // Add step number on the right side
-        if (step.stepNo) {
-          pdf.setFontSize(8);
-          pdf.setFont("helvetica", "bold");
-          pdf.setTextColor(
-            colors.primary[0],
-            colors.primary[1],
-            colors.primary[2]
-          );
-          pdf.text(
-            `Step ${step.stepNo}`,
-            stepBoxX + stepBoxWidth - 5,
-            yPosition + 15,
-            { align: "right" }
-          );
-        }
-
-        yPosition += stepBoxHeight + 10;
-
-        pdf.setFontSize(9);
-        pdf.setFont("helvetica", "normal");
-        pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
-
-        // Machine Details Section (if available) - in a separate box
-        if (step.machineDetails && step.machineDetails.length > 0) {
-          // Check if we need a new page
-          if (yPosition > pageHeight - 40) {
-            pdf.addPage();
-            yPosition = 20;
-          }
-
-          // Create machine details box
-          const machineBoxHeight = 15 + step.machineDetails.length * 12;
-          const machineBoxWidth = pageWidth - 30;
-          const machineBoxX = 15;
-
-          drawRect(
-            machineBoxX,
-            yPosition,
-            machineBoxWidth,
-            machineBoxHeight,
-            colors.lightGray
-          );
-          drawBorder(
-            machineBoxX,
-            yPosition,
-            machineBoxWidth,
-            machineBoxHeight,
-            0.3
-          );
-
-          pdf.setFontSize(8);
-          pdf.setFont("helvetica", "bold");
-          pdf.setTextColor(
-            colors.primary[0],
-            colors.primary[1],
-            colors.primary[2]
-          );
-          pdf.text("Machine Details:", machineBoxX + 5, yPosition + 6);
-          yPosition += 10;
-
-          step.machineDetails.forEach((machine: any) => {
-            pdf.setFontSize(7);
-            pdf.setFont("helvetica", "normal");
-            pdf.setTextColor(
-              colors.darkGray[0],
-              colors.darkGray[1],
-              colors.darkGray[2]
-            );
-
-            let machineInfo = "";
-            if (machine.unit) machineInfo += `Unit: ${machine.unit} | `;
-            if (machine.machineId) machineInfo += `ID: ${machine.machineId} | `;
-            if (machine.machineCode)
-              machineInfo += `Code: ${machine.machineCode} | `;
-            if (machine.machineType)
-              machineInfo += `Type: ${machine.machineType}`;
-
-            // Remove trailing " | " if exists
-            machineInfo = machineInfo.replace(/\s\|\s$/, "");
-
-            if (machineInfo) {
-              pdf.text(machineInfo, machineBoxX + 5, yPosition);
-              yPosition += 4;
-            }
-          });
-
-          yPosition += 5;
-        }
-
-        // Step Details Section (if available) - in a separate box
-        const stepDetails = getStepDetailsFromStep(step);
-        if (stepDetails && stepDetails.length > 0) {
-          // Check if we need a new page
-          if (yPosition > pageHeight - 60) {
-            pdf.addPage();
-            yPosition = 20;
-          }
-
-          // Create step details box
-          const detailsBoxHeight = 20 + stepDetails.length * 15;
-          const detailsBoxWidth = pageWidth - 30;
-          const detailsBoxX = 15;
-
-          drawRect(
-            detailsBoxX,
-            yPosition,
-            detailsBoxWidth,
-            detailsBoxHeight,
-            [248, 250, 252]
-          ); // Very light gray
-          drawBorder(
-            detailsBoxX,
-            yPosition,
-            detailsBoxWidth,
-            detailsBoxHeight,
-            0.3
-          );
-
-          pdf.setFontSize(8);
-          pdf.setFont("helvetica", "bold");
-          pdf.setTextColor(
-            colors.primary[0],
-            colors.primary[1],
-            colors.primary[2]
-          );
-          pdf.text("Step Details:", detailsBoxX + 5, yPosition + 6);
-          yPosition += 10;
-
-          stepDetails.forEach((detail: any) => {
-            // Create a compact details format
-            pdf.setFontSize(7);
-            pdf.setFont("helvetica", "normal");
-            pdf.setTextColor(
-              colors.darkGray[0],
-              colors.darkGray[1],
-              colors.darkGray[2]
-            );
-
-            // Collect all relevant fields for this step
-            let detailFields: string[] = [];
-
-            // Display step-specific fields exactly as in UI
-            if (step.stepName === "PaperStore") {
-              if (detail.sheetSize)
-                detailFields.push(`Sheet Size: ${detail.sheetSize}`);
-              if (detail.quantity) detailFields.push(`Qty: ${detail.quantity}`);
-              if (detail.available)
-                detailFields.push(`Available: ${detail.available}`);
-              if (detail.issuedDate)
-                detailFields.push(
-                  `Issued: ${new Date(detail.issuedDate).toLocaleDateString()}`
-                );
-              if (detail.mill) detailFields.push(`Mill: ${detail.mill}`);
-              if (detail.gsm) detailFields.push(`GSM: ${detail.gsm}`);
-              if (detail.quality)
-                detailFields.push(`Quality: ${detail.quality}`);
-              if (detail.extraMargin)
-                detailFields.push(`Extra Margin: ${detail.extraMargin}`);
-              if (detail.shift) detailFields.push(`Shift: ${detail.shift}`);
-              if (detail.operatorName)
-                detailFields.push(`Operator: ${detail.operatorName}`);
-              if (detail.status) detailFields.push(`Status: ${detail.status}`);
-              if (detail.holdRemark)
-                detailFields.push(`Hold: ${detail.holdRemark}`);
-              if (detail.completeRemark)
-                detailFields.push(`Complete: ${detail.completeRemark}`);
-              if (detail.remarks)
-                detailFields.push(`Remarks: ${detail.remarks}`);
-            } else if (step.stepName === "PrintingDetails") {
-              if (detail.quantity) detailFields.push(`Qty: ${detail.quantity}`);
-              if (detail.machine)
-                detailFields.push(`Machine: ${detail.machine}`);
-              if (detail.oprName)
-                detailFields.push(`Operator: ${detail.oprName}`);
-              if (detail.inksUsed)
-                detailFields.push(`Inks: ${detail.inksUsed}`);
-              if (detail.coatingType)
-                detailFields.push(`Coating: ${detail.coatingType}`);
-              if (detail.noOfColours)
-                detailFields.push(`Colors: ${detail.noOfColours}`);
-              if (detail.extraSheets)
-                detailFields.push(`Extra Sheets: ${detail.extraSheets}`);
-              if (detail.separateSheets)
-                detailFields.push(`Separate: ${detail.separateSheets}`);
-              if (detail.wastage)
-                detailFields.push(`Wastage: ${detail.wastage}`);
-              if (detail.shift) detailFields.push(`Shift: ${detail.shift}`);
-              if (detail.status) detailFields.push(`Status: ${detail.status}`);
-              if (detail.holdRemark)
-                detailFields.push(`Hold: ${detail.holdRemark}`);
-              if (detail.completeRemark)
-                detailFields.push(`Complete: ${detail.completeRemark}`);
-              if (detail.remarks)
-                detailFields.push(`Remarks: ${detail.remarks}`);
-            } else if (step.stepName === "Corrugation") {
-              if (detail.quantity) detailFields.push(`Qty: ${detail.quantity}`);
-              if (detail.machineNo)
-                detailFields.push(`Machine: ${detail.machineNo}`);
-              if (detail.oprName)
-                detailFields.push(`Operator: ${detail.oprName}`);
-              if (detail.flute) detailFields.push(`Flute: ${detail.flute}`);
-              if (detail.size) detailFields.push(`Size: ${detail.size}`);
-              if (detail.gsm1) detailFields.push(`GSM1: ${detail.gsm1}`);
-              if (detail.gsm2) detailFields.push(`GSM2: ${detail.gsm2}`);
-              if (detail.shift) detailFields.push(`Shift: ${detail.shift}`);
-              if (detail.status) detailFields.push(`Status: ${detail.status}`);
-              if (detail.holdRemark)
-                detailFields.push(`Hold: ${detail.holdRemark}`);
-              if (detail.completeRemark)
-                detailFields.push(`Complete: ${detail.completeRemark}`);
-              if (detail.remarks)
-                detailFields.push(`Remarks: ${detail.remarks}`);
-            } else if (step.stepName === "FluteLaminateBoardConversion") {
-              if (detail.quantity) detailFields.push(`Qty: ${detail.quantity}`);
-              if (detail.operatorName)
-                detailFields.push(`Operator: ${detail.operatorName}`);
-              if (detail.film) detailFields.push(`Film: ${detail.film}`);
-              if (detail.adhesive)
-                detailFields.push(`Adhesive: ${detail.adhesive}`);
-              if (detail.wastage)
-                detailFields.push(`Wastage: ${detail.wastage}`);
-              if (detail.shift) detailFields.push(`Shift: ${detail.shift}`);
-              if (detail.status) detailFields.push(`Status: ${detail.status}`);
-              if (detail.holdRemark)
-                detailFields.push(`Hold: ${detail.holdRemark}`);
-              if (detail.completeRemark)
-                detailFields.push(`Complete: ${detail.completeRemark}`);
-              if (detail.remarks)
-                detailFields.push(`Remarks: ${detail.remarks}`);
-            } else if (step.stepName === "Punching") {
-              if (detail.quantity) detailFields.push(`Qty: ${detail.quantity}`);
-              if (detail.machine)
-                detailFields.push(`Machine: ${detail.machine}`);
-              if (detail.operatorName)
-                detailFields.push(`Operator: ${detail.operatorName}`);
-              if (detail.die) detailFields.push(`Die: ${detail.die}`);
-              if (detail.wastage)
-                detailFields.push(`Wastage: ${detail.wastage}`);
-              if (detail.shift) detailFields.push(`Shift: ${detail.shift}`);
-              if (detail.status) detailFields.push(`Status: ${detail.status}`);
-              if (detail.holdRemark)
-                detailFields.push(`Hold: ${detail.holdRemark}`);
-              if (detail.completeRemark)
-                detailFields.push(`Complete: ${detail.completeRemark}`);
-              if (detail.remarks)
-                detailFields.push(`Remarks: ${detail.remarks}`);
-            } else if (step.stepName === "SideFlapPasting") {
-              if (detail.quantity) detailFields.push(`Qty: ${detail.quantity}`);
-              if (detail.machineNo)
-                detailFields.push(`Machine: ${detail.machineNo}`);
-              if (detail.operatorName)
-                detailFields.push(`Operator: ${detail.operatorName}`);
-              if (detail.adhesive)
-                detailFields.push(`Adhesive: ${detail.adhesive}`);
-              if (detail.wastage)
-                detailFields.push(`Wastage: ${detail.wastage}`);
-              if (detail.shift) detailFields.push(`Shift: ${detail.shift}`);
-              if (detail.status) detailFields.push(`Status: ${detail.status}`);
-              if (detail.holdRemark)
-                detailFields.push(`Hold: ${detail.holdRemark}`);
-              if (detail.completeRemark)
-                detailFields.push(`Complete: ${detail.completeRemark}`);
-              if (detail.remarks)
-                detailFields.push(`Remarks: ${detail.remarks}`);
-            } else if (step.stepName === "QualityDept") {
-              if (detail.quantity) detailFields.push(`Qty: ${detail.quantity}`);
-              if (detail.operatorName)
-                detailFields.push(`Operator: ${detail.operatorName}`);
-              if (detail.checkedBy)
-                detailFields.push(`Checked By: ${detail.checkedBy}`);
-              if (detail.rejectedQty)
-                detailFields.push(`Rejected: ${detail.rejectedQty}`);
-              if (detail.reasonForRejection)
-                detailFields.push(`Reason: ${detail.reasonForRejection}`);
-              if (detail.shift) detailFields.push(`Shift: ${detail.shift}`);
-              if (detail.status) detailFields.push(`Status: ${detail.status}`);
-              if (detail.holdRemark)
-                detailFields.push(`Hold: ${detail.holdRemark}`);
-              if (detail.completeRemark)
-                detailFields.push(`Complete: ${detail.completeRemark}`);
-              if (detail.remarks)
-                detailFields.push(`Remarks: ${detail.remarks}`);
-            } else if (step.stepName === "DispatchProcess") {
-              if (detail.quantity) detailFields.push(`Qty: ${detail.quantity}`);
-              if (detail.balanceQty)
-                detailFields.push(`Balance: ${detail.balanceQty}`);
-              if (detail.dispatchNo)
-                detailFields.push(`Dispatch No: ${detail.dispatchNo}`);
-              if (detail.operatorName)
-                detailFields.push(`Operator: ${detail.operatorName}`);
-              if (detail.dispatchDate)
-                detailFields.push(
-                  `Dispatch Date: ${new Date(
-                    detail.dispatchDate
-                  ).toLocaleDateString()}`
-                );
-              if (detail.shift) detailFields.push(`Shift: ${detail.shift}`);
-              if (detail.status) detailFields.push(`Status: ${detail.status}`);
-              if (detail.holdRemark)
-                detailFields.push(`Hold: ${detail.holdRemark}`);
-              if (detail.completeRemark)
-                detailFields.push(`Complete: ${detail.completeRemark}`);
-              if (detail.remarks)
-                detailFields.push(`Remarks: ${detail.remarks}`);
-            } else {
-              // Generic fields for other steps
-              if (detail.quantity) detailFields.push(`Qty: ${detail.quantity}`);
-              if (detail.shift) detailFields.push(`Shift: ${detail.shift}`);
-              if (detail.operatorName)
-                detailFields.push(`Operator: ${detail.operatorName}`);
-              if (detail.status) detailFields.push(`Status: ${detail.status}`);
-              if (detail.remarks)
-                detailFields.push(`Remarks: ${detail.remarks}`);
-            }
-
-            // Render the collected fields in a compact format
-            if (detailFields.length > 0) {
-              // Split fields into two columns for better space utilization
-              const leftFields = detailFields.slice(
-                0,
-                Math.ceil(detailFields.length / 2)
-              );
-              const rightFields = detailFields.slice(
-                Math.ceil(detailFields.length / 2)
-              );
-
-              // Render left column
-              leftFields.forEach((field, index) => {
-                pdf.text(field, detailsBoxX + 5, yPosition + index * 4);
-              });
-
-              // Render right column
-              rightFields.forEach((field, index) => {
-                pdf.text(
-                  field,
-                  detailsBoxX + detailsBoxWidth / 2 + 5,
-                  yPosition + index * 4
-                );
-              });
-
-              yPosition +=
-                Math.max(leftFields.length, rightFields.length) * 4 + 3;
-            }
-          });
-
-          yPosition += 10; // Space after step details
-        }
-
-        yPosition += 8; // Space after section
-      };
-
-      // Use the same data structure as the UI
+      // Get all steps data
       const availableSteps = job.allSteps || job.steps || [];
+      
+      // Define step order for sorting
+      const stepOrder = [
+        "PaperStore",
+        "PrintingDetails", 
+        "Corrugation",
+        "FluteLaminateBoardConversion",
+        "Punching",
+        "SideFlapPasting",
+        "QualityDept",
+        "DispatchProcess",
+      ];
 
-      if (availableSteps.length > 0) {
-        // Define step order for sorting (same as UI)
-        const stepOrder = [
-          "PaperStore",
-          "PrintingDetails",
-          "Corrugation",
-          "FluteLaminateBoardConversion",
-          "Punching",
-          "SideFlapPasting",
-          "QualityDept",
-          "DispatchProcess",
-        ];
+      // Sort steps according to predefined order
+      const sortedSteps = [...availableSteps].sort((a, b) => {
+        const aIndex = stepOrder.indexOf(a.stepName);
+        const bIndex = stepOrder.indexOf(b.stepName);
+        return (
+          (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex)
+        );
+      });
 
-        // Sort steps according to predefined order (same as UI)
-        const sortedSteps = [...availableSteps].sort((a, b) => {
-          const aIndex = stepOrder.indexOf(a.stepName);
-          const bIndex = stepOrder.indexOf(b.stepName);
-          return (
-            (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex)
-          );
-        });
-
-        // Add each step as a job card section
-        sortedSteps.forEach((step: any) => {
-          const sectionTitle = getSectionTitle(step.stepName);
-
-          addJobCardSection(sectionTitle, step);
-        });
-      }
+      // Grid layout for steps - 2 columns
+      const columnWidth = (pageWidth - 40) / 2; // Two columns with margins
+      const leftColumnX = 15;
+      const rightColumnX = 15 + columnWidth + 10; // 10mm gap between columns
+      let leftColumnY = yPosition;
+      let rightColumnY = yPosition;
+      let currentColumn = 0; // 0 for left, 1 for right
 
       // Helper function to get section titles
       function getSectionTitle(stepName: string): string {
         switch (stepName) {
           case "PaperStore":
-            return "PAPER STORE";
+            return "Paper Store";
           case "PrintingDetails":
-            return "PRINTING DETAILS";
+            return "Printing Details";
           case "Corrugation":
-            return "CORRUGATION";
+            return "Corrugation";
           case "FluteLaminateBoardConversion":
-            return "FLUTE LAMINATION";
+            return "Flute Lamination";
           case "Punching":
-            return "PUNCHING";
+            return "Punching";
           case "SideFlapPasting":
-            return "FLAP PASTING";
+            return "Flap Pasting";
           case "QualityDept":
-            return "QUALITY DEPT";
+            return "Quality Check";
           case "DispatchProcess":
-            return "DISPATCH";
+            return "Dispatch";
           default:
-            return stepName.replace(/([a-z])([A-Z])/g, "$1 $2").toUpperCase();
+            return stepName.replace(/([a-z])([A-Z])/g, "$1 $2");
         }
       }
 
-      // Get step details from the step object (same logic as UI)
+      // Get step details from the step object
       function getStepDetailsFromStep(step: any) {
-        // Check multiple possible locations for step details (same as UI)
         if (job && job.allStepDetails) {
           switch (step.stepName) {
             case "PaperStore":
@@ -755,58 +319,178 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
           }
         }
 
-        // Handle the actual data structure from job planning
         if (step.stepDetails) {
-          // If stepDetails has a data property (object structure)
           if (step.stepDetails.data) {
-            return [step.stepDetails.data]; // Wrap single object in array
-          }
-          // If stepDetails is already an array
-          else if (Array.isArray(step.stepDetails)) {
+            return [step.stepDetails.data];
+          } else if (Array.isArray(step.stepDetails)) {
             return step.stepDetails;
           }
-        }
-
-        // If no stepDetails, create a basic entry with available data
-        if (step.machineDetails && step.machineDetails.length > 0) {
-          return [
-            {
-              date: step.startDate
-                ? new Date(step.startDate).toLocaleDateString()
-                : "",
-              status: step.status || "planned",
-              machineDetails: step.machineDetails,
-              stepNo: step.stepNo,
-              user: step.user || "",
-            },
-          ];
         }
 
         return [];
       }
 
-      // Simple footer - Job Card style doesn't need complex footer
-      const totalPages = pdf.getNumberOfPages();
-      for (let i = 1; i <= totalPages; i++) {
-        pdf.setPage(i);
-
-        // Simple footer text
+      // Process each step in grid layout
+      sortedSteps.forEach((step: any, index: number) => {
+        const sectionTitle = getSectionTitle(step.stepName);
+        const stepDetails = getStepDetailsFromStep(step);
+        
+        // Calculate position based on current column
+        const currentX = currentColumn === 0 ? leftColumnX : rightColumnX;
+        let currentY = currentColumn === 0 ? leftColumnY : rightColumnY;
+        
+        // Step header - smaller
+        const stepHeaderHeight = 8;
+        drawRect(currentX, currentY, columnWidth, stepHeaderHeight, [230, 244, 255]); // Light blue
+        drawBorder(currentX, currentY, columnWidth, stepHeaderHeight, 0.3);
+        
         pdf.setFontSize(8);
-        pdf.setFont("helvetica", "normal");
-        pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+        pdf.text(sectionTitle, currentX + 3, currentY + 5);
+        
+        // Status on the right
+        const statusText = step.status || "planned";
+        const statusColor =
+          statusText === "completed"
+            ? [34, 197, 94]
+            : statusText === "in-progress"
+            ? [251, 191, 36]
+            : [107, 114, 128];
+            
+        pdf.setFontSize(6);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+        pdf.text(statusText.toUpperCase(), currentX + columnWidth - 3, currentY + 5, { align: "right" });
+        
+        currentY += stepHeaderHeight + 2;
+        
+        // Step details in compact format
+        if (stepDetails && stepDetails.length > 0) {
+          const detail = stepDetails[0]; // Take first detail for compact display
+          const detailsHeight = 20; // Fixed height for consistency
+          
+          // Draw details box
+          drawRect(currentX, currentY, columnWidth, detailsHeight, colors.white);
+          drawBorder(currentX, currentY, columnWidth, detailsHeight, 0.2);
+          
+          pdf.setFontSize(6);
+          pdf.setFont("helvetica", "normal");
+          pdf.setTextColor(colors.darkGray[0], colors.darkGray[1], colors.darkGray[2]);
+          
+          let detailY = currentY + 4;
+          const leftDetailX = currentX + 2;
+          const rightDetailX = currentX + columnWidth / 2 + 2;
+          let detailCount = 0;
+          
+          // Display key fields based on step type
+          const displayField = (label: string, value: any) => {
+            if (value && detailCount < 6) { // Limit to 6 fields max
+              const text = `${label}: ${value}`;
+              const xPos = detailCount % 2 === 0 ? leftDetailX : rightDetailX;
+              const yPos = detailY + Math.floor(detailCount / 2) * 3;
+              
+              pdf.text(text, xPos, yPos);
+              detailCount++;
+            }
+          };
+          
+          // Step-specific fields (most important ones only)
+          if (step.stepName === "PaperStore") {
+            displayField("Size", detail.sheetSize);
+            displayField("Qty", detail.quantity);
+            displayField("Available", detail.available);
+            displayField("GSM", detail.gsm);
+            displayField("Mill", detail.mill);
+            displayField("Quality", detail.quality);
+          } else if (step.stepName === "PrintingDetails") {
+            displayField("Qty", detail.quantity);
+            displayField("Machine", detail.machine);
+            displayField("Operator", detail.oprName);
+            displayField("Inks", detail.inksUsed);
+            displayField("Colors", detail.noOfColours);
+            displayField("Coating", detail.coatingType);
+          } else if (step.stepName === "Corrugation") {
+            displayField("Qty", detail.quantity);
+            displayField("Machine", detail.machineNo);
+            displayField("Flute", detail.flute);
+            displayField("Size", detail.size);
+            displayField("GSM1", detail.gsm1);
+            displayField("GSM2", detail.gsm2);
+          } else if (step.stepName === "FluteLaminateBoardConversion") {
+            displayField("Qty", detail.quantity);
+            displayField("Operator", detail.operatorName);
+            displayField("Film", detail.film);
+            displayField("Adhesive", detail.adhesive);
+            displayField("Wastage", detail.wastage);
+            displayField("Shift", detail.shift);
+          } else if (step.stepName === "Punching") {
+            displayField("Qty", detail.quantity);
+            displayField("Machine", detail.machine);
+            displayField("Operator", detail.operatorName);
+            displayField("Die", detail.die);
+            displayField("Wastage", detail.wastage);
+            displayField("Shift", detail.shift);
+          } else if (step.stepName === "SideFlapPasting") {
+            displayField("Qty", detail.quantity);
+            displayField("Machine", detail.machineNo);
+            displayField("Operator", detail.operatorName);
+            displayField("Adhesive", detail.adhesive);
+            displayField("Wastage", detail.wastage);
+            displayField("Shift", detail.shift);
+          } else if (step.stepName === "QualityDept") {
+            displayField("Qty", detail.quantity);
+            displayField("Checked By", detail.checkedBy);
+            displayField("Rejected", detail.rejectedQty);
+            displayField("Reason", detail.reasonForRejection);
+            displayField("Operator", detail.operatorName);
+            displayField("Shift", detail.shift);
+          } else if (step.stepName === "DispatchProcess") {
+            displayField("Qty", detail.quantity);
+            displayField("Balance", detail.balanceQty);
+            displayField("Dispatch No", detail.dispatchNo);
+            displayField("Operator", detail.operatorName);
+            displayField("Date", detail.dispatchDate ? new Date(detail.dispatchDate).toLocaleDateString() : "");
+            displayField("Shift", detail.shift);
+          } else {
+            // Generic fields
+            displayField("Qty", detail.quantity);
+            displayField("Operator", detail.operatorName);
+            displayField("Shift", detail.shift);
+            displayField("Status", detail.status);
+          }
+          
+          currentY += detailsHeight + 3;
+        } else {
+          // If no details, just add minimal spacing
+          currentY += 15;
+        }
+        
+        // Update column positions
+        if (currentColumn === 0) {
+          leftColumnY = currentY;
+        } else {
+          rightColumnY = currentY;
+        }
+        
+        // Switch to next column
+        currentColumn = 1 - currentColumn;
+      });
 
-        // Center
-        pdf.text(
-          `Generated on ${new Date().toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}`,
-          pageWidth / 2,
-          pageHeight - 10,
-          { align: "center" }
-        );
-      }
+      // Footer
+      pdf.setFontSize(7);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
+      pdf.text(
+        `Generated on ${new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long", 
+          day: "numeric",
+        })}`,
+        pageWidth / 2,
+        pageHeight - 8,
+        { align: "center" }
+      );
 
       // Save the PDF
       pdf.save(
@@ -825,6 +509,7 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       setIsGeneratingPDF(false);
     }
   };
+
 
   console.log("Rendering DetailedJobModal with job:", job);
 

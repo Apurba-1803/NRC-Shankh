@@ -568,6 +568,50 @@ const PlannerJobs: React.FC = () => {
     (filters.deliveryDateFrom ? 1 : 0) +
     (filters.deliveryDateTo ? 1 : 0);
 
+  // Function to check if a PO has a job creation notification
+  const hasJobCreationNotification = (po: PurchaseOrder): boolean => {
+    try {
+      // Check both possible localStorage keys
+      const jobCreationNotifications = JSON.parse(
+        localStorage.getItem("jobCreationNotifications") || "[]"
+      );
+      const activityLogNotifications = JSON.parse(
+        localStorage.getItem("activityLogNotifications") || "[]"
+      );
+
+      // Combine both notification arrays
+      const allNotifications = [
+        ...jobCreationNotifications,
+        ...activityLogNotifications,
+      ];
+
+      // Debug logging
+      console.log("🔍 Checking notifications for PO:", {
+        poNumber: po.poNumber,
+        poStyle: po.style,
+        jobCreationNotifications: jobCreationNotifications,
+        activityLogNotifications: activityLogNotifications,
+        allNotifications: allNotifications,
+        totalCount: allNotifications.length,
+      });
+
+      const hasNotification = allNotifications.some((notification: any) => {
+        const matches =
+          notification.style === po.style && notification.status === "pending";
+        if (matches) {
+          console.log("✅ Found matching notification:", notification);
+        }
+        return matches;
+      });
+
+      console.log("🔍 Notification check result:", hasNotification);
+      return hasNotification;
+    } catch (error) {
+      console.error("Error checking job creation notifications:", error);
+      return false;
+    }
+  };
+
   // Apply filters whenever filters change or purchase orders change
   useEffect(() => {
     let basePOs = purchaseOrders;
@@ -2135,6 +2179,9 @@ const PlannerJobs: React.FC = () => {
                         po={po}
                         onClick={handlePOClick}
                         jobCompletionStatus={completionStatus}
+                        hasJobCreationNotification={hasJobCreationNotification(
+                          po
+                        )}
                       />
                     );
                   })}
@@ -2165,6 +2212,9 @@ const PlannerJobs: React.FC = () => {
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Dimensions
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Die Code
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Status
@@ -2205,8 +2255,22 @@ const PlannerJobs: React.FC = () => {
                               onClick={() => handlePOClick(po)}
                             >
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {po.poNumber}
+                                <div className="flex items-center space-x-2">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {po.poNumber}
+                                  </div>
+                                  {hasJobCreationNotification(po) && (
+                                    <div
+                                      className="relative group"
+                                      title="Job needs to be created for this PO"
+                                    >
+                                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
+                                        Job needs to be created for this PO
+                                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="text-sm text-gray-500">
                                   Plant: {po.plant}
@@ -2249,6 +2313,11 @@ const PlannerJobs: React.FC = () => {
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="text-sm text-gray-900">
                                   {po.boardSize}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {po.dieCode || "N/A"}
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
