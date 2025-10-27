@@ -1,4 +1,10 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useDeferredValue,
+  useCallback,
+} from "react";
 import {
   ChartBarIcon,
   CheckCircleIcon,
@@ -136,6 +142,10 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
   const [noOfColorsSearch, setNoOfColorsSearch] = useState("");
   const [dimensionsSearch, setDimensionsSearch] = useState("");
   const [tableSearch, setTableSearch] = useState("");
+
+  // Lazy loading state
+  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Fetch assigned jobs count
   useEffect(() => {
@@ -395,6 +405,22 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
       );
     });
   }, [filteredPOs, tableSearch]);
+
+  // Use deferred value for smoother rendering
+  const deferredSearchedPOs = useDeferredValue(searchedPOs);
+
+  // Pagination logic
+  const totalPages = Math.ceil(deferredSearchedPOs.length / itemsPerPage);
+  const paginatedPOs = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return deferredSearchedPOs.slice(startIndex, endIndex);
+  }, [deferredSearchedPOs, currentPage, itemsPerPage]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [tableSearch, filters]);
 
   // Toggle filters
   const toggleNoOfColorFilter = (color: string) => {
@@ -1072,7 +1098,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
           </div>
           {tableSearch && (
             <div className="mt-2 text-sm text-gray-600">
-              Showing {searchedPOs.length} of {filteredPOs.length} POs
+              Showing {deferredSearchedPOs.length} of {filteredPOs.length} POs
             </div>
           )}
         </div>
@@ -1094,7 +1120,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
               <strong className="font-bold">Error!</strong>
               <span className="block sm:inline"> {error}</span>
             </div>
-          ) : searchedPOs.length === 0 ? (
+          ) : deferredSearchedPOs.length === 0 ? (
             <div className="text-center py-12">
               <DocumentTextIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 text-lg">
@@ -1136,7 +1162,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {searchedPOs.map((po) => {
+                {paginatedPOs.map((po) => {
                   const completionStatus = checkPOCompletionStatus(po);
                   return (
                     <tr
@@ -1187,6 +1213,87 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
                 })}
               </tbody>
             </table>
+          )}
+
+          {/* Pagination Controls */}
+          {!loading && !error && deferredSearchedPOs.length > 0 && (
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="text-sm text-gray-700">
+                  Showing{" "}
+                  <span className="font-medium">
+                    {(currentPage - 1) * itemsPerPage + 1}
+                  </span>{" "}
+                  to{" "}
+                  <span className="font-medium">
+                    {Math.min(
+                      currentPage * itemsPerPage,
+                      deferredSearchedPOs.length
+                    )}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-medium">
+                    {deferredSearchedPOs.length}
+                  </span>{" "}
+                  results
+                </div>
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm text-gray-700">
+                    Items per page:
+                  </label>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={200}>200</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  First
+                </button>
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-700">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Last
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>

@@ -14,6 +14,7 @@ import CompletedJobsTable from "./CompletedJobsTable";
 import LoadingSpinner from "../../common/LoadingSpinner";
 import MachineUtilizationDashboard from "./MachineUtilization";
 import ActiveUsersModal from "./Modals/ActiveUsersModal";
+import PDAAnnouncements from "./PDAAnnouncements";
 
 // Types based on the API response structure
 interface JobPlanStep {
@@ -1568,6 +1569,9 @@ const AdminDashboard: React.FC = () => {
         />
       </div>
 
+      {/* PDA Announcements */}
+     
+
       {/* Statistics Grid */}
       <StatisticsGrid
         totalJobs={filteredData?.totalJobs || 0}
@@ -2105,6 +2109,10 @@ const AdminDashboard: React.FC = () => {
         />
       </div>
 
+      <div className="mb-8">
+        <PDAAnnouncements />
+      </div>
+
       {/* Active Users Modal */}
       <ActiveUsersModal
         isOpen={showActiveUsersModal}
@@ -2112,6 +2120,8 @@ const AdminDashboard: React.FC = () => {
         activeUserIds={filteredData?.activeUserIds || new Set()}
       />
     </div>
+
+    
   );
 };
 
