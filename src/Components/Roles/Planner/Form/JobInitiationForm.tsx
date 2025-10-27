@@ -21,11 +21,11 @@ type FormStep = "artwork" | "po" | "moreInfo";
 const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
   onJobUpdated,
 }) => {
-  const { nrcJobNo } = useParams<{ nrcJobNo: string }>();
+   const { nrcJobNo } = useParams<{ nrcJobNo: string }>();
   const [searchParams] = useSearchParams(); // Only one navigate declaration needed
   const navigate = useNavigate();
 
-  const location = useLocation();
+const location = useLocation();
 
   const [job, setJob] = useState<Job | null>(null);
   const [loadingJob, setLoadingJob] = useState(true);
@@ -44,7 +44,7 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
   const [typingTimeout, setTypingTimeout] = useState<ReturnType<
     typeof setTimeout
   > | null>(null);
-  const [jobOptions, setJobOptions] = useState<Job[]>([]);
+const [jobOptions, setJobOptions] = useState<Job[]>([]);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -73,65 +73,65 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
   ];
   useEffect(() => {
     const state = location.state as any;
-
+    
     if (state?.searchJobId) {
       console.log("Auto-searching for job:", state.searchJobId);
-
+      
       // Auto-fill the search and trigger search
       setSearchTerm(state.searchJobId);
-
+      
       // You can also auto-trigger the search logic here
       // This mimics what happens when user types in search
       handleSearchChange({ target: { value: state.searchJobId } } as any);
-
+      
       // Store the target step for later use
       if (state.targetStep) {
         // You might want to store this in state to use after job is found
         localStorage.setItem("targetStep", state.targetStep);
       }
-
+      
       // Clear the state
       window.history.replaceState({}, "", location.pathname);
     }
   }, [location.state]);
 
-  //   useEffect(() => {
-  //   const state = location.state as any;
-
-  //   if (state?.searchJobId && state?.targetStep) {
-  //     console.log('Auto-navigating to job:', state.searchJobId, 'step:', state.targetStep);
-
-  //     // Auto search for the job
-  //     setSearchTerm(state.searchJobId);
-
-  //     // If you have a direct job lookup function, use it
-  //     const autoFindAndSetJob = async () => {
-  //       try {
-  //         setSearchLoading(true);
-  //         // Use your existing job search API
-  //         const response = await fetch(`/api/jobs/search?nrcJobNo=${encodeURIComponent(state.searchJobId)}`);
-  //         const jobs = await response.json();
-  //         const foundJob = jobs.find((job: Job) => job.nrcJobNo === state.searchJobId);
-
-  //         if (foundJob) {
-  //           setJob(foundJob);
-  //           setSearchedJob(foundJob);
-  //           setCurrentStep(state.targetStep as FormStep);
-  //         } else {
-  //           setSearchError(`Job not found: ${state.searchJobId}`);
-  //         }
-  //       } catch (error) {
-  //         console.error('Error finding job:', error);
-  //         setSearchError('Error searching for job');
-  //       } finally {
-  //         setSearchLoading(false);
-  //       }
-  //     };
-
-  //     autoFindAndSetJob();
-  //     window.history.replaceState({}, '', location.pathname);
-  //   }
-  // }, [location.state]);
+//   useEffect(() => {
+//   const state = location.state as any;
+  
+//   if (state?.searchJobId && state?.targetStep) {
+//     console.log('Auto-navigating to job:', state.searchJobId, 'step:', state.targetStep);
+    
+//     // Auto search for the job
+//     setSearchTerm(state.searchJobId);
+    
+//     // If you have a direct job lookup function, use it
+//     const autoFindAndSetJob = async () => {
+//       try {
+//         setSearchLoading(true);
+//         // Use your existing job search API
+//         const response = await fetch(`/api/jobs/search?nrcJobNo=${encodeURIComponent(state.searchJobId)}`);
+//         const jobs = await response.json();
+//         const foundJob = jobs.find((job: Job) => job.nrcJobNo === state.searchJobId);
+        
+//         if (foundJob) {
+//           setJob(foundJob);
+//           setSearchedJob(foundJob);
+//           setCurrentStep(state.targetStep as FormStep);
+//         } else {
+//           setSearchError(`Job not found: ${state.searchJobId}`);
+//         }
+//       } catch (error) {
+//         console.error('Error finding job:', error);
+//         setSearchError('Error searching for job');
+//       } finally {
+//         setSearchLoading(false);
+//       }
+//     };
+    
+//     autoFindAndSetJob();
+//     window.history.replaceState({}, '', location.pathname);
+//   }
+// }, [location.state]);
 
   // ✅ CORRECTED: Regular job loading (for non-modal navigation)
   useEffect(() => {
@@ -224,7 +224,7 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
     ) {
       return "artwork";
     }
-
+    
     // Check if PO details are missing
     if (
       !currentJob.poNumber ||
@@ -241,7 +241,7 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
     ) {
       return "po";
     }
-
+    
     // Check if more info is missing
     if (
       !currentJob.jobDemand ||
@@ -283,10 +283,10 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
 
   //     const data = await response.json();
   //     if (data.success && Array.isArray(data.data)) {
-  //       const foundJob = data.data.find((job: Job) =>
+  //       const foundJob = data.data.find((job: Job) => 
   //         job.nrcJobNo.toLowerCase().includes(searchTerm.toLowerCase()) && job.status === 'ACTIVE'
   //       );
-
+        
   //       if (foundJob) {
   //         setSearchedJob(foundJob);
   //         // Check if this job has all forms completed
@@ -312,59 +312,59 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
   // };
 
   const searchJob = async (term: string) => {
-    setSearchLoading(true);
-    try {
+  setSearchLoading(true);
+  try {
       const accessToken = localStorage.getItem("accessToken");
       if (!accessToken)
         throw new Error("Authentication token not found. Please log in.");
 
       const response = await fetch("https://nrprod.nrcontainers.com/api/jobs", {
         method: "GET",
-        headers: {
+      headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      },
+    });
 
       if (!response.ok)
         throw new Error(`Failed to search jobs: ${response.status}`);
 
-      const data = await response.json();
-      if (data.success && Array.isArray(data.data)) {
+    const data = await response.json();
+    if (data.success && Array.isArray(data.data)) {
         const matches = data.data.filter(
           (job: Job) =>
-            job.nrcJobNo.toLowerCase().includes(term.toLowerCase()) &&
+        job.nrcJobNo.toLowerCase().includes(term.toLowerCase()) &&
             job.status === "ACTIVE"
-        );
-        setJobOptions(matches);
-      } else {
-        setJobOptions([]);
-      }
-    } catch (error) {
-      console.error("Search failed:", error);
+      );
+      setJobOptions(matches);
+    } else {
       setJobOptions([]);
-    } finally {
-      setSearchLoading(false);
     }
-  };
+  } catch (error) {
+      console.error("Search failed:", error);
+    setJobOptions([]);
+  } finally {
+    setSearchLoading(false);
+  }
+};
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchTerm(value);
+  const value = e.target.value;
+  setSearchTerm(value);
 
-    if (typingTimeout) clearTimeout(typingTimeout);
+  if (typingTimeout) clearTimeout(typingTimeout);
 
-    const timeout = setTimeout(() => {
-      if (value.trim()) {
-        searchJob(value); // pass search term
-      } else {
-        setJobOptions([]);
-        setSearchedJob(null);
-      }
-    }, 300);
+  const timeout = setTimeout(() => {
+    if (value.trim()) {
+      searchJob(value); // pass search term
+    } else {
+      setJobOptions([]);
+      setSearchedJob(null);
+    }
+  }, 300);
 
-    setTypingTimeout(timeout);
-  };
+  setTypingTimeout(timeout);
+};
 
   // Handle search form submit
   // const handleSearchSubmit = (e: React.FormEvent) => {
@@ -396,10 +396,10 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
           `https://nrprod.nrcontainers.com/api/jobs/${nrcJobNo}`,
           {
             method: "GET",
-            headers: {
+          headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${accessToken}`,
-            },
+          },
           }
         );
 
@@ -567,11 +567,11 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
         `https://nrprod.nrcontainers.com/api/jobs/${job.nrcJobNo}`,
         {
           method: "PUT",
-          headers: {
+        headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify(updatedFields),
+        },
+        body: JSON.stringify(updatedFields),
         }
       );
 
@@ -590,13 +590,13 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
         };
         setJob(updatedJob);
         onJobUpdated(updatedJob);
-
+        
         // Show success message
         setError(null);
         setSuccessMessage(
           "Artwork details saved successfully! Moving to PO Details..."
         );
-
+        
         // Auto-progress to next step after a short delay
         setTimeout(() => {
           setCurrentStep("po");
@@ -615,9 +615,9 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
     }
   };
 
-  const handlePOSave = async (poDetails: PoDetailsPayload) => {
-    setError(null);
-    if (!job) return;
+const handlePOSave = async (poDetails: PoDetailsPayload) => {
+  setError(null);
+  if (!job) return;
 
     console.log("🔍 DEBUG - job object:", job);
     console.log("🔍 DEBUG - job.nrcJobNo:", job.nrcJobNo);
@@ -627,33 +627,33 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
       const accessToken = localStorage.getItem("accessToken");
       if (!accessToken) throw new Error("Authentication token not found.");
 
-      const payloadWithJobNo = { ...poDetails, jobNrcJobNo: job.nrcJobNo };
+    const payloadWithJobNo = { ...poDetails, jobNrcJobNo: job.nrcJobNo };
 
       const response = await fetch(
         "https://nrprod.nrcontainers.com/api/purchase-orders/create",
         {
           method: "POST",
-          headers: {
+      headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify(payloadWithJobNo),
+      },
+      body: JSON.stringify(payloadWithJobNo),
         }
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
+    if (!response.ok) {
+      const errorData = await response.json();
         throw new Error(errorData.message || "Failed to create P.O. details.");
-      }
-
-      const result = await response.json();
-
-      // 🎯 DEBUG: Log the full response to see the structure
+    }
+    
+    const result = await response.json();
+    
+    // 🎯 DEBUG: Log the full response to see the structure
       console.log("🔍 FULL PO Creation Response:", result);
       console.log("🔍 Response data:", result.data);
-
-      if (result.success) {
-        // 🎯 GET THE AUTO-GENERATED PO ID FROM THE RESPONSE
+    
+    if (result.success) {
+      // 🎯 GET THE AUTO-GENERATED PO ID FROM THE RESPONSE
         const createdPOId =
           result.data?.id ||
           result.data?.poId ||
@@ -661,53 +661,53 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
           result.id;
 
         console.log("✅ Purchase Order created with ID:", createdPOId);
-
-        // 🎯 UPDATE JOB OBJECT WITH PO ID AND OTHER DETAILS
-        const updatedJob = {
-          ...job,
-          ...poDetails,
-          poId: createdPOId, // Store PO ID in job
-          purchaseOrderId: createdPOId, // Alternative field name
+      
+      // 🎯 UPDATE JOB OBJECT WITH PO ID AND OTHER DETAILS
+      const updatedJob = { 
+        ...job, 
+        ...poDetails, 
+        poId: createdPOId, // Store PO ID in job
+        purchaseOrderId: createdPOId, // Alternative field name
           updatedAt: result.data?.updatedAt || new Date().toISOString(),
-        };
-
+      };
+      
         console.log("📝 Updated job object with PO ID:", updatedJob);
-
-        setJob(updatedJob);
-        onJobUpdated(updatedJob);
-
-        // Show success message
-        setError(null);
+      
+      setJob(updatedJob);
+      onJobUpdated(updatedJob);
+      
+      // Show success message
+      setError(null);
         setSuccessMessage(
           "PO details saved successfully! Moving to More Information..."
         );
-
-        // Auto-progress to next step after a short delay
-        setTimeout(() => {
+      
+      // Auto-progress to next step after a short delay
+      setTimeout(() => {
           setCurrentStep("moreInfo");
-          setSuccessMessage(null);
-        }, 1500);
-      } else {
+        setSuccessMessage(null);
+      }, 1500);
+    } else {
         throw new Error(result.message || "Failed to save P.O. details.");
-      }
-    } catch (err) {
+    }
+  } catch (err) {
       setError(
         `P.O. Save Error: ${
           err instanceof Error ? err.message : "Unknown error"
         }`
       );
-      throw err;
-    }
-  };
+    throw err;
+  }
+};
 
   const handleMoreInfoSave = async (
     updatedFields: Partial<Job>,
     jobPlanningPayload?: any
   ) => {
-    setError(null);
-    if (!job) return;
+  setError(null);
+  if (!job) return;
 
-    try {
+  try {
       const accessToken = localStorage.getItem("accessToken");
       if (!accessToken) throw new Error("Authentication token not found.");
 
@@ -724,48 +724,48 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
         `https://nrprod.nrcontainers.com/api/jobs/${job.nrcJobNo}`,
         {
           method: "PUT",
-          headers: {
+      headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify(updatedFields),
+      },
+      body: JSON.stringify(updatedFields),
         }
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
+    if (!response.ok) {
+      const errorData = await response.json();
         throw new Error(
           errorData.message || "Failed to update more information."
         );
-      }
-
-      const result = await response.json();
-      if (result.success) {
+    }
+    
+    const result = await response.json();
+    if (result.success) {
         const updatedJob = {
           ...job,
           ...updatedFields,
           updatedAt: result.data.updatedAt,
         };
-        setJob(updatedJob);
-        onJobUpdated(updatedJob);
-
-        // Create job plan entry after all forms are completed
-        try {
-          // Use the jobPlanningPayload if provided, otherwise create default
-          if (jobPlanningPayload && jobPlanningPayload.steps) {
+      setJob(updatedJob);
+      onJobUpdated(updatedJob);
+      
+      // Create job plan entry after all forms are completed
+      try {
+        // Use the jobPlanningPayload if provided, otherwise create default
+        if (jobPlanningPayload && jobPlanningPayload.steps) {
             await createJobPlanFromPayload(
               updatedJob,
               jobPlanningPayload,
               accessToken
             );
-
-            // ✅ Update machine statuses to "busy" after successful job plan creation
-            await updateMachineStatuses(jobPlanningPayload, accessToken);
-          } else {
-            await createJobPlan(updatedJob, accessToken);
-
-            // ✅ Update machine status for single machine if applicable
-            if (updatedFields.machineId) {
+          
+          // ✅ Update machine statuses to "busy" after successful job plan creation
+          await updateMachineStatuses(jobPlanningPayload, accessToken);
+        } else {
+          await createJobPlan(updatedJob, accessToken);
+          
+          // ✅ Update machine status for single machine if applicable
+          if (updatedFields.machineId) {
               await updateSingleMachineStatus(
                 updatedFields.machineId,
                 accessToken
@@ -781,7 +781,7 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
           setSuccessMessage(
             "All forms completed successfully! Job plan created, POs updated, and notifications cleared. Redirecting to dashboard..."
           );
-        } catch (jobPlanError) {
+      } catch (jobPlanError) {
           console.warn(
             "Failed to create job plan or update machine status:",
             jobPlanError
@@ -789,84 +789,84 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
           setSuccessMessage(
             "Forms completed but job plan creation failed. Redirecting to dashboard..."
           );
-        }
-
-        // Redirect to dashboard after showing success message
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 3000);
-      } else {
-        throw new Error(result.message || "Failed to save more information.");
       }
-    } catch (err) {
+      
+      // Redirect to dashboard after showing success message
+      setTimeout(() => {
+          navigate("/dashboard");
+      }, 3000);
+    } else {
+        throw new Error(result.message || "Failed to save more information.");
+    }
+  } catch (err) {
       setError(
         `More Info Save Error: ${
           err instanceof Error ? err.message : "Unknown error"
         }`
       );
-      throw err;
-    }
-  };
+    throw err;
+  }
+};
 
-  // ✅ Add this helper function to update machine statuses
+// ✅ Add this helper function to update machine statuses
   const updateMachineStatuses = async (
     jobPlanningPayload: any,
     accessToken: string
   ) => {
-    if (!jobPlanningPayload.steps || !Array.isArray(jobPlanningPayload.steps)) {
+  if (!jobPlanningPayload.steps || !Array.isArray(jobPlanningPayload.steps)) {
       console.warn("No steps found in job planning payload");
-      return;
+    return;
+  }
+
+  const machineUpdatePromises: Promise<void>[] = [];
+  const machineIds = new Set<string>();
+  
+  // ✅ Get machine IDs from steps
+  jobPlanningPayload.steps.forEach((step: any) => {
+    if (step.machineId) {
+      machineIds.add(step.machineId);
     }
+  });
 
-    const machineUpdatePromises: Promise<void>[] = [];
-    const machineIds = new Set<string>();
-
-    // ✅ Get machine IDs from steps
-    jobPlanningPayload.steps.forEach((step: any) => {
-      if (step.machineId) {
-        machineIds.add(step.machineId);
-      }
-    });
-
-    // ✅ Also get machine IDs from selectedMachines if available
+  // ✅ Also get machine IDs from selectedMachines if available
     if (
       jobPlanningPayload.selectedMachines &&
       Array.isArray(jobPlanningPayload.selectedMachines)
     ) {
-      jobPlanningPayload.selectedMachines.forEach((machine: any) => {
-        if (machine.id) {
-          machineIds.add(machine.id);
-        }
-      });
-    }
+    jobPlanningPayload.selectedMachines.forEach((machine: any) => {
+      if (machine.id) {
+        machineIds.add(machine.id);
+      }
+    });
+  }
 
     console.log(
       "Updating machine statuses for machines:",
       Array.from(machineIds)
     );
 
-    if (machineIds.size === 0) {
+  if (machineIds.size === 0) {
       console.warn("No machine IDs found to update");
-      return;
-    }
+    return;
+  }
 
-    // Update each machine status to "busy"
-    for (const machineId of machineIds) {
+  // Update each machine status to "busy"
+  for (const machineId of machineIds) {
       machineUpdatePromises.push(
         updateSingleMachineStatus(machineId, accessToken)
       );
-    }
+  }
 
-    try {
-      await Promise.all(machineUpdatePromises);
+  try {
+    await Promise.all(machineUpdatePromises);
       console.log("✅ All machine statuses updated successfully");
-    } catch (error) {
+  } catch (error) {
       console.error("❌ Failed to update some machine statuses:", error);
-      // Don't throw error here - we don't want to fail the entire process
-    }
-  };
+    // Don't throw error here - we don't want to fail the entire process
+  }
+};
 
-  // ✅ Add this helper function to update a single machine status
+// ✅ Add this helper function to update a single machine status
   const updateSingleMachineStatus = async (
     machineId: string,
     accessToken: string
@@ -876,32 +876,32 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
         `https://nrprod.nrcontainers.com/api/machines/${machineId}/status`,
         {
           method: "PUT",
-          headers: {
+      headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
+      },
+      body: JSON.stringify({
             status: "busy",
-          }),
+      }),
         }
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
+    if (!response.ok) {
+      const errorData = await response.json();
         throw new Error(
           `Failed to update machine ${machineId}: ${
             errorData.message || response.statusText
           }`
         );
-      }
-
-      const result = await response.json();
-      console.log(`✅ Machine ${machineId} status updated to busy:`, result);
-    } catch (error) {
-      console.error(`❌ Failed to update machine ${machineId} status:`, error);
-      throw error;
     }
-  };
+
+    const result = await response.json();
+    console.log(`✅ Machine ${machineId} status updated to busy:`, result);
+  } catch (error) {
+    console.error(`❌ Failed to update machine ${machineId} status:`, error);
+    throw error;
+  }
+};
 
   // Function to create job plan from the actual selected steps
   const createJobPlanFromPayload = async (
@@ -909,12 +909,12 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
     jobPlanningPayload: any,
     accessToken: string
   ) => {
-    try {
-      // Validate demand-based requirements
+  try {
+    // Validate demand-based requirements
       const jobDemand = completedJob.jobDemand || "medium";
-      const selectedSteps = jobPlanningPayload.steps || [];
-
-      // Demand-specific validation
+    const selectedSteps = jobPlanningPayload.steps || [];
+    
+    // Demand-specific validation
       if (jobDemand === "medium" && selectedSteps.length === 0) {
         throw new Error(
           "Regular demand requires at least one production step to be selected"
@@ -925,9 +925,9 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
         throw new Error(
           "Regular demand requires machine assignment for all selected steps"
         );
-      }
+    }
 
-      // 🎯 EXTENSIVE DEBUGGING FOR PO ID
+    // 🎯 EXTENSIVE DEBUGGING FOR PO ID
       console.log("🔍 === PO ID DEBUGGING ===");
       console.log("jobPlanningPayload.poId:", jobPlanningPayload.poId);
       console.log("completedJob.poId:", completedJob.poId);
@@ -940,152 +940,152 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
         JSON.stringify(jobPlanningPayload, null, 2)
       );
 
-      // Get PO ID with multiple fallback sources
+    // Get PO ID with multiple fallback sources
       const poId =
         jobPlanningPayload.poId ||
-        completedJob.poId ||
-        completedJob.purchaseOrderId ||
-        (completedJob as any).id ||
-        null;
+                completedJob.poId || 
+                completedJob.purchaseOrderId ||
+                (completedJob as any).id ||
+                null;
 
       console.log("📋 Final PO ID to be used:", poId);
       console.log("=== END DEBUGGING ===");
 
-      const jobPlanData = {
-        nrcJobNo: completedJob.nrcJobNo,
-        jobDemand: jobDemand,
-        purchaseOrderId: poId,
-        steps: selectedSteps.map((step: any, index: number) => {
-          // 🔥 NEW: Handle multiple machines from the payload
-          let machineDetails = [];
-
-          if (step.machineDetails && Array.isArray(step.machineDetails)) {
-            // Use the machineDetails array from the payload (multiple machines)
-            machineDetails = step.machineDetails;
-          } else if (step.allMachineIds && Array.isArray(step.allMachineIds)) {
-            // Fallback: construct from allMachineIds if available
-            machineDetails = step.allMachineIds.map((machineId: string) => ({
-              id: machineId,
+    const jobPlanData = {
+      nrcJobNo: completedJob.nrcJobNo,
+      jobDemand: jobDemand,
+      purchaseOrderId: poId,
+      steps: selectedSteps.map((step: any, index: number) => {
+        // 🔥 NEW: Handle multiple machines from the payload
+        let machineDetails = [];
+        
+        if (step.machineDetails && Array.isArray(step.machineDetails)) {
+          // Use the machineDetails array from the payload (multiple machines)
+          machineDetails = step.machineDetails;
+        } else if (step.allMachineIds && Array.isArray(step.allMachineIds)) {
+          // Fallback: construct from allMachineIds if available
+          machineDetails = step.allMachineIds.map((machineId: string) => ({
+            id: machineId,
               unit: completedJob.unit || "Mk",
-              machineCode: step.machineCode || machineId,
+            machineCode: step.machineCode || machineId,
               machineType: step.machineDetail || "Production Machine",
-            }));
-          } else if (completedJob.machineId && step.machineDetail) {
-            // Backward compatibility: single machine
+          }));
+        } else if (completedJob.machineId && step.machineDetail) {
+          // Backward compatibility: single machine
             machineDetails = [
               {
-                id: step.machineId || completedJob.machineId,
+            id: step.machineId || completedJob.machineId,
                 unit: completedJob.unit || "Mk",
-                machineCode: step.machineCode || completedJob.machineId,
+            machineCode: step.machineCode || completedJob.machineId,
                 machineType: step.machineDetail || "Production Step",
               },
             ];
           } else if (jobDemand === "medium") {
-            // Regular demand requires machine assignment for all selected steps
+          // Regular demand requires machine assignment for all selected steps
             throw new Error(
               `Regular demand requires machine assignment for step: ${step.stepName}`
             );
-          }
-
+        }
+        
           console.log(
             `🔍 Step ${step.stepName} machine details:`,
             machineDetails
           );
-
-          return {
-            jobStepId: index + 1,
-            stepNo: step.stepNo || index + 1,
-            stepName: step.stepName,
-            machineDetails: machineDetails, // 🔥 This will be stored as JSON in DB
+        
+        return {
+          jobStepId: index + 1,
+          stepNo: step.stepNo || index + 1,
+          stepName: step.stepName,
+          machineDetails: machineDetails, // 🔥 This will be stored as JSON in DB
             status: "planned" as const,
-            startDate: null,
-            endDate: null,
-            user: null,
-            createdAt: new Date().toISOString(),
+          startDate: null,
+          endDate: null,
+          user: null,
+          createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-          };
+        };
         }),
-      };
+    };
 
       console.log(
         "📤 FINAL Job Plan Data with Multiple Machines:",
         JSON.stringify(jobPlanData, null, 2)
       );
 
-      // Try to create job plan using the job-planning endpoint
+    // Try to create job plan using the job-planning endpoint
       const jobPlanResponse = await fetch(
         "https://nrprod.nrcontainers.com/api/job-planning/",
         {
           method: "POST",
-          headers: {
+      headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify(jobPlanData),
+      },
+      body: JSON.stringify(jobPlanData),
         }
       );
 
-      const responseText = await jobPlanResponse.text();
+    const responseText = await jobPlanResponse.text();
       console.log("🔍 Raw API Response:", responseText);
 
-      if (jobPlanResponse.ok) {
-        try {
-          const jobPlanResult = JSON.parse(responseText);
+    if (jobPlanResponse.ok) {
+      try {
+        const jobPlanResult = JSON.parse(responseText);
           console.log(
             "✅ Job plan created successfully with multiple machines:",
             jobPlanResult
           );
-          return jobPlanResult;
-        } catch (parseError) {
+        return jobPlanResult;
+      } catch (parseError) {
           console.error("❌ Failed to parse successful response:", parseError);
           throw new Error("Invalid response format from server");
-        }
-      } else {
+      }
+    } else {
         console.error(
           "❌ Job plan creation failed. Status:",
           jobPlanResponse.status
         );
         console.error("❌ Response:", responseText);
-
-        // Try the fallback approach
+      
+      // Try the fallback approach
         console.log("🔄 Trying alternative approach...");
 
         const statusUpdateResponse = await fetch(
           `https://nrprod.nrcontainers.com/api/jobs/${completedJob.nrcJobNo}`,
           {
             method: "PUT",
-            headers: {
+        headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({
+        },
+        body: JSON.stringify({
               status: "ACTIVE",
               jobDemand: completedJob.jobDemand || "medium",
-              machineId: completedJob.machineId,
-              purchaseOrderId: poId,
-            }),
+          machineId: completedJob.machineId,
+          purchaseOrderId: poId,
+        }),
           }
         );
 
-        if (statusUpdateResponse.ok) {
+      if (statusUpdateResponse.ok) {
           console.log("✅ Job status updated with PO ID");
           return { success: true, message: "Job plan creation triggered" };
-        } else {
+      } else {
           throw new Error("Failed to create job plan or update job status");
-        }
       }
-    } catch (error) {
-      console.error("❌ Error in createJobPlanFromPayload:", error);
-      throw error;
     }
-  };
+  } catch (error) {
+      console.error("❌ Error in createJobPlanFromPayload:", error);
+    throw error;
+  }
+};
 
   // Function to create job plan entry after all forms are completed
   const createJobPlan = async (completedJob: Job, accessToken: string) => {
     try {
       // Validate demand-based requirements
       const jobDemand = completedJob.jobDemand || "medium";
-
+      
       // Demand-specific validation
       if (jobDemand === "medium" && !completedJob.machineId) {
         throw new Error(
@@ -1106,16 +1106,16 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
         JSON.stringify(completedJob, null, 2)
       );
 
-      const poId = completedJob.poId || completedJob.purchaseOrderId || null;
-
+    const poId = completedJob.poId || completedJob.purchaseOrderId || null;
+    
       console.log("📋 DEFAULT Job Plan PO ID:", poId);
       console.log("🔍 PO ID type:", typeof poId);
       console.log("=== END DEFAULT DEBUGGING ===");
 
-      const jobPlanData = {
-        nrcJobNo: completedJob.nrcJobNo,
-        jobDemand: jobDemand,
-        purchaseOrderId: poId,
+    const jobPlanData = {
+      nrcJobNo: completedJob.nrcJobNo,
+      jobDemand: jobDemand,
+      purchaseOrderId: poId, 
         steps: [
           {
             jobStepId: 1, // Temporary ID for new step
@@ -1137,9 +1137,9 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
               completedJob.machineId && jobDemand === "medium"
                 ? [
                     {
-                      id: completedJob.machineId,
+              id: completedJob.machineId,
                       unit: completedJob.unit || "Unit 1",
-                      machineCode: completedJob.machineId,
+              machineCode: completedJob.machineId,
                       machineType: "Printing",
                     },
                   ]
@@ -1159,9 +1159,9 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
               completedJob.machineId && jobDemand === "medium"
                 ? [
                     {
-                      id: completedJob.machineId,
+              id: completedJob.machineId,
                       unit: completedJob.unit || "Unit 1",
-                      machineCode: completedJob.machineId,
+              machineCode: completedJob.machineId,
                       machineType: "Corrugation",
                     },
                   ]
@@ -1181,9 +1181,9 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
               completedJob.machineId && jobDemand === "medium"
                 ? [
                     {
-                      id: completedJob.machineId,
+              id: completedJob.machineId,
                       unit: completedJob.unit || "Unit 1",
-                      machineCode: completedJob.machineId,
+              machineCode: completedJob.machineId,
                       machineType: "Flute Lamination",
                     },
                   ]
@@ -1203,9 +1203,9 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
               completedJob.machineId && jobDemand === "medium"
                 ? [
                     {
-                      id: completedJob.machineId,
+              id: completedJob.machineId,
                       unit: completedJob.unit || "Unit 1",
-                      machineCode: completedJob.machineId,
+              machineCode: completedJob.machineId,
                       machineType: "Punching",
                     },
                   ]
@@ -1225,9 +1225,9 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
               completedJob.machineId && jobDemand === "medium"
                 ? [
                     {
-                      id: completedJob.machineId,
+              id: completedJob.machineId,
                       unit: completedJob.unit || "Unit 1",
-                      machineCode: completedJob.machineId,
+              machineCode: completedJob.machineId,
                       machineType: "Side Flap Pasting",
                     },
                   ]
@@ -1271,11 +1271,11 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
         "https://nrprod.nrcontainers.com/api/job-planning/",
         {
           method: "POST",
-          headers: {
+        headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify(jobPlanData),
+        },
+        body: JSON.stringify(jobPlanData),
         }
       );
 
@@ -1286,22 +1286,22 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
       } else {
         // If POST doesn't work, try to update existing job to trigger job plan creation
         console.log("Job plan creation failed, trying alternative approach...");
-
+        
         // Update job status to trigger job plan creation
         const statusUpdateResponse = await fetch(
           `https://nrprod.nrcontainers.com/api/jobs/${completedJob.nrcJobNo}`,
           {
             method: "PUT",
-            headers: {
+          headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({
+          },
+          body: JSON.stringify({
               status: "ACTIVE",
               jobDemand: completedJob.jobDemand || "medium",
-              machineId: completedJob.machineId,
-              // Add any other fields that might trigger job plan creation
-            }),
+            machineId: completedJob.machineId,
+            // Add any other fields that might trigger job plan creation
+          }),
           }
         );
 
@@ -1321,7 +1321,7 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
   // Helper function to check if a step is accessible (previous step must be completed)
   const isStepAccessible = (step: FormStep): boolean => {
     if (!job) return false;
-
+    
     switch (step) {
       case "artwork":
         return true; // First step is always accessible
@@ -1425,7 +1425,7 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
       dispatchDate: null,
       nrcDeliveryDate: null,
       poId: null, // Initialize as null
-      purchaseOrderId: null, // Initialize as null
+    purchaseOrderId: null, // Initialize as null
       jobSteps: [],
     };
 
@@ -1474,7 +1474,7 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
     if (!isDragging.current) return;
     const currentX = e.touches[0].clientX;
     const diff = startX.current - currentX;
-
+    
     if (diff > 50) {
       // Swipe left to close
       setIsSidebarOpen(false);
@@ -1505,53 +1505,53 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
               Search for an existing job to add purchase order details
             </p>
           </div>
-
+          
           {/* Search Section */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">
               Search Job
             </h2>
             <div className="max-w-md">
-              <div className="relative mb-4">
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  placeholder="Enter NRC Job Number..."
-                  className="w-full pl-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+  <div className="relative mb-4">
+    <input
+      type="text"
+      value={searchTerm}
+      onChange={handleSearchChange}
+      placeholder="Enter NRC Job Number..."
+      className="w-full pl-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+    />
                 <Search
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
                   size={20}
                 />
 
-                {/* 🔽 Dropdown results */}
-                {searchTerm && jobOptions.length > 0 && (
-                  <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    {jobOptions.map((job) => (
-                      <li
-                        key={job.id}
-                        onClick={() => {
-                          setSearchTerm(job.nrcJobNo);
-                          setSearchedJob(job);
-                          setJobOptions([]); // close dropdown
-                          // ✅ also set completion status logic
+    {/* 🔽 Dropdown results */}
+    {searchTerm && jobOptions.length > 0 && (
+      <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+        {jobOptions.map((job) => (
+          <li
+            key={job.id}
+            onClick={() => {
+              setSearchTerm(job.nrcJobNo);
+              setSearchedJob(job);
+              setJobOptions([]); // close dropdown
+              // ✅ also set completion status logic
                           const completionStatus =
                             checkJobCompletionStatus(job);
                           if (completionStatus === "completed") {
-                            setJob(job);
+                setJob(job);
                             setCurrentStep("artwork");
-                          }
-                        }}
-                        className="px-3 py-2 cursor-pointer hover:bg-blue-100 text-sm"
-                      >
-                        {job.nrcJobNo}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
+              }
+            }}
+            className="px-3 py-2 cursor-pointer hover:bg-blue-100 text-sm"
+          >
+            {job.nrcJobNo}
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+</div>
 
             {/* Search Error */}
             {searchError && (
@@ -1590,7 +1590,7 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
                     </p>
                   </div>
                 </div>
-
+                
                 {/* Show completion status */}
                 {(() => {
                   const completionStatus =
@@ -1612,7 +1612,7 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
                     </div>
                   );
                 })()}
-
+                
                 <div className="flex gap-3">
                   {(() => {
                     const completionStatus =
@@ -1698,7 +1698,7 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
               const isCompleted = getStepCompletion(step.id as FormStep);
               const isCurrentStep = step.id === currentStep;
               const isAccessible = isStepAccessible(step.id as FormStep);
-
+              
               return (
                 <li key={step.id}>
                   <button
@@ -1783,7 +1783,7 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
             <p className="text-gray-600 mb-6">
               Job: {job.nrcJobNo} - {job.customerName}
             </p>
-
+            
             {/* Completion Status */}
             <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-8">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">
@@ -1813,7 +1813,7 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
                     </div>
                   </div>
                 </div>
-
+                
                 <div
                   className={`p-3 sm:p-4 rounded-lg border-2 ${
                     getStepCompletion("po")
@@ -1837,7 +1837,7 @@ const JobInitiationForm: React.FC<JobInitiationFormProps> = ({
                     </div>
                   </div>
                 </div>
-
+                
                 <div
                   className={`p-3 sm:p-4 rounded-lg border-2 ${
                     getStepCompletion("moreInfo")

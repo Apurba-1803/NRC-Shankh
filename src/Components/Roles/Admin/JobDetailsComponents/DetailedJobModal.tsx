@@ -233,34 +233,34 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       // PAPER STORE Section Header
       drawRect(15, yPosition, pageWidth - 30, 6, colors.primary); // Reduced height from 8
       pdf.setFontSize(10); // Reduced from 12
-      pdf.setFont("helvetica", "bold");
-      pdf.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
       pdf.text("STEP DETAILS", pageWidth / 2, yPosition + 4, { align: "center" }); // Adjusted position
       yPosition += 8; // Reduced spacing from 12
 
       // Get all steps data
       const availableSteps = job.allSteps || job.steps || [];
-      
+
       // Define step order for sorting
-      const stepOrder = [
-        "PaperStore",
-        "PrintingDetails", 
-        "Corrugation",
-        "FluteLaminateBoardConversion",
-        "Punching",
-        "SideFlapPasting",
-        "QualityDept",
-        "DispatchProcess",
-      ];
+        const stepOrder = [
+          "PaperStore",
+          "PrintingDetails",
+          "Corrugation",
+          "FluteLaminateBoardConversion",
+          "Punching",
+          "SideFlapPasting",
+          "QualityDept",
+          "DispatchProcess",
+        ];
 
       // Sort steps according to predefined order
-      const sortedSteps = [...availableSteps].sort((a, b) => {
-        const aIndex = stepOrder.indexOf(a.stepName);
-        const bIndex = stepOrder.indexOf(b.stepName);
-        return (
-          (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex)
-        );
-      });
+        const sortedSteps = [...availableSteps].sort((a, b) => {
+          const aIndex = stepOrder.indexOf(a.stepName);
+          const bIndex = stepOrder.indexOf(b.stepName);
+          return (
+            (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex)
+          );
+        });
 
       // Grid layout for steps - 2 columns
       const columnWidth = (pageWidth - 40) / 2; // Two columns with margins
@@ -375,7 +375,7 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
           drawBorder(currentX, currentY, columnWidth, detailsHeight, 0.2);
           
           pdf.setFontSize(6);
-          pdf.setFont("helvetica", "normal");
+        pdf.setFont("helvetica", "normal");
           pdf.setTextColor(colors.darkGray[0], colors.darkGray[1], colors.darkGray[2]);
           
           let detailY = currentY + 4;
@@ -481,16 +481,16 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       pdf.setFontSize(7);
       pdf.setFont("helvetica", "normal");
       pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
-      pdf.text(
-        `Generated on ${new Date().toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long", 
-          day: "numeric",
-        })}`,
-        pageWidth / 2,
+        pdf.text(
+          `Generated on ${new Date().toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}`,
+          pageWidth / 2,
         pageHeight - 8,
-        { align: "center" }
-      );
+          { align: "center" }
+        );
 
       // Save the PDF
       pdf.save(

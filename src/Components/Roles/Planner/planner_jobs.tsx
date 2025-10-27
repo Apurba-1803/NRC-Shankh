@@ -168,6 +168,30 @@ const PlannerJobs: React.FC = () => {
   const [dimensionsSearch, setDimensionsSearch] = useState("");
 
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [isBulkUploading, setIsBulkUploading] = useState(false);
+  const [bulkUploadProgress, setBulkUploadProgress] = useState("");
+  const [uploadMessage, setUploadMessage] = useState<{
+    type: "success" | "error" | null;
+    title: string;
+    details: string;
+  }>({ type: null, title: "", details: "" });
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    type: "success" | "error" | "warning" | "info";
+  }>({ open: false, message: "", type: "info" });
+
+  // Helper function to show snackbar
+  const showSnackbar = (
+    message: string,
+    type: "success" | "error" | "warning" | "info" = "info"
+  ) => {
+    setSnackbar({ open: true, message, type });
+    setTimeout(
+      () => setSnackbar({ open: false, message: "", type: "info" }),
+      4000
+    );
+  };
 
   // Add this helper function for list view
   const getStatusColor = (status: string) => {
@@ -189,8 +213,6 @@ const PlannerJobs: React.FC = () => {
   const checkPOCompletionStatus = (
     po: any
   ): "artwork_pending" | "po_pending" | "more_info_pending" | "completed" => {
-    console.log("po in check po completion function", po);
-
     // Check if THIS specific PO has job planning (not just any PO with same nrcJobNo)
     const hasJobPlan =
       (po.steps && po.steps.length > 0 && po.jobPlanningId) ||
@@ -220,54 +242,9 @@ const PlannerJobs: React.FC = () => {
   ) => {
     return purchaseOrders
       .map((po) => {
-        // Debug logging for the specific POs
-        if (
-          po.poNumber === "4525021678" ||
-          po.poNumber === "4525021684" ||
-          po.poNumber === "4525019639" ||
-          po.id === 3693 ||
-          po.id === 3668 ||
-          po.id === 3665
-        ) {
-          console.log("🔍 DEBUGGING PO:", {
-            poId: po.id,
-            poNumber: po.poNumber,
-            jobNrcJobNo: po.jobNrcJobNo,
-            nrcJobNo: po.nrcJobNo,
-            customer: po.customer,
-          });
-          console.log(
-            "🔍 Available job plannings:",
-            jobPlannings.map((jp) => ({
-              jobPlanId: jp.jobPlanId,
-              nrcJobNo: jp.nrcJobNo,
-              purchaseOrderId: jp.purchaseOrderId,
-            }))
-          );
-        }
-
         // Find matching job planning by purchaseOrderId ONLY (strict PO-specific matching)
         const matchingJobPlan = jobPlannings.find((jp) => {
           const matchesPurchaseOrderId = jp.purchaseOrderId === po.id;
-
-          if (
-            po.poNumber === "4525021678" ||
-            po.poNumber === "4525021684" ||
-            po.poNumber === "4525019639" ||
-            po.id === 3693 ||
-            po.id === 3668 ||
-            po.id === 3665
-          ) {
-            console.log("🔍 Job Planning Match Check:", {
-              jpJobPlanId: jp.jobPlanId,
-              jpNrcJobNo: jp.nrcJobNo,
-              jpPurchaseOrderId: jp.purchaseOrderId,
-              poId: po.id,
-              poNumber: po.poNumber,
-              matchesPurchaseOrderId,
-              finalMatch: matchesPurchaseOrderId,
-            });
-          }
 
           // ONLY match by purchaseOrderId - no fallback to nrcJobNo
           // This ensures each PO gets its own specific job plan
@@ -281,76 +258,6 @@ const PlannerJobs: React.FC = () => {
             job.nrcJobNo === po.nrcJobNo ||
             (job.styleItemSKU === po.style && job.nrcJobNo === po.jobNrcJobNo)
         );
-
-        // Additional debug for job matching
-        if (po.poNumber === "4525020507") {
-          console.log("🔍 Job Matching Details:", {
-            poJobNrcJobNo: po.jobNrcJobNo,
-            poNrcJobNo: po.nrcJobNo,
-            poStyle: po.style,
-            jobsCount: jobs.length,
-            jobsWithMatchingNrcJobNo: jobs.filter(
-              (j) => j.nrcJobNo === po.jobNrcJobNo
-            ),
-            jobsWithMatchingStyle: jobs.filter(
-              (j) => j.styleItemSKU === po.style
-            ),
-            foundMatchingJob: !!matchingJob,
-          });
-        }
-
-        // Debug logging for job matching
-        if (po.poNumber === "4525020507") {
-          console.log("🔍 PO Job Matching Debug:", {
-            poNumber: po.poNumber,
-            poJobNrcJobNo: po.jobNrcJobNo,
-            poNrcJobNo: po.nrcJobNo,
-            poStyle: po.style,
-            availableJobs: jobs.map((j) => ({
-              nrcJobNo: j.nrcJobNo,
-              style: j.styleItemSKU,
-            })),
-            matchingJob: matchingJob
-              ? {
-                  nrcJobNo: matchingJob.nrcJobNo,
-                  style: matchingJob.styleItemSKU,
-                  boardSize: matchingJob.boardSize,
-                  noOfColor: matchingJob.noOfColor,
-                  fluteType: matchingJob.fluteType,
-                  boxDimensions: matchingJob.boxDimensions,
-                  processColors: matchingJob.processColors,
-                  topFaceGSM: matchingJob.topFaceGSM,
-                  flutingGSM: matchingJob.flutingGSM,
-                  bottomLinerGSM: matchingJob.bottomLinerGSM,
-                }
-              : null,
-            poData: {
-              boardSize: po.boardSize,
-              noOfColor: po.noOfColor,
-              boxDimensions: po.boxDimensions,
-              processColors: po.processColors,
-              topFaceGSM: po.topFaceGSM,
-              flutingGSM: po.flutingGSM,
-              bottomLinerGSM: po.bottomLinerGSM,
-            },
-          });
-        }
-
-        if (
-          po.poNumber === "4525021678" ||
-          po.poNumber === "4525021684" ||
-          po.poNumber === "4525019639" ||
-          po.id === 3693 ||
-          po.id === 3668 ||
-          po.id === 3665
-        ) {
-          console.log("🔍 Matching job plan:", matchingJobPlan);
-          console.log("🔍 Matching job plan steps:", matchingJobPlan?.steps);
-          console.log("🔍 Matching job:", matchingJob);
-          console.log("🔍 Has job plan:", !!matchingJobPlan);
-          console.log("🔍 Job plan jobDemand:", matchingJobPlan?.jobDemand);
-          console.log("🔍 Job plan ID:", matchingJobPlan?.jobPlanId);
-        }
 
         // Merge all the data
         return {
@@ -392,32 +299,6 @@ const PlannerJobs: React.FC = () => {
         };
       })
       .map((mergedPO) => {
-        // Debug logging for the final merged data
-        if (mergedPO.poNumber === "4525020507") {
-          console.log("🔍 Final Merged PO Data:", {
-            poNumber: mergedPO.poNumber,
-            boardSize: mergedPO.boardSize,
-            noOfColor: mergedPO.noOfColor,
-            fluteType: mergedPO.fluteType,
-            boxDimensions: mergedPO.boxDimensions,
-            processColors: mergedPO.processColors,
-            topFaceGSM: mergedPO.topFaceGSM,
-            flutingGSM: mergedPO.flutingGSM,
-            bottomLinerGSM: mergedPO.bottomLinerGSM,
-            hasJobPlan: mergedPO.hasJobPlan,
-            jobDemand: mergedPO.jobDemand,
-            // Show the job object to verify it's there
-            job: mergedPO.job,
-            // Show what should be populated from job
-            expectedFromJob: {
-              noOfColor: "N/A",
-              boxDimensions: "460x460x460",
-              topFaceGSM: "300",
-              flutingGSM: "120",
-              bottomLinerGSM: "120",
-            },
-          });
-        }
         return mergedPO;
       });
   };
@@ -585,26 +466,12 @@ const PlannerJobs: React.FC = () => {
         ...activityLogNotifications,
       ];
 
-      // Debug logging
-      console.log("🔍 Checking notifications for PO:", {
-        poNumber: po.poNumber,
-        poStyle: po.style,
-        jobCreationNotifications: jobCreationNotifications,
-        activityLogNotifications: activityLogNotifications,
-        allNotifications: allNotifications,
-        totalCount: allNotifications.length,
-      });
-
       const hasNotification = allNotifications.some((notification: any) => {
         const matches =
           notification.style === po.style && notification.status === "pending";
-        if (matches) {
-          console.log("✅ Found matching notification:", notification);
-        }
         return matches;
       });
 
-      console.log("🔍 Notification check result:", hasNotification);
       return hasNotification;
     } catch (error) {
       console.error("Error checking job creation notifications:", error);
@@ -621,22 +488,11 @@ const PlannerJobs: React.FC = () => {
       basePOs = purchaseOrders.filter(
         (po) => po.poNumber === searchedJob.poNumber
       );
-      console.log("🔍 useEffect Filter Debug:", {
-        searchedJob: searchedJob,
-        searchedJobPoNumber: searchedJob.poNumber,
-        basePOsCount: basePOs.length,
-        basePOs: basePOs,
-      });
     }
 
     // Apply additional filters
     const filtered = applyFilters(basePOs);
     setFilteredPOs(filtered);
-
-    console.log("🔍 Final Filtered POs:", {
-      filteredCount: filtered.length,
-      filteredPOs: filtered,
-    });
   }, [filters, purchaseOrders, searchedJob]);
 
   const handleBulkJobPlanning = async (jobPlanningData: any) => {
@@ -646,11 +502,6 @@ const PlannerJobs: React.FC = () => {
 
       // 🔥 FIXED: Now receives individual job planning data (same as single job planning)
       // Just forward it to the API
-      console.log(
-        `Creating job plan for ${jobPlanningData.nrcJobNo}`,
-        jobPlanningData
-      );
-
       const response = await fetch(
         "https://nrprod.nrcontainers.com/api/job-planning/",
         {
@@ -673,7 +524,6 @@ const PlannerJobs: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log("Job plan created successfully:", result);
 
       // 🔥 FIXED: Update machine statuses to busy (extract from machineDetails)
       const allMachines: any[] = [];
@@ -705,8 +555,6 @@ const PlannerJobs: React.FC = () => {
 
             if (!response.ok) {
               console.warn(`Failed to update machine ${machine.id} status`);
-            } else {
-              console.log(`✅ Machine ${machine.id} status updated to busy`);
             }
           } catch (error) {
             console.warn(`Error updating machine ${machine.id} status:`, error);
@@ -801,10 +649,6 @@ const PlannerJobs: React.FC = () => {
 
         // Extract filter options from merged data
         extractFilterOptions(mergedData);
-
-        console.log("✅ Merged PO, Job Planning, and Job data:", mergedData);
-        console.log("🔍 Raw Job Planning Data:", jobPlanData.data);
-        console.log("🔍 Raw Jobs Data:", jobsData.data);
       } else {
         setError("Unexpected API response format or data is not an array.");
       }
@@ -864,20 +708,6 @@ const PlannerJobs: React.FC = () => {
 
     setFilteredPOs(filtered);
 
-    // Debug logging for search filtering
-    if (value.toLowerCase().includes("us82")) {
-      console.log("🔍 Search Filter Debug:", {
-        searchTerm: value,
-        filteredCount: filtered.length,
-        filteredPOs: filtered.map((po) => ({
-          poNumber: po.poNumber,
-          style: po.style,
-          customer: po.customer,
-        })),
-        totalPOs: purchaseOrders.length,
-      });
-    }
-
     // Create PO options for dropdown based on filtered results
     const timeout = setTimeout(() => {
       if (value.trim()) {
@@ -890,15 +720,6 @@ const PlannerJobs: React.FC = () => {
           nrcJobNo: po.jobNrcJobNo || po.job?.nrcJobNo,
         }));
         setJobOptions(poOptions as any); // Cast to match existing interface
-
-        // Debug logging for dropdown options
-        if (value.toLowerCase().includes("us82")) {
-          console.log("🔍 Dropdown Options Debug:", {
-            searchTerm: value,
-            poOptionsCount: poOptions.length,
-            poOptions: poOptions,
-          });
-        }
       } else {
         setJobOptions([]);
         setSearchedJob(null);
@@ -1087,16 +908,9 @@ const PlannerJobs: React.FC = () => {
         (po) => !po.jobNrcJobNo && !po.job?.nrcJobNo && po.style && po.customer
       );
 
-      console.log(
-        `🔄 Syncing notifications: Found ${posWithoutJobs.length} POs without jobs out of ${purchaseOrders.length} total POs`
-      );
-
       // If there are no POs without jobs, clear all pending notifications
       if (posWithoutJobs.length === 0) {
         localStorage.setItem("jobCreationNotifications", JSON.stringify([]));
-        console.log(
-          "✅ Cleared all job creation notifications (no POs without jobs)"
-        );
         return;
       }
 
@@ -1159,10 +973,6 @@ const PlannerJobs: React.FC = () => {
         "jobCreationNotifications",
         JSON.stringify(finalNotifications)
       );
-
-      console.log(
-        `✅ Synced notifications: ${validNotifications.length} existing + ${newNotifications.length} new = ${finalNotifications.length} total`
-      );
     } catch (error) {
       console.error("Error syncing notifications with POs:", error);
     }
@@ -1173,7 +983,6 @@ const PlannerJobs: React.FC = () => {
     const notifications = JSON.parse(
       localStorage.getItem("jobCreationNotifications") || "[]"
     );
-    console.log("Current notifications:", notifications);
     return notifications;
   };
 
@@ -1183,17 +992,12 @@ const PlannerJobs: React.FC = () => {
   const parseDate = (value: any) => {
     if (!value) return null;
 
-    console.log(`🔍 Parsing date: "${value}" (type: ${typeof value})`);
-
-    // Handle the DD-MMM-YY format (e.g., "8-Nov-25", "14-Oct-25")
-    const ddmmyyPattern = /^(\d{1,2})-([A-Za-z]{3})-(\d{2})$/;
+    // Handle the DD-MMM-YY or DD/MMM/YY format (e.g., "8-Nov-25", "14-Oct-25", "25/Sep/25")
+    const ddmmyyPattern = /^(\d{1,2})[/-]([A-Za-z]{3})[/-](\d{2})$/;
     const match = String(value).match(ddmmyyPattern);
 
     if (match) {
       const [, day, month, year] = match;
-      console.log(
-        `🔍 Matched DD-MMM-YY pattern: day=${day}, month=${month}, year=${year}`
-      );
 
       // Convert 2-digit year to 4-digit year (assuming 20xx for years 00-99)
       const fullYear =
@@ -1218,14 +1022,12 @@ const PlannerJobs: React.FC = () => {
       const monthNum = monthMap[month];
       if (monthNum !== undefined) {
         const d = new Date(fullYear, monthNum, parseInt(day));
-        console.log(`🔍 Created date object: ${d.toISOString()}`);
 
         if (!isNaN(d.getTime())) {
           const year = d.getFullYear();
           const month = String(d.getMonth() + 1).padStart(2, "0");
           const day = String(d.getDate()).padStart(2, "0");
           const result = `${year}-${month}-${day}`;
-          console.log(`✅ Parsed date result: ${result}`);
           return result;
         }
       }
@@ -1234,7 +1036,6 @@ const PlannerJobs: React.FC = () => {
     // Check if it's an Excel date serial number (e.g., 45000)
     if (typeof value === "number" && value > 25569) {
       // Excel epoch starts at 1900-01-01
-      console.log(`🔍 Detected Excel date serial number: ${value}`);
       const excelEpoch = new Date(1900, 0, 1); // January 1, 1900
       const d = new Date(
         excelEpoch.getTime() + (value - 2) * 24 * 60 * 60 * 1000
@@ -1245,16 +1046,16 @@ const PlannerJobs: React.FC = () => {
         const month = String(d.getMonth() + 1).padStart(2, "0");
         const day = String(d.getDate()).padStart(2, "0");
         const result = `${year}-${month}-${day}`;
-        console.log(`✅ Excel serial date result: ${result}`);
+        
         return result;
       }
     }
 
     // Fallback to standard date parsing for other formats
-    console.log(`🔍 Using fallback date parsing for: "${value}"`);
+  
     const d = new Date(value);
     if (isNaN(d.getTime())) {
-      console.log(`❌ Invalid date: ${value}`);
+    
       return null;
     }
 
@@ -1262,7 +1063,7 @@ const PlannerJobs: React.FC = () => {
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
     const result = `${year}-${month}-${day}`;
-    console.log(`✅ Fallback date result: ${result}`);
+
     return result;
   };
 
@@ -1274,6 +1075,8 @@ const PlannerJobs: React.FC = () => {
       input.click();
 
       input.onchange = async (event: any) => {
+        setIsBulkUploading(true);
+        setBulkUploadProgress("Reading file...");
         const file = event.target.files?.[0];
         if (!file) return;
 
@@ -1351,9 +1154,13 @@ const PlannerJobs: React.FC = () => {
         }
 
         if (parsedData.length === 0) {
-          alert("No records found in file!");
+          setIsBulkUploading(false);
+          setBulkUploadProgress("");
+          showSnackbar("No records found in file!", "error");
           return;
         }
+
+        setBulkUploadProgress(`Processing ${parsedData.length} records...`);
 
         const { data: maxIdData, error: maxIdError } = await supabase
           .from("PurchaseOrder")
@@ -1363,17 +1170,26 @@ const PlannerJobs: React.FC = () => {
 
         if (maxIdError) {
           console.error("Error fetching last id:", maxIdError);
-          alert("Failed to fetch last ID from database.");
+          setIsBulkUploading(false);
+          setBulkUploadProgress("");
+          showSnackbar("Failed to fetch last ID from database.", "error");
           return;
         }
 
         let nextId = maxIdData?.[0]?.id ? maxIdData[0].id + 1 : 1;
 
+        setBulkUploadProgress("Fetching job data...");
+
         // Fetch all jobs from API to match styleItemSKU with style
         const accessToken = localStorage.getItem("accessToken");
 
         if (!accessToken) {
-          alert("Authentication token not found. Please log in.");
+          setIsBulkUploading(false);
+          setBulkUploadProgress("");
+          showSnackbar(
+            "Authentication token not found. Please log in.",
+            "error"
+          );
           return;
         }
 
@@ -1390,7 +1206,9 @@ const PlannerJobs: React.FC = () => {
 
         if (!jobsResponse.ok) {
           console.error("Error fetching jobs from API:", jobsResponse.status);
-          alert("Failed to fetch job data for matching.");
+          setIsBulkUploading(false);
+          setBulkUploadProgress("");
+          showSnackbar("Failed to fetch job data for matching.", "error");
           return;
         }
 
@@ -1398,13 +1216,13 @@ const PlannerJobs: React.FC = () => {
         const jobsData = jobsApiData.success ? jobsApiData.data : [];
 
         // Debug: Log raw API response for PKBB-1302-0105-N4
-        console.log("🔍 Raw API response for jobs:", jobsApiData);
+        // console.log("🔍 Raw API response for jobs:", jobsApiData);
         if (jobsData && Array.isArray(jobsData)) {
           const pkbbJobs = jobsData.filter(
             (job: any) =>
               job.styleItemSKU && job.styleItemSKU.includes("PKBB-1302-0105")
           );
-          console.log("🔍 Jobs containing PKBB-1302-0105:", pkbbJobs);
+          // console.log("🔍 Jobs containing PKBB-1302-0105:", pkbbJobs);
         }
 
         // Create a map for quick lookup: styleItemSKU -> nrcJobNo
@@ -1412,27 +1230,32 @@ const PlannerJobs: React.FC = () => {
         const jobMap = new Map();
         const jobMapDebug: { [key: string]: string } = {};
 
+        // NEW: Create a map for full job details: styleItemSKU -> full job object
+        const jobDetailsMap = new Map();
+
         if (jobsData && Array.isArray(jobsData)) {
           jobsData.forEach((job: any) => {
             if (job.styleItemSKU && job.nrcJobNo) {
               const normalizedStyle = job.styleItemSKU.trim().toUpperCase();
               jobMap.set(normalizedStyle, job.nrcJobNo);
               jobMapDebug[normalizedStyle] = job.nrcJobNo;
+              // Store full job object for auto-population
+              jobDetailsMap.set(normalizedStyle, job);
             }
           });
         }
 
-        console.log(
-          "Job mapping created from API:",
-          jobMapDebug,
-          `(${jobMap.size} jobs)`
-        );
+        // console.log(
+        //   "Job mapping created from API:",
+        //   jobMapDebug,
+        //   `(${jobMap.size} jobs)`
+        // );
 
         // Debug: Log all available job styles for comparison
-        console.log(
-          "🔍 All available job styles from API:",
-          Array.from(jobMap.keys())
-        );
+        // console.log(
+        //   "🔍 All available job styles from API:",
+        //   Array.from(jobMap.keys())
+        // );
 
         // First pass: check if ALL styles can be matched
         const unmatchedStyles: string[] = [];
@@ -1462,19 +1285,19 @@ const PlannerJobs: React.FC = () => {
           const matchedJobNo = jobMap.get(normalizedStyle);
 
           // Debug: Log detailed matching info for this specific style
-          if (styleValue === "PKBB-1302-0105-N4") {
-            console.log("🔍 DEBUG for PKBB-1302-0105-N4:");
-            console.log("  Original style:", styleValue);
-            console.log("  Normalized style:", normalizedStyle);
-            console.log("  Found in jobMap:", jobMap.has(normalizedStyle));
-            console.log("  Matched jobNo:", matchedJobNo);
-            console.log(
-              "  All similar styles in jobMap:",
-              Array.from(jobMap.keys()).filter((key) =>
-                key.includes("PKBB-1302-0105")
-              )
-            );
-          }
+          // if (styleValue === "PKBB-1302-0105-N4") {
+          //   console.log("🔍 DEBUG for PKBB-1302-0105-N4:");
+          //   console.log("  Original style:", styleValue);
+          //   console.log("  Normalized style:", normalizedStyle);
+          //   console.log("  Found in jobMap:", jobMap.has(normalizedStyle));
+          //   console.log("  Matched jobNo:", matchedJobNo);
+          //   console.log(
+          //     "  All similar styles in jobMap:",
+          //     Array.from(jobMap.keys()).filter((key) =>
+          //       key.includes("PKBB-1302-0105")
+          //     )
+          //   );
+          // }
 
           if (!matchedJobNo) {
             unmatchedStyles.push(`Row ${idx + 1}: "${styleValue}"`);
@@ -1495,7 +1318,7 @@ const PlannerJobs: React.FC = () => {
         });
 
         // Log all matching results for debugging
-        console.log("Style matching results:", styleMatchResults);
+        // console.log("Style matching results:", styleMatchResults);
 
         // Collect unmatched styles for notification
         const unmatchedItems: Array<{ style: string; customer: string }> = [];
@@ -1503,19 +1326,32 @@ const PlannerJobs: React.FC = () => {
         // Proceed with formatting - include ALL rows (matched and unmatched)
         const formattedData = parsedData
           .map((row: any, idx: number) => {
-            if (!row["Customer"]) return null;
-
+            // Check for minimum required fields: Style or PO Number
             const styleValue = row["Style"];
-            if (!styleValue) return null;
+            const poNumber = row["PO.NUMBER"];
+
+            // Must have either Style or PO Number to be valid
+            if (!styleValue && !poNumber) {
+              console.warn(
+                `Row ${idx + 1}: Skipping - no Style or PO Number provided`
+              );
+              return null;
+            }
+
+            if (!styleValue) {
+              console.warn(`Row ${idx + 1}: Skipping - Style is required`);
+              return null;
+            }
 
             const normalizedStyle = styleValue.trim().toUpperCase();
             const matchedJobNo = jobMap.get(normalizedStyle);
+            const matchedJobDetails = jobDetailsMap.get(normalizedStyle);
 
-            // Track unmatched styles for notification
+            // Track unmatched styles for notification - use Customer if available, else "N/A"
             if (!matchedJobNo) {
               unmatchedItems.push({
                 style: styleValue,
-                customer: row["Customer"],
+                customer: row["Customer"] || "N/A",
               });
               console.warn(
                 `Row ${
@@ -1530,8 +1366,9 @@ const PlannerJobs: React.FC = () => {
               );
             }
 
-            return {
-              id: nextId + idx,
+            // Create base PO object from Excel data
+            const basePOData = {
+              // DON'T assign id here - we'll assign it after filtering duplicates
               // Map Excel columns to database fields according to the specified order
               srNo: row["Sr #"] ? parseInt(row["Sr #"]) : null,
               style: row["Style"] || null,
@@ -1578,45 +1415,231 @@ const PlannerJobs: React.FC = () => {
               jobNrcJobNo: matchedJobNo || null, // Allow null for unmatched styles
               userId: null,
             };
+
+            // NEW: Auto-fill missing fields from job details if matched
+            if (matchedJobDetails && matchedJobNo) {
+              // Fill in ALL fields from job if Excel value is null/undefined/empty string
+              const enrichedPOData = {
+                ...basePOData,
+                // Basic fields
+                boardSize:
+                  basePOData.boardSize ||
+                  matchedJobDetails.boardSize ||
+                  matchedJobDetails.boardCategory ||
+                  null,
+                dieCode:
+                  basePOData.dieCode || matchedJobDetails.diePunchCode || null,
+                fluteType:
+                  basePOData.fluteType || matchedJobDetails.fluteType || null,
+                unit: basePOData.unit || matchedJobDetails.unit || null,
+                customer:
+                  basePOData.customer || matchedJobDetails.customerName || null,
+                plant: basePOData.plant || matchedJobDetails.unit || null,
+                // Shade card fields
+                shadeCardApprovalDate:
+                  basePOData.shadeCardApprovalDate ||
+                  (matchedJobDetails.shadeCardApprovalDate
+                    ? parseDate(matchedJobDetails.shadeCardApprovalDate)
+                    : null) ||
+                  null,
+                sharedCardDiffDate:
+                  basePOData.sharedCardDiffDate ||
+                  matchedJobDetails.sharedCardDiffDate ||
+                  null,
+                // No of Ups and Sheets from job
+                noOfUps: basePOData.noOfUps || matchedJobDetails.noUps || null,
+                noOfSheets:
+                  basePOData.noOfSheets || matchedJobDetails.noOfSheets || null,
+              };
+
+              console.log(`Row ${idx + 1}: Auto-filled PO data from job:`, {
+                style: styleValue,
+                baseData: {
+                  boardSize: basePOData.boardSize,
+                  dieCode: basePOData.dieCode,
+                  fluteType: basePOData.fluteType,
+                  shadeCardApprovalDate: basePOData.shadeCardApprovalDate,
+                  sharedCardDiffDate: basePOData.sharedCardDiffDate,
+                  noOfUps: basePOData.noOfUps,
+                  noOfSheets: basePOData.noOfSheets,
+                  plant: basePOData.plant,
+                  unit: basePOData.unit,
+                },
+                jobData: {
+                  boardSize: matchedJobDetails.boardSize,
+                  dieCode: matchedJobDetails.diePunchCode,
+                  fluteType: matchedJobDetails.fluteType,
+                  shadeCardApprovalDate:
+                    matchedJobDetails.shadeCardApprovalDate,
+                  sharedCardDiffDate: matchedJobDetails.sharedCardDiffDate,
+                  noUps: matchedJobDetails.noUps,
+                  noOfSheets: matchedJobDetails.noOfSheets,
+                  unit: matchedJobDetails.unit,
+                },
+                enrichedData: {
+                  boardSize: enrichedPOData.boardSize,
+                  dieCode: enrichedPOData.dieCode,
+                  fluteType: enrichedPOData.fluteType,
+                  shadeCardApprovalDate: enrichedPOData.shadeCardApprovalDate,
+                  sharedCardDiffDate: enrichedPOData.sharedCardDiffDate,
+                  noOfUps: enrichedPOData.noOfUps,
+                  noOfSheets: enrichedPOData.noOfSheets,
+                  plant: enrichedPOData.plant,
+                  unit: enrichedPOData.unit,
+                },
+              });
+
+              return enrichedPOData;
+            }
+
+            return basePOData;
           })
           .filter((row) => row !== null);
 
         if (formattedData.length === 0) {
-          alert(
-            "No valid rows found! Please ensure the Excel file has customer data."
+          setIsBulkUploading(false);
+          setBulkUploadProgress("");
+          showSnackbar(
+            "No valid rows found! Please ensure the Excel file has customer data.",
+            "warning"
           );
           return;
         }
 
-        console.log(
-          `✅ ${formattedData.length} POs prepared for upload (${unmatchedItems.length} need job creation). Proceeding with upload...`
+        // console.log(
+        //   `✅ ${formattedData.length} POs prepared for upload (${unmatchedItems.length} need job creation). Checking for duplicates...`
+        // );
+
+        setBulkUploadProgress(
+          `Checking for duplicates in ${formattedData.length} records...`
+        );
+
+        // ONLY TYPE ANNOTATION CHANGE HERE - Rest of logic EXACTLY the same
+        interface DuplicateCheckResult {
+          isDuplicate: boolean;
+          po: any;
+          existingPO?: any;
+        }
+
+        // Check for duplicates before uploading - EXACT ORIGINAL LOGIC
+        const duplicateCheckPromises = formattedData.map(async (po) => {
+          const { data: existingPOs, error: checkError } = await supabase
+            .from("PurchaseOrder")
+            .select(
+              "id, poNumber, style, poDate, deliveryDate, totalPOQuantity"
+            )
+            .eq("poNumber", po.poNumber)
+            .eq("style", po.style)
+            .eq("poDate", po.poDate)
+            .eq("deliveryDate", po.deliveryDate)
+            .eq("totalPOQuantity", po.totalPOQuantity);
+
+          if (checkError) {
+            console.error("Error checking for duplicates:", checkError);
+            return { isDuplicate: false, po };
+          }
+
+          return {
+            isDuplicate: existingPOs && existingPOs.length > 0,
+            po,
+            existingPO: existingPOs?.[0],
+          };
+        });
+
+        const duplicateCheckResults: DuplicateCheckResult[] = await Promise.all(
+          duplicateCheckPromises
+        );
+
+        // Separate duplicates from new records
+        const duplicates = duplicateCheckResults.filter(
+          (result) => result.isDuplicate
+        );
+        const newRecords = duplicateCheckResults
+          .filter((result) => !result.isDuplicate)
+          .map((result) => result.po);
+
+        // NOW assign IDs only to non-duplicate records that will actually be uploaded
+        const newRecordsWithIds = newRecords.map((po, idx) => ({
+          ...po,
+          id: nextId + idx,
+        }));
+
+        // console.log(
+        //   `🔍 Duplicate check results: ${duplicates.length} duplicates found, ${newRecords.length} new records to upload`
+        // );
+
+        // Log duplicate details
+        if (duplicates.length > 0) {
+          console.log(
+            "📋 Duplicate records found:",
+            duplicates.map((d) => ({
+              poNumber: d.po.poNumber,
+              style: d.po.style,
+              poDate: d.po.poDate,
+              deliveryDate: d.po.deliveryDate,
+              totalPOQuantity: d.po.totalPOQuantity,
+              existingId: d.existingPO?.id,
+            }))
+          );
+        }
+
+        if (newRecords.length === 0) {
+          setIsBulkUploading(false);
+          setBulkUploadProgress("");
+          showSnackbar(
+            `All ${formattedData.length} records are duplicates and have been skipped. No new records uploaded.`,
+            "info"
+          );
+          return;
+        }
+
+        setBulkUploadProgress(
+          `Uploading ${newRecordsWithIds.length} new records...`
         );
 
         // Debug: Log sample data to check date parsing
-        console.log(
-          "🔍 Sample formatted data with dates:",
-          formattedData.slice(0, 2).map((po) => ({
-            poNumber: po.poNumber,
-            poDate: po.poDate,
-            deliveryDate: po.deliveryDate,
-            dispatchDate: po.dispatchDate,
-            shadeCardApprovalDate: po.shadeCardApprovalDate,
-          }))
-        );
+        // console.log(
+        //   "🔍 Sample new records with dates:",
+        //   newRecordsWithIds.slice(0, 2).map((po) => ({
+        //     id: po.id,
+        //     poNumber: po.poNumber,
+        //     poDate: po.poDate,
+        //     deliveryDate: po.deliveryDate,
+        //     dispatchDate: po.dispatchDate,
+        //     shadeCardApprovalDate: po.shadeCardApprovalDate,
+        //   }))
+        // );
 
         const { error } = await supabase
           .from("PurchaseOrder")
-          .insert(formattedData);
+          .insert(newRecordsWithIds);
 
         if (error) {
           console.error("Bulk upload failed:", error);
-          alert("Upload failed. Check console for details.");
+          setIsBulkUploading(false);
+          setBulkUploadProgress("");
+          showSnackbar("Upload failed. Check console for details.", "error");
         } else {
+          setBulkUploadProgress("Upload successful! Reloading data...");
+
           // Notifications will be created automatically by syncNotificationsWithCurrentPOs()
           // when the POs are loaded and displayed
 
           // Show success message with details
-          let successMessage = `Successfully uploaded ${formattedData.length} POs!`;
+          let successMessage = `✅ Successfully uploaded ${newRecordsWithIds.length} new POs!`;
+
+          if (duplicates.length > 0) {
+            successMessage += `\n\n📋 ${duplicates.length} duplicate record(s) were skipped:\n`;
+            duplicates.slice(0, 5).forEach((dup) => {
+              successMessage += `• PO: ${dup.po.poNumber} | Style: ${dup.po.style} | Qty: ${dup.po.totalPOQuantity}\n`;
+            });
+            if (duplicates.length > 5) {
+              successMessage += `\n... and ${
+                duplicates.length - 5
+              } more duplicates`;
+            }
+            successMessage += `\n\nDuplicates are determined by matching: PO Number, Style, PO Date, Delivery Date, and Quantity.`;
+          }
 
           if (unmatchedItems.length > 0) {
             successMessage += `\n\n⚠️ ${unmatchedItems.length} PO(s) need new jobs to be created:\n\n`;
@@ -1632,15 +1655,31 @@ const PlannerJobs: React.FC = () => {
             successMessage += `\n\nNotifications have been created. Please create jobs for these styles.`;
           }
 
-          alert(successMessage);
-
           // Reload POs to sync with database and trigger notification sync
           await fetchPurchaseOrders();
+
+          setIsBulkUploading(false);
+          setBulkUploadProgress("");
+
+          // Show success message in modal
+          setUploadMessage({
+            type: "success",
+            title: `Successfully uploaded ${newRecordsWithIds.length} new POs!`,
+            details: successMessage.replace(
+              `✅ Successfully uploaded ${newRecordsWithIds.length} new POs!`,
+              ""
+            ),
+          });
         }
       };
     } catch (err) {
       console.error("Bulk upload error:", err);
-      alert("Something went wrong during bulk upload.");
+      setIsBulkUploading(false);
+      setBulkUploadProgress("");
+      showSnackbar(
+        "Something went wrong during bulk upload. Please try again.",
+        "error"
+      );
     }
   };
 
@@ -1661,8 +1700,8 @@ const PlannerJobs: React.FC = () => {
     });
   };
 
-  console.log("filtered pos", filteredPOs);
-  console.log("searched job", searchedJob);
+  // console.log("filtered pos", filteredPOs);
+  // console.log("searched job", searchedJob);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
@@ -1744,22 +1783,22 @@ const PlannerJobs: React.FC = () => {
                       const filtered = purchaseOrders.filter(
                         (p) => p.poNumber === po.poNumber
                       );
-                      console.log("🔍 Dropdown Click Debug:", {
-                        clickedPO: po,
-                        filteredPOs: filtered,
-                        filteredCount: filtered.length,
-                        purchaseOrdersCount: purchaseOrders.length,
-                      });
+                      // console.log("🔍 Dropdown Click Debug:", {
+                      //   clickedPO: po,
+                      //   filteredPOs: filtered,
+                      //   filteredCount: filtered.length,
+                      //   purchaseOrdersCount: purchaseOrders.length,
+                      // });
                       setFilteredPOs(filtered);
                       // Set the full PO object as searchedJob, not the simplified dropdown object
                       if (filtered.length > 0) {
                         setSearchedJob(filtered[0] as any);
-                        console.log("✅ Set searchedJob to:", filtered[0]);
+                        // console.log("✅ Set searchedJob to:", filtered[0]);
                       } else {
                         setSearchedJob(null);
-                        console.log(
-                          "❌ No matching PO found, set searchedJob to null"
-                        );
+                        // console.log(
+                        //   "❌ No matching PO found, set searchedJob to null"
+                        // );
                       }
                     }}
                     className="px-3 py-2 cursor-pointer hover:bg-blue-100 text-sm border-b border-gray-100 last:border-b-0"
@@ -2196,22 +2235,25 @@ const PlannerJobs: React.FC = () => {
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            PO Number
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Style
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Customer
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            PO Number
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            PO Date
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                            Delivery Date
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                             Quantity
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Delivery Date
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Dimensions
+                            Board Size
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Die Code
@@ -2256,8 +2298,11 @@ const PlannerJobs: React.FC = () => {
                             >
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center space-x-2">
-                                  <div className="text-sm font-medium text-gray-900">
-                                    {po.poNumber}
+                                  <div
+                                    className="text-sm text-gray-900 max-w-xs truncate"
+                                    title={po.style || undefined}
+                                  >
+                                    {po.style}
                                   </div>
                                   {hasJobCreationNotification(po) && (
                                     <div
@@ -2272,19 +2317,7 @@ const PlannerJobs: React.FC = () => {
                                     </div>
                                   )}
                                 </div>
-                                <div className="text-sm text-gray-500">
-                                  Plant: {po.plant}
-                                </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div
-                                  className="text-sm text-gray-900 max-w-xs truncate"
-                                  title={po.style || undefined}
-                                >
-                                  {po.style}
-                                </div>
-                              </td>
-
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div
                                   className="text-sm text-gray-900 max-w-xs truncate"
@@ -2294,20 +2327,35 @@ const PlannerJobs: React.FC = () => {
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm text-gray-900">
-                                  {po.totalPOQuantity?.toLocaleString()}
+                                <div className="text-sm font-medium text-gray-900">
+                                  {po.poNumber}
                                 </div>
                                 <div className="text-sm text-gray-500">
-                                  {po.noOfSheets} sheets
+                                  Plant: {po.plant}
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="text-sm text-gray-900">
+                                  {po.poDate
+                                    ? new Date(po.poDate).toLocaleDateString()
+                                    : "N/A"}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-bold text-gray-900">
                                   {po.deliveryDate
                                     ? new Date(
                                         po.deliveryDate
                                       ).toLocaleDateString()
                                     : "N/A"}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-bold text-gray-900">
+                                  {po.totalPOQuantity?.toLocaleString()}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {po.noOfSheets} sheets
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
@@ -2366,6 +2414,195 @@ const PlannerJobs: React.FC = () => {
           }
           onRefresh={fetchPurchaseOrders}
         />
+      )}
+
+      {/* Bulk Upload Loading Modal */}
+      {isBulkUploading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Uploading Purchase Orders
+              </h3>
+              <p className="text-sm text-gray-600 text-center">
+                {bulkUploadProgress || "Please wait..."}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Result Modal */}
+      {uploadMessage.type && !isBulkUploading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 shadow-xl">
+            <div className="flex items-center mb-4">
+              {uploadMessage.type === "success" ? (
+                <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </div>
+              ) : (
+                <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </div>
+              )}
+              <h3 className="ml-3 text-lg font-semibold text-gray-900">
+                {uploadMessage.title}
+              </h3>
+            </div>
+
+            {uploadMessage.details && (
+              <div
+                className={`p-4 rounded-lg mb-4 text-sm whitespace-pre-line ${
+                  uploadMessage.type === "success"
+                    ? "bg-green-50 text-green-800"
+                    : "bg-red-50 text-red-800"
+                }`}
+              >
+                {uploadMessage.details}
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <button
+                onClick={() =>
+                  setUploadMessage({ type: null, title: "", details: "" })
+                }
+                className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                  uploadMessage.type === "success"
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : "bg-red-600 hover:bg-red-700 text-white"
+                }`}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Snackbar for small alerts */}
+      {snackbar.open && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-slide-down">
+          <div
+            className={`flex items-center space-x-3 px-6 py-3 rounded-lg shadow-lg ${
+              snackbar.type === "success"
+                ? "bg-green-600 text-white"
+                : snackbar.type === "error"
+                ? "bg-red-600 text-white"
+                : snackbar.type === "warning"
+                ? "bg-yellow-600 text-white"
+                : "bg-blue-600 text-white"
+            }`}
+          >
+            {snackbar.type === "success" && (
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            )}
+            {snackbar.type === "error" && (
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            )}
+            {snackbar.type === "warning" && (
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            )}
+            {snackbar.type === "info" && (
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            )}
+            <span className="font-medium">{snackbar.message}</span>
+            <button
+              onClick={() =>
+                setSnackbar({ open: false, message: "", type: "info" })
+              }
+              className="ml-4 text-white hover:text-gray-200"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
