@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useMemo,
-  useEffect,
-  useDeferredValue,
-  useCallback,
-} from "react";
+import React, { useState, useMemo, useEffect, useDeferredValue } from "react";
 import {
   ChartBarIcon,
   CheckCircleIcon,
@@ -128,6 +122,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
     useState<PurchaseOrder | null>(null);
   const [showBulkPlanningModal, setShowBulkPlanningModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedPOs, setSelectedPOs] = useState<number[]>([]);
 
   // Filter state
   const [filters, setFilters] = useState<FilterState>({
@@ -282,7 +277,6 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
       });
 
       setPurchaseOrders(mergedPOs);
-      extractFilterOptions(mergedPOs);
     } catch (err: any) {
       setError(err.message);
       console.error("Error fetching purchase orders:", err);
@@ -296,24 +290,27 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
   }, []);
 
   // Extract filter options
-  const extractFilterOptions = (pos: PurchaseOrder[]) => {
-    const colors = new Set<string>();
-    const sizes = new Set<string>();
+  const extractFilterOptions = useMemo(() => {
+    return (pos: PurchaseOrder[]) => {
+      const colors = new Set<string>();
+      const sizes = new Set<string>();
 
-    pos.forEach((po) => {
-      if (po.noOfColor !== undefined && po.noOfColor !== null) {
-        colors.add(String(po.noOfColor));
-      } else {
-        colors.add("0");
-      }
+      pos.forEach((po) => {
+        if (po.noOfColor !== undefined && po.noOfColor !== null) {
+          colors.add(String(po.noOfColor));
+        } else {
+          colors.add("0");
+        }
 
-      const dimension = po.boxDimensions || po.jobBoardSize || "0x0x0";
-      if (dimension) sizes.add(dimension);
-    });
+        const dimension =
+          po.boxDimensions || po.jobBoardSize || po.boardSize || "0x0x0";
+        if (dimension) sizes.add(dimension);
+      });
 
-    setAvailableNoOfColors(Array.from(colors).sort());
-    setAvailableBoardSizes(Array.from(sizes).sort());
-  };
+      setAvailableNoOfColors(Array.from(colors).sort());
+      setAvailableBoardSizes(Array.from(sizes).sort());
+    };
+  }, []);
 
   // Check PO completion status
   const checkPOCompletionStatus = (
@@ -368,7 +365,8 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
         filters.noOfColors.length === 0 ||
         filters.noOfColors.includes(String(po.noOfColor || "0"));
 
-      const poDimension = po.boxDimensions || po.jobBoardSize || "0x0x0";
+      const poDimension =
+        po.boxDimensions || po.jobBoardSize || po.boardSize || "0x0x0";
       const matchesSize =
         filters.boardSizes.length === 0 ||
         filters.boardSizes.includes(poDimension);
@@ -399,7 +397,9 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
         po.customer?.toLowerCase().includes(searchTerm) ||
         po.totalPOQuantity?.toString().includes(searchTerm) ||
         po.deliveryDate?.toLowerCase().includes(searchTerm) ||
-        (po.boxDimensions || po.jobBoardSize || "0x0x0")
+        po.poDate?.toLowerCase().includes(searchTerm) ||
+        po.dieCode?.toString().toLowerCase().includes(searchTerm) ||
+        (po.boxDimensions || po.jobBoardSize || po.boardSize || "0x0x0")
           ?.toLowerCase()
           .includes(searchTerm)
       );
@@ -421,6 +421,43 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
   useEffect(() => {
     setCurrentPage(1);
   }, [tableSearch, filters]);
+
+  // Clear selected POs when search or filters change
+  useEffect(() => {
+    setSelectedPOs([]);
+  }, [tableSearch, filters]);
+
+  // Update filter options based on POs that need job planning
+  useEffect(() => {
+    // Extract filter options from all POs that need job planning (more_info_pending)
+    // This ensures users can see all available filter values
+    const posNeedingPlanning = purchaseOrders.filter((po) => {
+      const completionStatus = checkPOCompletionStatus(po);
+      return completionStatus === "more_info_pending";
+    });
+    extractFilterOptions(posNeedingPlanning);
+  }, [purchaseOrders, extractFilterOptions]);
+
+  // Handle PO selection
+  const handlePOSelection = (poId: number) => {
+    setSelectedPOs((prev) =>
+      prev.includes(poId) ? prev.filter((id) => id !== poId) : [...prev, poId]
+    );
+  };
+
+  // Handle select all/none
+  const handleSelectAll = () => {
+    if (selectedPOs.length === paginatedPOs.length) {
+      setSelectedPOs([]);
+    } else {
+      setSelectedPOs(paginatedPOs.map((po) => po.id));
+    }
+  };
+
+  // Get selected PO objects
+  const getSelectedPOObjects = () => {
+    return paginatedPOs.filter((po) => selectedPOs.includes(po.id));
+  };
 
   // Toggle filters
   const toggleNoOfColorFilter = (color: string) => {
@@ -779,7 +816,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
               </p>
             </div>
             <div className="flex items-center space-x-2">
-              {/* Bulk Job Planning Button */}
+              {/* Bulk Job Planning Button for Filtered POs */}
               {filteredPOs.length > 0 && activeFilterCount > 0 && (
                 <button
                   onClick={() => setShowBulkPlanningModal(true)}
@@ -789,6 +826,17 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
                   <span>Bulk Planning ({filteredPOs.length})</span>
                 </button>
               )}
+              {/* Bulk Job Planning Button for Selected POs */}
+              {(tableSearch || activeFilterCount > 0) &&
+                selectedPOs.length > 0 && (
+                  <button
+                    onClick={() => setShowBulkPlanningModal(true)}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                  >
+                    <Cog6ToothIcon className="h-4 w-4" />
+                    <span>Bulk Planning ({selectedPOs.length} selected)</span>
+                  </button>
+                )}
               {/* Filter Toggle Button */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
@@ -1065,7 +1113,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search POs by PO Number, Style, Customer, Quantity, Delivery Date, or Dimensions..."
+                  placeholder="Search POs by Style, Customer, PO Number, PO Date, Delivery Date, Quantity, Board Size, or Die Code..."
                   value={tableSearch}
                   onChange={(e) => setTableSearch(e.target.value)}
                   className="w-full px-4 py-2 pl-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1096,9 +1144,14 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
               </button>
             )}
           </div>
-          {tableSearch && (
+          {(tableSearch || activeFilterCount > 0) && (
             <div className="mt-2 text-sm text-gray-600">
               Showing {deferredSearchedPOs.length} of {filteredPOs.length} POs
+              {selectedPOs.length > 0 && (
+                <span className="ml-2 text-green-600 font-medium">
+                  • {selectedPOs.length} selected
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -1135,9 +1188,19 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    PO Number
-                  </th>
+                  {(tableSearch || activeFilterCount > 0) && (
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        checked={
+                          selectedPOs.length === paginatedPOs.length &&
+                          paginatedPOs.length > 0
+                        }
+                        onChange={handleSelectAll}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                    </th>
+                  )}
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Style
                   </th>
@@ -1145,13 +1208,22 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
                     Customer
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Quantity
+                    PO Number
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Delivery Date
+                    PO Date
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Dimensions
+                    <span className="font-bold">Delivery Date</span>
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <span className="font-bold">Qty</span>
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Board Size
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Die Code
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -1170,23 +1242,49 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
                       className="hover:bg-gray-50 transition-colors cursor-pointer"
                       onClick={() => handlePOClick(po)}
                     >
-                      <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-900">
-                        {po.poNumber}
-                      </td>
+                      {(tableSearch || activeFilterCount > 0) && (
+                        <td
+                          className="px-4 py-2 whitespace-nowrap"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedPOs.includes(po.id)}
+                            onChange={() => handlePOSelection(po.id)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-2 whitespace-nowrap text-gray-500">
                         {po.style || "N/A"}
                       </td>
                       <td className="px-4 py-2 whitespace-nowrap text-gray-500">
                         {po.customer}
                       </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-gray-500">
-                        {po.totalPOQuantity || "N/A"}
+                      <td className="px-4 py-2 whitespace-nowrap font-medium text-gray-500">
+                        {po.poNumber}
                       </td>
                       <td className="px-4 py-2 whitespace-nowrap text-gray-500">
-                        {formatDate(po.deliveryDate)}
+                        {formatDate(po.poDate)}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-gray-900">
+                        <span className="font-bold">
+                          {formatDate(po.deliveryDate)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-gray-900">
+                        <span className="font-bold">
+                          {po.totalPOQuantity || "N/A"}
+                        </span>
                       </td>
                       <td className="px-4 py-2 whitespace-nowrap text-gray-500">
-                        {po.boxDimensions || po.jobBoardSize || "0x0x0"}
+                        {po.boxDimensions ||
+                          po.jobBoardSize ||
+                          po.boardSize ||
+                          "0x0x0"}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-gray-500">
+                        {po.dieCode || "N/A"}
                       </td>
                       <td className="px-4 py-2 whitespace-nowrap">
                         <span
@@ -1405,9 +1503,16 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ data }) => {
 
       {showBulkPlanningModal && (
         <BulkJobPlanningModal
-          filteredPOs={filteredPOs}
+          filteredPOs={
+            (tableSearch || activeFilterCount > 0) && selectedPOs.length > 0
+              ? getSelectedPOObjects()
+              : filteredPOs
+          }
           onSave={handleBulkJobPlanning}
-          onClose={() => setShowBulkPlanningModal(false)}
+          onClose={() => {
+            setShowBulkPlanningModal(false);
+            setSelectedPOs([]);
+          }}
           onRefresh={fetchPurchaseOrders}
         />
       )}

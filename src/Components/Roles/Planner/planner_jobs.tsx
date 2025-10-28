@@ -166,6 +166,7 @@ const PlannerJobs: React.FC = () => {
   const [showBulkPlanningModal, setShowBulkPlanningModal] = useState(false);
   const [noOfColorsSearch, setNoOfColorsSearch] = useState("");
   const [dimensionsSearch, setDimensionsSearch] = useState("");
+  const [selectedPOs, setSelectedPOs] = useState<number[]>([]);
 
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [isBulkUploading, setIsBulkUploading] = useState(false);
@@ -324,8 +325,10 @@ const PlannerJobs: React.FC = () => {
         colors.add("0");
       }
 
-      // Extract board sizes/dimensions
-      if (po.jobBoardSize) boardSizes.add(po.jobBoardSize);
+      // Extract board sizes/dimensions - prioritize PO's boardSize over job/box dimensions
+      const dimension =
+        po.boardSize || po.jobBoardSize || po.boxDimensions || "0x0x0";
+      if (dimension) boardSizes.add(dimension);
     });
 
     setAvailableNoOfColors(
@@ -369,9 +372,10 @@ const PlannerJobs: React.FC = () => {
         if (!hasMatchingColor) return false;
       }
 
-      // Board size/dimensions filter
+      // Board size/dimensions filter - prioritize PO's boardSize
       if (filters.boardSizes.length > 0) {
-        const poBoardSize = po.jobBoardSize;
+        const poBoardSize =
+          po.boardSize || po.jobBoardSize || po.boxDimensions || "0x0x0";
         if (
           !poBoardSize ||
           !filters.boardSizes.some((size) =>
@@ -477,6 +481,32 @@ const PlannerJobs: React.FC = () => {
       console.error("Error checking job creation notifications:", error);
       return false;
     }
+  };
+
+  // Clear selected POs when search or filters change
+  useEffect(() => {
+    setSelectedPOs([]);
+  }, [searchTerm, filters]);
+
+  // Handle PO selection
+  const handlePOSelection = (poId: number) => {
+    setSelectedPOs((prev) =>
+      prev.includes(poId) ? prev.filter((id) => id !== poId) : [...prev, poId]
+    );
+  };
+
+  // Handle select all/none
+  const handleSelectAll = () => {
+    if (selectedPOs.length === filteredPOs.length) {
+      setSelectedPOs([]);
+    } else {
+      setSelectedPOs(filteredPOs.map((po) => po.id));
+    }
+  };
+
+  // Get selected PO objects
+  const getSelectedPOObjects = () => {
+    return filteredPOs.filter((po) => selectedPOs.includes(po.id));
   };
 
   // Apply filters whenever filters change or purchase orders change
@@ -1046,16 +1076,15 @@ const PlannerJobs: React.FC = () => {
         const month = String(d.getMonth() + 1).padStart(2, "0");
         const day = String(d.getDate()).padStart(2, "0");
         const result = `${year}-${month}-${day}`;
-        
+
         return result;
       }
     }
 
     // Fallback to standard date parsing for other formats
-  
+
     const d = new Date(value);
     if (isNaN(d.getTime())) {
-    
       return null;
     }
 
@@ -2112,11 +2141,31 @@ const PlannerJobs: React.FC = () => {
                 Showing {filteredPOs.length} POs needing job planning
                 {activeFilterCount > 0 &&
                   ` (${activeFilterCount} filters applied)`}
+                {(searchTerm ||
+                  filters.noOfColors.length > 0 ||
+                  filters.boardSizes.length > 0 ||
+                  filters.deliveryDateFrom ||
+                  filters.deliveryDateTo) &&
+                  selectedPOs.length > 0 && (
+                    <span className="ml-2 text-green-600 font-medium">
+                      • {selectedPOs.length} selected
+                    </span>
+                  )}
               </>
             ) : (
               <>
                 Showing {filteredPOs.length} of {purchaseOrders.length} purchase
                 orders (all statuses)
+                {(searchTerm ||
+                  filters.noOfColors.length > 0 ||
+                  filters.boardSizes.length > 0 ||
+                  filters.deliveryDateFrom ||
+                  filters.deliveryDateTo) &&
+                  selectedPOs.length > 0 && (
+                    <span className="ml-2 text-green-600 font-medium">
+                      • {selectedPOs.length} selected
+                    </span>
+                  )}
               </>
             )}
           </div>
@@ -2132,15 +2181,32 @@ const PlannerJobs: React.FC = () => {
               (activeFilterCount > 0 || (searchedJob && pendingPOs.length > 1));
 
             return (
-              shouldShowBulkButton && (
-                <button
-                  onClick={() => setShowBulkPlanningModal(true)}
-                  className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 text-sm"
-                >
-                  <Settings size={16} />
-                  <span>Bulk Job Planning ({pendingPOs.length})</span>
-                </button>
-              )
+              <>
+                {shouldShowBulkButton && (
+                  <button
+                    onClick={() => setShowBulkPlanningModal(true)}
+                    className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 text-sm"
+                  >
+                    <Settings size={16} />
+                    <span>Bulk Job Planning ({pendingPOs.length})</span>
+                  </button>
+                )}
+                {/* Bulk Job Planning Button for Selected POs */}
+                {(searchTerm ||
+                  filters.noOfColors.length > 0 ||
+                  filters.boardSizes.length > 0 ||
+                  filters.deliveryDateFrom ||
+                  filters.deliveryDateTo) &&
+                  selectedPOs.length > 0 && (
+                    <button
+                      onClick={() => setShowBulkPlanningModal(true)}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 text-sm"
+                    >
+                      <Settings size={16} />
+                      <span>Bulk Planning ({selectedPOs.length} selected)</span>
+                    </button>
+                  )}
+              </>
             );
           })()}
         </div>
@@ -2148,11 +2214,25 @@ const PlannerJobs: React.FC = () => {
 
       {showBulkPlanningModal && (
         <BulkJobPlanningModal
-          filteredPOs={filteredPOs.filter(
-            (po) => checkPOCompletionStatus(po) !== "completed"
-          )}
+          filteredPOs={
+            (searchTerm ||
+              filters.noOfColors.length > 0 ||
+              filters.boardSizes.length > 0 ||
+              filters.deliveryDateFrom ||
+              filters.deliveryDateTo) &&
+            selectedPOs.length > 0
+              ? getSelectedPOObjects().filter(
+                  (po) => checkPOCompletionStatus(po) !== "completed"
+                )
+              : filteredPOs.filter(
+                  (po) => checkPOCompletionStatus(po) !== "completed"
+                )
+          }
           onSave={handleBulkJobPlanning}
-          onClose={() => setShowBulkPlanningModal(false)}
+          onClose={() => {
+            setShowBulkPlanningModal(false);
+            setSelectedPOs([]);
+          }}
           onRefresh={fetchPurchaseOrders}
         />
       )}
@@ -2234,6 +2314,23 @@ const PlannerJobs: React.FC = () => {
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
+                          {(searchTerm ||
+                            filters.noOfColors.length > 0 ||
+                            filters.boardSizes.length > 0 ||
+                            filters.deliveryDateFrom ||
+                            filters.deliveryDateTo) && (
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              <input
+                                type="checkbox"
+                                checked={
+                                  selectedPOs.length === filteredPOs.length &&
+                                  filteredPOs.length > 0
+                                }
+                                onChange={handleSelectAll}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                            </th>
+                          )}
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Style
                           </th>
@@ -2296,6 +2393,23 @@ const PlannerJobs: React.FC = () => {
                               className="hover:bg-gray-50 cursor-pointer transition-colors"
                               onClick={() => handlePOClick(po)}
                             >
+                              {(searchTerm ||
+                                filters.noOfColors.length > 0 ||
+                                filters.boardSizes.length > 0 ||
+                                filters.deliveryDateFrom ||
+                                filters.deliveryDateTo) && (
+                                <td
+                                  className="px-6 py-4 whitespace-nowrap"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedPOs.includes(po.id)}
+                                    onChange={() => handlePOSelection(po.id)}
+                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                  />
+                                </td>
+                              )}
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center space-x-2">
                                   <div
