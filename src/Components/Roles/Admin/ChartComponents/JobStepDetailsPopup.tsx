@@ -48,7 +48,96 @@ const JobStepDetailsPopup: React.FC<JobStepDetailsPopupProps> = ({
   stepName,
   stepInfo,
 }) => {
+  // Helper function to get the actual step status (same logic as AdminDashboard)
+  const getStepActualStatus = (
+    step: JobPlanStep
+  ): "completed" | "in_progress" | "hold" | "planned" => {
+    if (!step) return "planned";
+
+    // Check for hold status first (highest priority)
+    if (
+      step.stepDetails?.data?.status === "hold" ||
+      step.stepDetails?.status === "hold"
+    ) {
+      return "hold";
+    }
+
+    // Special handling for PaperStore: Check paperStore.status first (direct property)
+    if (step.stepName === "PaperStore") {
+      const paperStore = (step as any).paperStore;
+      if (paperStore?.status) {
+        if (paperStore.status === "accept") {
+          return "completed";
+        }
+        if (paperStore.status === "in_progress") {
+          return "in_progress";
+        }
+        if (paperStore.status === "hold") {
+          return "hold";
+        }
+      }
+    }
+
+    // Priority 1: Check stepDetails.data.status
+    if (step.stepDetails?.data?.status) {
+      if (step.stepDetails.data.status === "accept") {
+        if (step.status === "stop") {
+          return "completed";
+        }
+        if (step.status === "start") {
+          return "in_progress";
+        }
+      }
+      if (step.stepDetails.data.status === "in_progress") {
+        return "in_progress";
+      }
+      if (step.stepDetails.data.status === "hold") {
+        return "hold";
+      }
+    }
+
+    // Priority 2: Check stepDetails.status
+    if (step.stepDetails?.status) {
+      if (step.stepDetails.status === "accept") {
+        if (step.status === "stop") {
+          return "completed";
+        }
+        if (step.status === "start") {
+          return "in_progress";
+        }
+      }
+      if (step.stepDetails.status === "in_progress") {
+        return "in_progress";
+      }
+      if (step.stepDetails.status === "hold") {
+        return "hold";
+      }
+    }
+
+    // Priority 3: Check step.status directly (for cases like "accept" or "in_progress")
+    if ((step.status as any) === "accept") {
+      return "completed";
+    }
+    if ((step.status as any) === "in_progress") {
+      return "in_progress";
+    }
+
+    // Priority 4: Use step.status for legacy status values
+    if (step.status === "stop") {
+      return "completed";
+    }
+    if (step.status === "start") {
+      return "in_progress";
+    }
+
+    // Default: planned
+    return "planned";
+  };
+
   if (!isOpen) return null;
+
+  // Get the actual status for display
+  const actualStatus = stepInfo ? getStepActualStatus(stepInfo) : "planned";
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
@@ -122,17 +211,21 @@ const JobStepDetailsPopup: React.FC<JobStepDetailsPopupProps> = ({
                   </span>
                   <span
                     className={`inline-block px-2 py-1 text-xs rounded-full ml-2 ${
-                      stepInfo.status === "stop"
+                      actualStatus === "completed"
                         ? "bg-green-100 text-green-800"
-                        : stepInfo.status === "start"
+                        : actualStatus === "in_progress"
                         ? "bg-yellow-100 text-yellow-800"
+                        : actualStatus === "hold"
+                        ? "bg-red-100 text-red-800"
                         : "bg-gray-100 text-gray-800"
                     }`}
                   >
-                    {stepInfo.status === "stop"
+                    {actualStatus === "completed"
                       ? "Completed"
-                      : stepInfo.status === "start"
+                      : actualStatus === "in_progress"
                       ? "In Progress"
+                      : actualStatus === "hold"
+                      ? "On Hold"
                       : "Planned"}
                   </span>
                 </div>

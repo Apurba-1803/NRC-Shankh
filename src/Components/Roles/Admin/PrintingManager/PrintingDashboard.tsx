@@ -150,10 +150,13 @@ const PrintingDashboard: React.FC = () => {
   }, []);
 
   // Combine printingData with completed jobs
-  const allPrintingData = [...printingData, ...completedJobs];
-  console.log("Printing - Original printing data:", printingData);
-  console.log("Printing - Completed jobs data:", completedJobs);
-  console.log("Printing - Combined all printing data:", allPrintingData);
+  const allPrintingData = useMemo(() => {
+    const combined = [...printingData, ...completedJobs];
+    console.log("Printing - Original printing data:", printingData);
+    console.log("Printing - Completed jobs data:", completedJobs);
+    console.log("Printing - Combined all printing data:", combined);
+    return combined;
+  }, [printingData, completedJobs]);
 
   // Calculate updated summary data including completed jobs
   const updatedSummaryData = useMemo(() => {
@@ -207,25 +210,42 @@ const PrintingDashboard: React.FC = () => {
   }, [summaryData, allPrintingData]);
 
   // Filter data based on search and status
-  const filteredData = allPrintingData.filter((item) => {
-    const matchesSearch =
-      item.jobNrcJobNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.oprName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.machine.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredData = useMemo(() => {
+    const filtered = allPrintingData.filter((item) => {
+      const matchesSearch =
+        item.jobNrcJobNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.oprName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.machine.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === "all" || item.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "all" || item.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
-  });
+      return matchesSearch && matchesStatus;
+    });
+    console.log("Printing - Filtered data:", filtered.length, "items");
+    return filtered;
+  }, [allPrintingData, searchTerm, statusFilter]);
 
   // Sort by date (latest first) and limit to 5 items
-  const sortedData = filteredData.sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+  const sortedData = useMemo(() => {
+    const sorted = [...filteredData].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    console.log("Printing - Sorted data:", sorted.length, "items");
+    return sorted;
+  }, [filteredData]);
 
   // Show all data or limit to 5 based on state
-  const displayData = showAllData ? sortedData : sortedData.slice(0, 5);
+  const displayData = useMemo(() => {
+    const data = showAllData ? sortedData : sortedData.slice(0, 5);
+    console.log(
+      "Printing - Display data:",
+      data.length,
+      "items",
+      showAllData ? "(all)" : "(latest 5)"
+    );
+    return data;
+  }, [sortedData, showAllData]);
 
   // Get status color and label
   const getStatusInfo = (status: string) => {
@@ -318,7 +338,7 @@ const PrintingDashboard: React.FC = () => {
   }
 
   // Show message when no data is available
-  if (printingData.length === 0) {
+  if (allPrintingData.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="mb-8">
@@ -535,6 +555,9 @@ const PrintingDashboard: React.FC = () => {
                 <option value="accept">Accepted</option>
                 <option value="pending">Pending</option>
                 <option value="rejected">Rejected</option>
+                <option value="in_progress">In Progress</option>
+                <option value="hold">On Hold</option>
+                <option value="planned">Planned</option>
               </select>
             </div>
           </div>

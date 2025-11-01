@@ -37,6 +37,9 @@ const UserDetailsPage = lazy(
   () => import("./Components/UserProfile/UserManagement/UserDetailsPage")
 ); // NEW: User Details page
 const HeldJobs = lazy(() => import("./Components/Roles/Admin/HeldJobs")); // NEW: Held Jobs page
+const MajorHoldJobs = lazy(
+  () => import("./Components/Roles/Admin/MajorHoldJobs")
+); // NEW: Major Hold Jobs page
 
 // Wrapper component to use useNavigate
 function AppContent() {
@@ -244,6 +247,7 @@ function AppContent() {
               />
 
               <Route path="held-jobs" element={<HeldJobs />} />
+              <Route path="major-hold-jobs" element={<MajorHoldJobs />} />
 
               {/* Nested Route for EditMachinePage */}
               <Route

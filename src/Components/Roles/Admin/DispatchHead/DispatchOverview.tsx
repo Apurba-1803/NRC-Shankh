@@ -93,9 +93,12 @@ const DispatchOverview: React.FC = () => {
                 return dispatchSteps.map((step: any) => ({
                   id: step.id || 0,
                   jobNrcJobNo: step.jobNrcJobNo || job.nrcJobNo || "-",
-                  status: step.status || "stop", // Use the actual status from step
+                  status: step.status || "accept", // Use the actual status from step
                   date:
-                    step.date || job.completedAt || new Date().toISOString(),
+                    step.date ||
+                    step.dispatchDate ||
+                    job.completedAt ||
+                    new Date().toISOString(),
                   shift: step.shift || null,
                   operatorName: step.operatorName || "-",
                   dispatchNo: step.dispatchNo || "-",
@@ -105,6 +108,9 @@ const DispatchOverview: React.FC = () => {
                   destination: step.destination || null,
                   remarks: step.remarks || "-",
                   dispatchDate: step.dispatchDate || step.date || null,
+                  balanceQty: step.balanceQty || 0,
+                  qcCheckSignBy: step.qcCheckSignBy || null,
+                  qcCheckAt: step.qcCheckAt || null,
                   jobStepId: step.jobStepId || null,
                   stepNo: 8,
                   stepName: "DispatchProcess",
@@ -113,6 +119,11 @@ const DispatchOverview: React.FC = () => {
                   user: step.operatorName || null,
                   machineDetails: [],
                   jobPlanId: job.jobPlanId || null,
+                  dispatchDetails: {
+                    dispatchHistory: step.dispatchHistory || null,
+                    totalDispatchedQty:
+                      step.totalDispatchedQty || step.quantity || 0,
+                  },
                 }));
               }
             );
@@ -140,10 +151,84 @@ const DispatchOverview: React.FC = () => {
   }, []);
 
   // Combine dispatchData with completed jobs
-  const allDispatchData = [...dispatchData, ...completedJobs];
-  console.log("Original dispatch data:", dispatchData);
-  console.log("Completed jobs data:", completedJobs);
-  console.log("Combined all dispatch data:", allDispatchData);
+  const allDispatchData = useMemo(() => {
+    const combined = [...dispatchData, ...completedJobs];
+    console.log("Dispatch - Original dispatch data:", dispatchData);
+    console.log("Dispatch - Completed jobs data:", completedJobs);
+    console.log("Dispatch - Combined all dispatch data:", combined);
+    return combined;
+  }, [dispatchData, completedJobs]);
+
+  // Helper function to get the first dispatch detail item (when dispatchDetails is an array)
+  const getFirstDispatchDetail = (dispatch: DispatchProcess): any | null => {
+    if (
+      Array.isArray(dispatch.dispatchDetails) &&
+      dispatch.dispatchDetails.length > 0
+    ) {
+      return dispatch.dispatchDetails[0];
+    }
+    return null;
+  };
+
+  // Helper function to get dispatch number
+  const getDispatchNo = (dispatch: DispatchProcess): string => {
+    const firstDetail = getFirstDispatchDetail(dispatch);
+    if (firstDetail?.dispatchNo && firstDetail.dispatchNo !== "-") {
+      return firstDetail.dispatchNo;
+    }
+    return dispatch.dispatchNo || "-";
+  };
+
+  // Helper function to get operator name
+  const getOperatorName = (dispatch: DispatchProcess): string => {
+    const firstDetail = getFirstDispatchDetail(dispatch);
+    if (firstDetail?.operatorName && firstDetail.operatorName !== "-") {
+      return firstDetail.operatorName;
+    }
+    return dispatch.operatorName || dispatch.user || "-";
+  };
+
+  // Helper function to get status (prioritize from dispatchDetails if available)
+  const getDispatchStatus = (dispatch: DispatchProcess): string => {
+    const firstDetail = getFirstDispatchDetail(dispatch);
+    if (firstDetail?.status) {
+      return firstDetail.status;
+    }
+    return dispatch.status || "pending";
+  };
+
+  // Helper function to get total dispatched quantity
+  // Handles both data structures:
+  // 1. dispatchDetails as object (from completed jobs): { totalDispatchedQty: number }
+  // 2. dispatchDetails as array (from regular API): [{ totalDispatchedQty: number }, ...]
+  const getTotalDispatchedQuantity = (dispatch: DispatchProcess): number => {
+    // Case 1: dispatchDetails is an object (completed jobs structure)
+    if (dispatch.dispatchDetails && !Array.isArray(dispatch.dispatchDetails)) {
+      if (dispatch.dispatchDetails.totalDispatchedQty !== undefined) {
+        return dispatch.dispatchDetails.totalDispatchedQty;
+      }
+    }
+
+    // Case 2: dispatchDetails is an array (regular API structure)
+    if (
+      Array.isArray(dispatch.dispatchDetails) &&
+      dispatch.dispatchDetails.length > 0
+    ) {
+      // Sum up totalDispatchedQty from all items in the array
+      const totalQty = dispatch.dispatchDetails.reduce(
+        (sum: number, item: any) => {
+          return sum + (item.totalDispatchedQty || item.quantity || 0);
+        },
+        0
+      );
+      if (totalQty > 0) {
+        return totalQty;
+      }
+    }
+
+    // Fallback to quantity field
+    return dispatch.quantity || 0;
+  };
 
   // Calculate updated summary data including completed jobs
   const updatedSummaryData = useMemo(() => {
@@ -151,28 +236,30 @@ const DispatchOverview: React.FC = () => {
 
     const totalDispatches = allDispatchData.length;
     const totalQuantityDispatched = allDispatchData.reduce(
-      (sum, item) => sum + (item.quantity || 0),
+      (sum, item) => sum + getTotalDispatchedQuantity(item),
       0
     );
     const totalBalanceQuantity = allDispatchData.reduce(
       (sum, item) => sum + (item.balanceQty || 0),
       0
     );
-    const completedDispatches = allDispatchData.filter(
-      (item) => item.status === "accept" || item.status === "stop"
-    ).length;
+    const completedDispatches = allDispatchData.filter((item) => {
+      const status = getDispatchStatus(item);
+      return status === "accept" || status === "stop";
+    }).length;
     const pendingDispatches = allDispatchData.filter(
-      (item) => item.status === "pending"
+      (item) => getDispatchStatus(item) === "pending"
     ).length;
     const rejectedDispatches = allDispatchData.filter(
-      (item) => item.status === "rejected"
+      (item) => getDispatchStatus(item) === "rejected"
     ).length;
     const plannedDispatches = allDispatchData.filter(
-      (item) => item.status === "planned"
+      (item) => getDispatchStatus(item) === "planned"
     ).length;
-    const inProgressDispatches = allDispatchData.filter(
-      (item) => item.status === "start"
-    ).length;
+    const inProgressDispatches = allDispatchData.filter((item) => {
+      const status = getDispatchStatus(item);
+      return status === "start" || status === "in_progress";
+    }).length;
 
     return {
       ...summaryData,
@@ -188,27 +275,54 @@ const DispatchOverview: React.FC = () => {
   }, [summaryData, allDispatchData]);
 
   // Filter data based on search and status
-  const filteredData = allDispatchData.filter((item) => {
-    const matchesSearch =
-      item.jobNrcJobNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.dispatchNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.operatorName.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredData = useMemo(() => {
+    const filtered = allDispatchData.filter((item) => {
+      const matchesSearch =
+        item.jobNrcJobNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getDispatchNo(item).toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getOperatorName(item).toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === "all" || item.status === statusFilter;
+      const itemStatus = getDispatchStatus(item);
+      let matchesStatus = statusFilter === "all";
 
-    return matchesSearch && matchesStatus;
-  });
+      if (statusFilter === "in_progress") {
+        // Match both "start" and "in_progress" for "In Progress" filter
+        matchesStatus = itemStatus === "start" || itemStatus === "in_progress";
+      } else if (statusFilter === "dispatched") {
+        // Match both "accept" and "stop" for "Dispatched" filter
+        matchesStatus = itemStatus === "accept" || itemStatus === "stop";
+      } else if (statusFilter !== "all") {
+        matchesStatus = itemStatus === statusFilter;
+      }
+
+      return matchesSearch && matchesStatus;
+    });
+    console.log("Dispatch - Filtered data:", filtered.length, "items");
+    return filtered;
+  }, [allDispatchData, searchTerm, statusFilter]);
 
   // Sort by dispatch date (latest first) and limit to 5 items
-  const sortedData = filteredData.sort(
-    (a, b) =>
-      new Date(b.dispatchDate || b.date).getTime() -
-      new Date(a.dispatchDate || a.date).getTime()
-  );
+  const sortedData = useMemo(() => {
+    const sorted = [...filteredData].sort(
+      (a, b) =>
+        new Date(b.dispatchDate || b.date).getTime() -
+        new Date(a.dispatchDate || a.date).getTime()
+    );
+    console.log("Dispatch - Sorted data:", sorted.length, "items");
+    return sorted;
+  }, [filteredData]);
 
   // Show all data or limit to 5 based on state
-  const displayData = showAllData ? sortedData : sortedData.slice(0, 5);
+  const displayData = useMemo(() => {
+    const data = showAllData ? sortedData : sortedData.slice(0, 5);
+    console.log(
+      "Dispatch - Display data:",
+      data.length,
+      "items",
+      showAllData ? "(all)" : "(latest 5)"
+    );
+    return data;
+  }, [sortedData, showAllData]);
 
   // Get status color and label - Updated with new statuses
   const getStatusInfo = (status: string) => {
@@ -216,7 +330,7 @@ const DispatchOverview: React.FC = () => {
       case "accept":
         return {
           color: "bg-green-100 text-green-800 border-green-200",
-          label: "Completed",
+          label: "Dispatched",
           icon: CheckCircleIcon,
         };
       case "pending":
@@ -238,6 +352,7 @@ const DispatchOverview: React.FC = () => {
           icon: CalendarIcon,
         };
       case "start":
+      case "in_progress":
         return {
           color: "bg-blue-100 text-blue-800 border-blue-200",
           label: "In Progress",
@@ -311,7 +426,7 @@ const DispatchOverview: React.FC = () => {
   }
 
   // Show message when no data is available
-  if (dispatchData.length === 0) {
+  if (allDispatchData.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="mb-8">
@@ -466,7 +581,7 @@ const DispatchOverview: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Completed</p>
+              <p className="text-sm font-medium text-gray-600">Dispatched</p>
               <p className="text-xl font-bold text-green-600">
                 {updatedSummaryData?.completedDispatches || 0}
               </p>
@@ -557,9 +672,8 @@ const DispatchOverview: React.FC = () => {
               >
                 <option value="all">All Status</option>
                 <option value="planned">Planned</option>
-                <option value="start">In Progress</option>
-                <option value="accept">Completed</option>
-                <option value="stop">Dispatched</option>
+                <option value="in_progress">In Progress</option>
+                <option value="dispatched">Dispatched</option>
                 <option value="pending">Pending</option>
                 <option value="rejected">Rejected</option>
               </select>
@@ -583,7 +697,13 @@ const DispatchOverview: React.FC = () => {
           </p>
         </div>
 
-        <div className="overflow-x-auto overflow-y-auto max-h-96">
+        <div
+          className={`overflow-x-auto custom-scrollbar ${
+            displayData.length > 5 && !showAllData
+              ? "overflow-y-auto max-h-[500px]"
+              : "overflow-y-visible"
+          }`}
+        >
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
@@ -600,7 +720,7 @@ const DispatchOverview: React.FC = () => {
                   Date
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Quantity
+                  Total Dispatched Qty
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Balance Qty
@@ -634,9 +754,10 @@ const DispatchOverview: React.FC = () => {
                 </tr>
               ) : (
                 displayData.map((dispatch: DispatchProcess) => {
-                  const statusInfo = getStatusInfo(dispatch.status);
+                  const dispatchStatus = getDispatchStatus(dispatch);
+                  const statusInfo = getStatusInfo(dispatchStatus);
                   const StatusIcon = statusInfo.icon;
-                  const totalQuantity = dispatch.quantity || 0;
+                  const totalQuantity = getTotalDispatchedQuantity(dispatch);
                   const balanceQty = dispatch.balanceQty || 0;
                   const dispatchedQty = totalQuantity - balanceQty;
                   const completionPercentage =
@@ -652,7 +773,7 @@ const DispatchOverview: React.FC = () => {
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900 font-mono">
-                          {dispatch.dispatchNo || "N/A"}
+                          {getDispatchNo(dispatch)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -712,7 +833,7 @@ const DispatchOverview: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {dispatch.operatorName || dispatch.user || "N/A"}
+                        {getOperatorName(dispatch)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button className="text-blue-600 hover:text-blue-800 transition-colors">
@@ -789,7 +910,7 @@ const DispatchOverview: React.FC = () => {
                         Dispatch No:
                       </span>
                       <span className="text-sm font-medium text-gray-900">
-                        {selectedDispatch.dispatchNo || "N/A"}
+                        {getDispatchNo(selectedDispatch)}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -812,10 +933,14 @@ const DispatchOverview: React.FC = () => {
                       <span className="text-sm text-gray-600">Status:</span>
                       <span
                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          getStatusInfo(selectedDispatch.status).color
+                          getStatusInfo(getDispatchStatus(selectedDispatch))
+                            .color
                         }`}
                       >
-                        {getStatusInfo(selectedDispatch.status).label}
+                        {
+                          getStatusInfo(getDispatchStatus(selectedDispatch))
+                            .label
+                        }
                       </span>
                     </div>
                   </div>
@@ -868,9 +993,13 @@ const DispatchOverview: React.FC = () => {
                   </h4>
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Quantity:</span>
+                      <span className="text-sm text-gray-600">
+                        Total Dispatched Qty:
+                      </span>
                       <span className="text-sm font-medium text-gray-900">
-                        {selectedDispatch.quantity?.toLocaleString() || 0}
+                        {getTotalDispatchedQuantity(
+                          selectedDispatch
+                        ).toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -881,28 +1010,84 @@ const DispatchOverview: React.FC = () => {
                         {selectedDispatch.balanceQty?.toLocaleString() || 0}
                       </span>
                     </div>
-                    {selectedDispatch.quantity > 0 && (
+                    {getTotalDispatchedQuantity(selectedDispatch) > 0 && (
                       <>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                             style={{
                               width: `${
-                                ((selectedDispatch.quantity -
+                                ((getTotalDispatchedQuantity(selectedDispatch) -
                                   selectedDispatch.balanceQty) /
-                                  selectedDispatch.quantity) *
+                                  getTotalDispatchedQuantity(
+                                    selectedDispatch
+                                  )) *
                                 100
                               }%`,
                             }}
                           ></div>
                         </div>
                         <div className="text-xs text-gray-500 text-center">
-                          {selectedDispatch.quantity -
+                          {getTotalDispatchedQuantity(selectedDispatch) -
                             selectedDispatch.balanceQty}{" "}
-                          of {selectedDispatch.quantity} dispatched
+                          of {getTotalDispatchedQuantity(selectedDispatch)}{" "}
+                          dispatched
                         </div>
                       </>
                     )}
+                    {/* Show dispatch history if available */}
+                    {(() => {
+                      // Handle both array and object structures for dispatchDetails
+                      let dispatchHistory: any[] | null = null;
+
+                      if (
+                        Array.isArray(selectedDispatch.dispatchDetails) &&
+                        selectedDispatch.dispatchDetails.length > 0
+                      ) {
+                        // If dispatchDetails is an array, get history from the first item (or combine all)
+                        const firstItem = selectedDispatch.dispatchDetails[0];
+                        dispatchHistory = firstItem.dispatchHistory || null;
+                      } else if (
+                        selectedDispatch.dispatchDetails &&
+                        !Array.isArray(selectedDispatch.dispatchDetails)
+                      ) {
+                        // If dispatchDetails is an object
+                        dispatchHistory =
+                          selectedDispatch.dispatchDetails.dispatchHistory ||
+                          null;
+                      }
+
+                      return dispatchHistory && dispatchHistory.length > 0 ? (
+                        <div className="mt-4 pt-4 border-t border-gray-300">
+                          <div className="text-sm font-medium text-gray-700 mb-2">
+                            Dispatch History:
+                          </div>
+                          <div className="space-y-2">
+                            {dispatchHistory.map(
+                              (history: any, idx: number) => (
+                                <div
+                                  key={idx}
+                                  className="text-xs text-gray-600 bg-white p-2 rounded border"
+                                >
+                                  <div className="flex justify-between">
+                                    <span className="font-medium">
+                                      {history.dispatchNo}
+                                    </span>
+                                    <span>
+                                      {history.dispatchedQty?.toLocaleString()}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {history.operatorName} -{" "}
+                                    {formatDate(history.dispatchDate)}
+                                  </div>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
 
@@ -914,9 +1099,7 @@ const DispatchOverview: React.FC = () => {
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Operator:</span>
                       <span className="text-sm font-medium text-gray-900">
-                        {selectedDispatch.operatorName ||
-                          selectedDispatch.user ||
-                          "N/A"}
+                        {getOperatorName(selectedDispatch)}
                       </span>
                     </div>
                     <div className="flex justify-between">

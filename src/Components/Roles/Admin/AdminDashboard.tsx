@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Calendar } from "lucide-react";
+import { Calendar, AlertTriangle } from "lucide-react";
 import DateFilterComponent, {
   type DateFilterType,
 } from "./FilterComponents/DateFilterComponent";
@@ -299,6 +299,19 @@ const AdminDashboard: React.FC = () => {
     });
   };
 
+  // Navigate to Major Hold Jobs view
+  const handleMajorHoldJobsClick = () => {
+    // Pass job plans data so we can fetch step details and filter for major hold
+    const jobPlans = filteredData?.jobPlans || [];
+    navigate("/dashboard/major-hold-jobs", {
+      state: {
+        heldJobsData: jobPlans, // Pass as heldJobsData for compatibility, but it's actually jobPlans
+        dateFilter: dateFilter,
+        customDateRange: customDateRange,
+      },
+    });
+  };
+
   // Handle Active Users card click
   const handleActiveUsersClick = () => {
     console.log("Active Users card clicked - opening users modal");
@@ -334,19 +347,11 @@ const AdminDashboard: React.FC = () => {
 
         // Check each step to determine if job is in progress
         jobPlan.steps.forEach((step) => {
-          // Check for hold status first (highest priority)
-          if (
-            step.stepDetails?.data?.status === "hold" ||
-            step.stepDetails?.status === "hold"
-          ) {
-            jobOnHold = true;
-            return; // Skip the rest of the logic for this step
-          }
+          const stepStatus = getStepActualStatus(step);
 
-          if (
-            step.status === "start" ||
-            (step.stepDetails && step.stepDetails.status === "in_progress")
-          ) {
+          if (stepStatus === "hold") {
+            jobOnHold = true;
+          } else if (stepStatus === "in_progress") {
             jobInProgress = true;
           }
         });
@@ -374,18 +379,18 @@ const AdminDashboard: React.FC = () => {
       filteredData?.jobPlans?.filter((jobPlan) => {
         let jobCompleted = true;
         let jobInProgress = false;
+        let jobOnHold = false;
 
         // Check each step to determine job status
         jobPlan.steps.forEach((step) => {
-          if (
-            step.status === "stop" ||
-            (step.stepDetails && step.stepDetails.status === "accept")
-          ) {
+          const stepStatus = getStepActualStatus(step);
+
+          if (stepStatus === "hold") {
+            jobOnHold = true;
+            jobCompleted = false;
+          } else if (stepStatus === "completed") {
             // This step is completed - continue checking other steps
-          } else if (
-            step.status === "start" ||
-            (step.stepDetails && step.stepDetails.status === "in_progress")
-          ) {
+          } else if (stepStatus === "in_progress") {
             // This step is in progress
             jobInProgress = true;
             jobCompleted = false;
@@ -395,9 +400,9 @@ const AdminDashboard: React.FC = () => {
           }
         });
 
-        // 🔥 FIXED: A job is "planned" if it's not completed AND not in progress
+        // 🔥 FIXED: A job is "planned" if it's not completed AND not in progress AND not on hold
         // This matches the logic from processJobPlanData
-        return !jobCompleted && !jobInProgress;
+        return !jobCompleted && !jobInProgress && !jobOnHold;
       }) || [];
 
     navigate("/dashboard/planned-jobs", {
@@ -809,6 +814,96 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Helper function to get actual step status (prioritizes stepDetails over step.status)
+  const getStepActualStatus = (
+    step: JobPlanStep
+  ): "completed" | "in_progress" | "hold" | "planned" => {
+    // Check for hold status first (highest priority)
+    if (
+      step.stepDetails?.data?.status === "hold" ||
+      step.stepDetails?.status === "hold"
+    ) {
+      return "hold";
+    }
+
+    // Special handling for PaperStore: Check paperStore.status first (direct property)
+    if (step.stepName === "PaperStore") {
+      const paperStore = (step as any).paperStore;
+      if (paperStore?.status) {
+        if (paperStore.status === "accept") {
+          return "completed";
+        }
+        if (paperStore.status === "in_progress") {
+          return "in_progress";
+        }
+        if (paperStore.status === "hold") {
+          return "hold";
+        }
+      }
+    }
+
+    // Priority 1: Check stepDetails.data.status first (where the actual status is often stored)
+    // A step is only "completed" when status is "stop" AND stepDetails.status is "accept"
+    if (step.stepDetails?.data?.status) {
+      if (step.stepDetails.data.status === "accept") {
+        // Only mark as completed if step.status is also "stop"
+        if (step.status === "stop") {
+          return "completed";
+        }
+        // If stepDetails says "accept" but step.status is "start", treat as in progress
+        if (step.status === "start") {
+          return "in_progress";
+        }
+      }
+      if (step.stepDetails.data.status === "in_progress") {
+        return "in_progress";
+      }
+      if (step.stepDetails.data.status === "hold") {
+        return "hold";
+      }
+    }
+
+    // Priority 2: Check stepDetails.status if data.status is not available
+    // A step is only "completed" when status is "stop" AND stepDetails.status is "accept"
+    if (step.stepDetails?.status) {
+      if (step.stepDetails.status === "accept") {
+        // Only mark as completed if step.status is also "stop"
+        if (step.status === "stop") {
+          return "completed";
+        }
+        // If stepDetails says "accept" but step.status is "start", treat as in progress
+        if (step.status === "start") {
+          return "in_progress";
+        }
+      }
+      if (step.stepDetails.status === "in_progress") {
+        return "in_progress";
+      }
+      if (step.stepDetails.status === "hold") {
+        return "hold";
+      }
+    }
+
+    // Priority 3: Check step.status directly (for cases like "accept" or "in_progress")
+    if ((step.status as any) === "accept") {
+      return "completed";
+    }
+    if ((step.status as any) === "in_progress") {
+      return "in_progress";
+    }
+
+    // Priority 4: Use step.status for legacy status values
+    if (step.status === "stop") {
+      return "completed";
+    }
+    if (step.status === "start") {
+      return "in_progress";
+    }
+
+    // Default: planned (stepDetails exists but status is not set, or step.status is "planned")
+    return "planned";
+  };
+
   // Updated processJobPlanData - fetch machines once, not in loop
   const processJobPlanData = async (
     jobPlans: JobPlan[],
@@ -919,22 +1014,19 @@ const AdminDashboard: React.FC = () => {
         );
 
         if (matchingStep) {
-          // Categorize based on the matching step's status
-          if (
-            matchingStep.status === "stop" ||
-            (matchingStep.stepDetails &&
-              matchingStep.stepDetails.status === "accept")
-          ) {
+          // Use helper function to get actual step status
+          const stepStatus = getStepActualStatus(matchingStep);
+
+          if (stepStatus === "hold") {
+            jobOnHold = true;
+            jobCompleted = false;
+          } else if (stepStatus === "completed") {
             // This step is completed
             stepStats[stepName].completed++;
             stepStats[stepName].completedData.push(jobPlan);
             completedStepsInJob++;
             completedSteps++;
-          } else if (
-            matchingStep.status === "start" ||
-            (matchingStep.stepDetails &&
-              matchingStep.stepDetails.status === "in_progress")
-          ) {
+          } else if (stepStatus === "in_progress") {
             // This step is in progress
             stepStats[stepName].inProgress++;
             stepStats[stepName].inProgressData.push(jobPlan);
@@ -974,25 +1066,16 @@ const AdminDashboard: React.FC = () => {
             };
           }
 
-          if (
-            step.stepDetails?.data?.status === "hold" ||
-            step.stepDetails?.status === "hold"
-          ) {
+          // Use helper function to get actual step status
+          const stepStatus = getStepActualStatus(step);
+
+          if (stepStatus === "hold") {
             jobOnHold = true;
             jobCompleted = false;
-          }
-
-          // Process the unhandled step
-          if (
-            step.status === "stop" ||
-            (step.stepDetails && step.stepDetails.status === "accept")
-          ) {
+          } else if (stepStatus === "completed") {
             stepStats[step.stepName].completed++;
             stepStats[step.stepName].completedData.push(jobPlan);
-          } else if (
-            step.status === "start" ||
-            (step.stepDetails && step.stepDetails.status === "in_progress")
-          ) {
+          } else if (stepStatus === "in_progress") {
             stepStats[step.stepName].inProgress++;
             stepStats[step.stepName].inProgressData.push(jobPlan);
             jobInProgress = true;
@@ -1296,29 +1379,17 @@ const AdminDashboard: React.FC = () => {
           uniqueUsers.add(step.user);
         }
 
-        // 🔥 FIXED: Check for hold status FIRST (highest priority)
-        if (
-          step.stepDetails?.data?.status === "hold" ||
-          step.stepDetails?.status === "hold"
-        ) {
+        // Use helper function to get actual step status
+        const stepStatus = getStepActualStatus(step);
+
+        if (stepStatus === "hold") {
           jobOnHold = true;
           jobCompleted = false;
-          // Don't set jobInProgress = true if it's on hold
-          return; // Skip the rest of the logic for this step
-        }
-
-        // 🔥 FIXED: Use the same categorization logic as processJobPlanData
-        if (
-          step.status === "stop" ||
-          (step.stepDetails && step.stepDetails.status === "accept")
-        ) {
+        } else if (stepStatus === "completed") {
           // This step is completed
           completedStepsInJob++;
           completedSteps++;
-        } else if (
-          step.status === "start" ||
-          (step.stepDetails && step.stepDetails.status === "in_progress")
-        ) {
+        } else if (stepStatus === "in_progress") {
           // This step is in progress (only if not on hold)
           jobInProgress = true;
           jobCompleted = false;
@@ -1412,18 +1483,12 @@ const AdminDashboard: React.FC = () => {
         );
 
         if (matchingStep) {
-          if (
-            matchingStep.status === "stop" ||
-            (matchingStep.stepDetails &&
-              matchingStep.stepDetails.status === "accept")
-          ) {
+          const stepStatus = getStepActualStatus(matchingStep);
+
+          if (stepStatus === "completed") {
             stepCompletionStats[stepName].completed++;
             stepCompletionStats[stepName].completedData.push(jobPlan);
-          } else if (
-            matchingStep.status === "start" ||
-            (matchingStep.stepDetails &&
-              matchingStep.stepDetails.status === "in_progress")
-          ) {
+          } else if (stepStatus === "in_progress") {
             stepCompletionStats[stepName].inProgress++;
             stepCompletionStats[stepName].inProgressData.push(jobPlan);
           } else {
@@ -1451,16 +1516,12 @@ const AdminDashboard: React.FC = () => {
             };
           }
 
-          if (
-            step.status === "stop" ||
-            (step.stepDetails && step.stepDetails.status === "accept")
-          ) {
+          const stepStatus = getStepActualStatus(step);
+
+          if (stepStatus === "completed") {
             stepCompletionStats[step.stepName].completed++;
             stepCompletionStats[step.stepName].completedData.push(jobPlan);
-          } else if (
-            step.status === "start" ||
-            (step.stepDetails && step.stepDetails.status === "in_progress")
-          ) {
+          } else if (stepStatus === "in_progress") {
             stepCompletionStats[step.stepName].inProgress++;
             stepCompletionStats[step.stepName].inProgressData.push(jobPlan);
           } else {
@@ -1547,6 +1608,22 @@ const AdminDashboard: React.FC = () => {
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
           <div className="flex items-center space-x-4">
+            {/* Held Jobs Quick Access */}
+            <button
+              type="button"
+              onClick={handleMajorHoldJobsClick}
+              title="View major hold jobs"
+              className="relative inline-flex items-center justify-center rounded-full p-2 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#00AEEF]"
+            >
+              <AlertTriangle className="text-red-500" size={20} />
+              {typeof filteredData?.heldJobs === "number" &&
+                filteredData.heldJobs > 0 && (
+                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white bg-red-600 rounded-full">
+                    {filteredData.heldJobs}
+                  </span>
+                )}
+            </button>
+
             <Calendar className="text-gray-500" size={20} />
             <span className="text-sm text-gray-600">
               Last updated: {new Date().toLocaleString()}
@@ -1570,7 +1647,6 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* PDA Announcements */}
-     
 
       {/* Statistics Grid */}
       <StatisticsGrid
@@ -2110,7 +2186,10 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       <div className="mb-8">
-        <PDAAnnouncements />
+        <PDAAnnouncements
+          dateFilter={dateFilter}
+          customDateRange={customDateRange}
+        />
       </div>
 
       {/* Active Users Modal */}
@@ -2120,8 +2199,6 @@ const AdminDashboard: React.FC = () => {
         activeUserIds={filteredData?.activeUserIds || new Set()}
       />
     </div>
-
-    
   );
 };
 

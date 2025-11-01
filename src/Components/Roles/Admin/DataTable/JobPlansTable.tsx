@@ -196,6 +196,75 @@ const JobPlansTable: React.FC<JobPlansTableProps> = ({
     setJobDetailsWithPO(null);
   };
 
+  // Helper function to get actual step status (prioritizes stepDetails over step.status)
+  const getStepActualStatus = (
+    step: JobPlanStep
+  ): "completed" | "in_progress" | "hold" | "planned" => {
+    // Check for hold status first (highest priority)
+    if (
+      step.stepDetails?.data?.status === "hold" ||
+      step.stepDetails?.status === "hold"
+    ) {
+      return "hold";
+    }
+
+    // Priority 1: Check stepDetails.data.status first (where the actual status is often stored)
+    // A step is only "completed" when status is "stop" AND stepDetails.status is "accept"
+    if (step.stepDetails?.data?.status) {
+      if (step.stepDetails.data.status === "accept") {
+        // Only mark as completed if step.status is also "stop"
+        if (step.status === "stop") {
+          return "completed";
+        }
+        // If stepDetails says "accept" but step.status is "start", treat as in progress
+        if (step.status === "start") {
+          return "in_progress";
+        }
+      }
+      if (step.stepDetails.data.status === "in_progress") {
+        return "in_progress";
+      }
+      if (step.stepDetails.data.status === "hold") {
+        return "hold";
+      }
+    }
+
+    // Priority 2: Check stepDetails.status if data.status is not available
+    // A step is only "completed" when status is "stop" AND stepDetails.status is "accept"
+    if (step.stepDetails?.status) {
+      if (step.stepDetails.status === "accept") {
+        // Only mark as completed if step.status is also "stop"
+        if (step.status === "stop") {
+          return "completed";
+        }
+        // If stepDetails says "accept" but step.status is "start", treat as in progress
+        if (step.status === "start") {
+          return "in_progress";
+        }
+      }
+      if (step.stepDetails.status === "in_progress") {
+        return "in_progress";
+      }
+      if (step.stepDetails.status === "hold") {
+        return "hold";
+      }
+    }
+
+    // Priority 3: Use step.status ONLY if stepDetails doesn't exist at all
+    // If stepDetails exists but doesn't have status, we can't determine completion
+    if (!step.stepDetails) {
+      if (step.status === "stop") {
+        return "completed";
+      }
+      if (step.status === "start") {
+        return "in_progress";
+      }
+    }
+
+    // Default: planned (stepDetails exists but status is not set, or step.status is "planned")
+    return "planned";
+  };
+
   // Filter job plans based on search and filters
   const filteredJobPlans = jobPlans.filter((jobPlan) => {
     const matchesSearch = jobPlan.nrcJobNo
@@ -206,36 +275,49 @@ const JobPlansTable: React.FC<JobPlansTableProps> = ({
 
     let matchesStatus = true;
     if (statusFilter !== "all") {
-      const hasInProgress = jobPlan.steps.some(
-        (step) => step.status === "start"
+      // Use helper function to check actual step statuses
+      const stepStatuses = jobPlan.steps.map((step) =>
+        getStepActualStatus(step)
       );
-      const allCompleted = jobPlan.steps.every(
-        (step) => step.status === "stop"
+      const hasInProgress = stepStatuses.some(
+        (status) => status === "in_progress"
+      );
+      const hasHold = stepStatuses.some((status) => status === "hold");
+      const allCompleted = stepStatuses.every(
+        (status) => status === "completed"
       );
 
       if (statusFilter === "completed") matchesStatus = allCompleted;
-      else if (statusFilter === "inProgress") matchesStatus = hasInProgress;
+      else if (statusFilter === "inProgress")
+        matchesStatus = hasInProgress || hasHold;
       else if (statusFilter === "planned")
-        matchesStatus = !hasInProgress && !allCompleted;
+        matchesStatus = !hasInProgress && !hasHold && !allCompleted;
     }
 
     return matchesSearch && matchesDemand && matchesStatus;
   });
 
   const getJobStatus = (jobPlan: JobPlan) => {
-    const hasInProgress = jobPlan.steps.some((step) => step.status === "start");
-    const allCompleted = jobPlan.steps.every((step) => step.status === "stop");
+    // Use helper function to check actual step statuses
+    const stepStatuses = jobPlan.steps.map((step) => getStepActualStatus(step));
+
+    const hasInProgress = stepStatuses.some(
+      (status) => status === "in_progress"
+    );
+    const hasHold = stepStatuses.some((status) => status === "hold");
+    const allCompleted = stepStatuses.every((status) => status === "completed");
 
     if (allCompleted)
       return { text: "Completed", color: "bg-green-100 text-green-800" };
-    if (hasInProgress)
+    if (hasInProgress || hasHold)
       return { text: "In Progress", color: "bg-yellow-100 text-yellow-800" };
     return { text: "Planned", color: "bg-gray-100 text-gray-800" };
   };
 
   const getProgressPercentage = (jobPlan: JobPlan) => {
+    // Use helper function to count completed steps
     const completedSteps = jobPlan.steps.filter(
-      (step) => step.status === "stop"
+      (step) => getStepActualStatus(step) === "completed"
     ).length;
     const totalSteps = jobPlan.steps.length;
     return totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;

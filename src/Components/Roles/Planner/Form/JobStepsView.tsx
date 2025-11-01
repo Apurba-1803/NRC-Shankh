@@ -956,22 +956,58 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
     }
   };
 
-  const findDetailStatus = (details: any): boolean => {
-    if (!Array.isArray(details) || details.length === 0) return false;
-
-    // Handle new data structure - take the first item from the array
-    const item = details[0];
-
-    // Check if the item has a data property (new structure) or direct properties (old structure)
-    if (item.data) {
-      return item.data.status === "accept";
+  // --- Step Card Rendering Logic ---
+  // Helper function to get the actual step status from step and step details
+  const getStepActualStatus = (
+    step: JobPlanStep
+  ): "completed" | "in_progress" | "planned" => {
+    // Check step details status first (most accurate)
+    switch (step.stepName) {
+      case "PaperStore":
+        // Check paperStore.status first (direct property)
+        if ((step as any).paperStore?.status === "in_progress") {
+          return "in_progress";
+        }
+        if ((step as any).paperStore?.status === "accept") {
+          return "completed";
+        }
+        // Then check paperStoreDetails
+        if (
+          step.paperStoreDetails &&
+          Array.isArray(step.paperStoreDetails) &&
+          step.paperStoreDetails.length > 0
+        ) {
+          const paperStoreItem = step.paperStoreDetails[0] as any;
+          if (paperStoreItem.data?.status === "in_progress") {
+            return "in_progress";
+          }
+          if (paperStoreItem.data?.status === "accept") {
+            return "completed";
+          }
+          if (paperStoreItem.status === "in_progress") {
+            return "in_progress";
+          }
+          if (paperStoreItem.status === "accept") {
+            return "completed";
+          }
+        }
+        break;
+      default:
+        // For other steps, check step.status
+        break;
     }
 
-    // Fallback for old structure
-    return item?.status === "accept";
+    // Fallback to step.status if detail status is not available
+    if ((step.status as any) === "in_progress" || step.status === "start") {
+      return "in_progress";
+    }
+    if (step.status === "stop" && step.endDate) {
+      return "completed";
+    }
+
+    return "planned";
   };
 
-  // --- Step Card Rendering Logic ---
   const getStepStatusVisual = (
     step: JobPlanStep,
     isPreviousStepCompleted: boolean,
@@ -1108,10 +1144,16 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
         break;
     }
 
-    // Rest of your code remains the same...
+    // Get actual step status using helper function
+    const actualStatus = getStepActualStatus(step);
 
-    const isCompleted = isDetailStatusAccepted;
-    const isStarted = step.status === "start" && step.startDate !== null;
+    const isCompleted = isDetailStatusAccepted || actualStatus === "completed";
+    // Check for "start", "in_progress" status or if step has startDate
+    const isStarted =
+      (step.status === "start" ||
+        (step.status as any) === "in_progress" ||
+        actualStatus === "in_progress") &&
+      (step.startDate !== null || actualStatus === "in_progress");
 
     let icon = null;
     let statusText = "";
@@ -1123,7 +1165,15 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
       cardClasses += " border-green-300";
     } else if (isStarted) {
       icon = <PlayCircle className="text-orange-500 text-3xl" />;
-      statusText = "Work started";
+      // Check if it's specifically "in_progress" vs "start"
+      if (
+        actualStatus === "in_progress" ||
+        (step.status as any) === "in_progress"
+      ) {
+        statusText = "In Progress";
+      } else {
+        statusText = "Work started";
+      }
       cardClasses += " border-orange-300";
     } else if (isNextPlannedStep && isPreviousStepCompleted) {
       icon = <PlayCircle className="text-blue-600 text-3xl" />;
@@ -1185,44 +1235,10 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
     );
   }
 
-  // Calculate progress
+  // Calculate progress - use getStepActualStatus to properly count completed steps
   const completedStepsCount = jobPlan.steps.filter((step) => {
-    let isDetailStatusAccepted = false;
-    // Helper function to safely find and check status in detail arrays
-
-    // Then use it in your switch statement:
-    switch (step.stepName) {
-      case "PaperStore":
-        isDetailStatusAccepted = findDetailStatus(step.paperStoreDetails);
-        break;
-      case "Corrugation":
-        isDetailStatusAccepted = findDetailStatus(step.corrugationDetails);
-        break;
-      case "PrintingDetails":
-        isDetailStatusAccepted = findDetailStatus(step.printingDetails);
-        break;
-      case "FluteLamination":
-        isDetailStatusAccepted = findDetailStatus(step.fluteLaminationDetails);
-        break;
-      case "Punching":
-        isDetailStatusAccepted = findDetailStatus(step.punchingDetails);
-        break;
-      case "FlapPasting":
-        isDetailStatusAccepted = findDetailStatus(step.flapPastingDetails);
-        break;
-      case "QualityDept":
-        isDetailStatusAccepted = findDetailStatus(step.qcDetails);
-        break;
-      case "DispatchProcess":
-        isDetailStatusAccepted = findDetailStatus(step.dispatchDetails);
-        break;
-      default:
-        isDetailStatusAccepted =
-          step.status === "stop" && step.endDate !== null;
-        break;
-    }
-
-    return isDetailStatusAccepted;
+    const stepStatus = getStepActualStatus(step);
+    return stepStatus === "completed";
   }).length;
   const totalSteps = jobPlan.steps.length;
   const progressPercentage =
@@ -1234,52 +1250,17 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
 
   for (let i = 0; i < jobPlan.steps.length; i++) {
     const step = jobPlan.steps[i];
-    let currentStepIsCompletedByDetail = false;
-    switch (step.stepName) {
-      case "PaperStore":
-        currentStepIsCompletedByDetail = findDetailStatus(
-          step.paperStoreDetails
-        );
-        break;
-      case "Corrugation":
-        currentStepIsCompletedByDetail = findDetailStatus(
-          step.corrugationDetails
-        );
-        break;
-      case "PrintingDetails":
-        currentStepIsCompletedByDetail = findDetailStatus(step.printingDetails);
-        break;
-      case "FluteLamination":
-        currentStepIsCompletedByDetail = findDetailStatus(
-          step.fluteLaminationDetails
-        );
-        break;
-      case "Punching":
-        currentStepIsCompletedByDetail = findDetailStatus(step.punchingDetails);
-        break;
-      case "FlapPasting":
-        currentStepIsCompletedByDetail = findDetailStatus(
-          step.flapPastingDetails
-        );
-        break;
-      case "QualityDept":
-        currentStepIsCompletedByDetail = findDetailStatus(step.qcDetails);
-        break;
-      case "DispatchProcess":
-        currentStepIsCompletedByDetail = findDetailStatus(step.dispatchDetails);
-        break;
-      default:
-        currentStepIsCompletedByDetail =
-          step.status === "stop" && step.endDate !== null;
-        break;
-    }
+    // Use getStepActualStatus to determine if step is completed
+    const stepStatus = getStepActualStatus(step);
+    const currentStepIsCompletedByDetail = stepStatus === "completed";
 
-    if (step.status === "planned") {
+    // Check if step is planned or in progress
+    if (stepStatus === "planned") {
       if (previousStepCompleted) {
         nextPlannedStep = step;
         break;
       }
-    } else if (step.status === "start") {
+    } else if (stepStatus === "in_progress") {
       nextPlannedStep = step;
       break;
     }
@@ -1344,54 +1325,12 @@ const JobStepsView: React.FC<JobStepsViewProps> = () => {
       {/* Step Cards */}
       <div className="space-y-4">
         {jobPlan.steps.map((step, index) => {
-          // Determine if previous step is completed based on detail status
+          // Determine if previous step is completed using getStepActualStatus
           let isPreviousStepCompleted = true;
           if (index > 0) {
             const prevStep = jobPlan.steps[index - 1];
-            switch (prevStep.stepName) {
-              case "PaperStore":
-                isPreviousStepCompleted = findDetailStatus(
-                  prevStep.paperStoreDetails
-                );
-                break;
-              case "Corrugation":
-                isPreviousStepCompleted = findDetailStatus(
-                  prevStep.corrugationDetails
-                );
-                break;
-              case "PrintingDetails":
-                isPreviousStepCompleted = findDetailStatus(
-                  prevStep.printingDetails
-                );
-                break;
-              case "FluteLamination":
-                isPreviousStepCompleted = findDetailStatus(
-                  prevStep.fluteLaminationDetails
-                );
-                break;
-              case "Punching":
-                isPreviousStepCompleted = findDetailStatus(
-                  prevStep.punchingDetails
-                );
-                break;
-              case "FlapPasting":
-                isPreviousStepCompleted = findDetailStatus(
-                  prevStep.flapPastingDetails
-                );
-                break;
-              case "QualityDept":
-                isPreviousStepCompleted = findDetailStatus(prevStep.qcDetails);
-                break;
-              case "DispatchProcess":
-                isPreviousStepCompleted = findDetailStatus(
-                  prevStep.dispatchDetails
-                );
-                break;
-              default:
-                isPreviousStepCompleted =
-                  prevStep.status === "stop" && prevStep.endDate !== null;
-                break;
-            }
+            const prevStepStatus = getStepActualStatus(prevStep);
+            isPreviousStepCompleted = prevStepStatus === "completed";
           }
 
           const isNextPlannedStep = step.id === nextPlannedStep?.id;

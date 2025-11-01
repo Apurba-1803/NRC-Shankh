@@ -6,6 +6,7 @@ import {
   Calendar,
   TrendingUp,
   Download,
+  PlayCircle,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import logoImage from "../../../../assets/Login/logo.jpg";
@@ -23,6 +24,7 @@ interface Job {
   totalDuration?: number;
   jobDetails?: any;
   purchaseOrderDetails?: any;
+  purchaseOrderId?: number;
   jobPlanningDetails?: {
     purchaseOrderDetails?: any[];
     allStepsDetails?: any[];
@@ -46,12 +48,16 @@ interface DetailedJobModalProps {
   isOpen: boolean;
   onClose: () => void;
   job: Job | null;
+  onResumeJob?: (jobNo: string) => void;
+  isResumingJob?: boolean;
 }
 
 const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
   isOpen,
   onClose,
   job,
+  onResumeJob,
+  isResumingJob,
 }) => {
   const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
 
@@ -160,7 +166,8 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       pdf.setFontSize(16); // Reduced from 20
       pdf.setFont("helvetica", "bold");
       pdf.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-      pdf.text("JOB DETAILS", pageWidth - 20, yPosition + 8, { // Adjusted position
+      pdf.text("JOB DETAILS", pageWidth - 20, yPosition + 8, {
+        // Adjusted position
         align: "right",
       });
 
@@ -175,9 +182,23 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       let poDetailsArray =
         job.jobPlanningDetails?.purchaseOrderDetails ||
         job.purchaseOrderDetails;
-      const poDetails = Array.isArray(poDetailsArray)
-        ? poDetailsArray[0]
-        : poDetailsArray;
+
+      // If purchaseOrderId exists, find the matching purchase order
+      let poDetails: any;
+      if (job.purchaseOrderId && Array.isArray(poDetailsArray)) {
+        poDetails = poDetailsArray.find(
+          (po: any) => po.id === job.purchaseOrderId
+        );
+        // If not found, fall back to first item
+        if (!poDetails) {
+          poDetails = poDetailsArray[0];
+        }
+      } else {
+        // Existing logic: take first item if array, or the object itself
+        poDetails = Array.isArray(poDetailsArray)
+          ? poDetailsArray[0]
+          : poDetailsArray;
+      }
 
       // Left Column
       pdf.text(
@@ -233,34 +254,34 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       // PAPER STORE Section Header
       drawRect(15, yPosition, pageWidth - 30, 6, colors.primary); // Reduced height from 8
       pdf.setFontSize(10); // Reduced from 12
-        pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
-      pdf.text("STEP DETAILS", pageWidth / 2, yPosition + 4, { align: "center" }); // Adjusted position
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(colors.white[0], colors.white[1], colors.white[2]);
+      pdf.text("STEP DETAILS", pageWidth / 2, yPosition + 4, {
+        align: "center",
+      }); // Adjusted position
       yPosition += 8; // Reduced spacing from 12
 
       // Get all steps data
       const availableSteps = job.allSteps || job.steps || [];
 
       // Define step order for sorting
-        const stepOrder = [
-          "PaperStore",
-          "PrintingDetails",
-          "Corrugation",
-          "FluteLaminateBoardConversion",
-          "Punching",
-          "SideFlapPasting",
-          "QualityDept",
-          "DispatchProcess",
-        ];
+      const stepOrder = [
+        "PaperStore",
+        "PrintingDetails",
+        "Corrugation",
+        "FluteLaminateBoardConversion",
+        "Punching",
+        "SideFlapPasting",
+        "QualityDept",
+        "DispatchProcess",
+      ];
 
       // Sort steps according to predefined order
-        const sortedSteps = [...availableSteps].sort((a, b) => {
-          const aIndex = stepOrder.indexOf(a.stepName);
-          const bIndex = stepOrder.indexOf(b.stepName);
-          return (
-            (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex)
-          );
-        });
+      const sortedSteps = [...availableSteps].sort((a, b) => {
+        const aIndex = stepOrder.indexOf(a.stepName);
+        const bIndex = stepOrder.indexOf(b.stepName);
+        return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+      });
 
       // Grid layout for steps - 2 columns
       const columnWidth = (pageWidth - 40) / 2; // Two columns with margins
@@ -331,24 +352,34 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       }
 
       // Process each step in grid layout
-      sortedSteps.forEach((step: any, index: number) => {
+      sortedSteps.forEach((step: any) => {
         const sectionTitle = getSectionTitle(step.stepName);
         const stepDetails = getStepDetailsFromStep(step);
-        
+
         // Calculate position based on current column
         const currentX = currentColumn === 0 ? leftColumnX : rightColumnX;
         let currentY = currentColumn === 0 ? leftColumnY : rightColumnY;
-        
+
         // Step header - smaller
         const stepHeaderHeight = 8;
-        drawRect(currentX, currentY, columnWidth, stepHeaderHeight, [230, 244, 255]); // Light blue
+        drawRect(
+          currentX,
+          currentY,
+          columnWidth,
+          stepHeaderHeight,
+          [230, 244, 255]
+        ); // Light blue
         drawBorder(currentX, currentY, columnWidth, stepHeaderHeight, 0.3);
-        
+
         pdf.setFontSize(8);
         pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+        pdf.setTextColor(
+          colors.primary[0],
+          colors.primary[1],
+          colors.primary[2]
+        );
         pdf.text(sectionTitle, currentX + 3, currentY + 5);
-        
+
         // Status on the right
         const statusText = step.status || "planned";
         const statusColor =
@@ -357,44 +388,60 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
             : statusText === "in-progress"
             ? [251, 191, 36]
             : [107, 114, 128];
-            
+
         pdf.setFontSize(6);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
-        pdf.text(statusText.toUpperCase(), currentX + columnWidth - 3, currentY + 5, { align: "right" });
-        
+        pdf.text(
+          statusText.toUpperCase(),
+          currentX + columnWidth - 3,
+          currentY + 5,
+          { align: "right" }
+        );
+
         currentY += stepHeaderHeight + 2;
-        
+
         // Step details in compact format
         if (stepDetails && stepDetails.length > 0) {
           const detail = stepDetails[0]; // Take first detail for compact display
           const detailsHeight = 20; // Fixed height for consistency
-          
+
           // Draw details box
-          drawRect(currentX, currentY, columnWidth, detailsHeight, colors.white);
+          drawRect(
+            currentX,
+            currentY,
+            columnWidth,
+            detailsHeight,
+            colors.white
+          );
           drawBorder(currentX, currentY, columnWidth, detailsHeight, 0.2);
-          
+
           pdf.setFontSize(6);
-        pdf.setFont("helvetica", "normal");
-          pdf.setTextColor(colors.darkGray[0], colors.darkGray[1], colors.darkGray[2]);
-          
+          pdf.setFont("helvetica", "normal");
+          pdf.setTextColor(
+            colors.darkGray[0],
+            colors.darkGray[1],
+            colors.darkGray[2]
+          );
+
           let detailY = currentY + 4;
           const leftDetailX = currentX + 2;
           const rightDetailX = currentX + columnWidth / 2 + 2;
           let detailCount = 0;
-          
+
           // Display key fields based on step type
           const displayField = (label: string, value: any) => {
-            if (value && detailCount < 6) { // Limit to 6 fields max
+            if (value && detailCount < 6) {
+              // Limit to 6 fields max
               const text = `${label}: ${value}`;
               const xPos = detailCount % 2 === 0 ? leftDetailX : rightDetailX;
               const yPos = detailY + Math.floor(detailCount / 2) * 3;
-              
+
               pdf.text(text, xPos, yPos);
               detailCount++;
             }
           };
-          
+
           // Step-specific fields (most important ones only)
           if (step.stepName === "PaperStore") {
             displayField("Size", detail.sheetSize);
@@ -450,7 +497,12 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
             displayField("Balance", detail.balanceQty);
             displayField("Dispatch No", detail.dispatchNo);
             displayField("Operator", detail.operatorName);
-            displayField("Date", detail.dispatchDate ? new Date(detail.dispatchDate).toLocaleDateString() : "");
+            displayField(
+              "Date",
+              detail.dispatchDate
+                ? new Date(detail.dispatchDate).toLocaleDateString()
+                : ""
+            );
             displayField("Shift", detail.shift);
           } else {
             // Generic fields
@@ -459,20 +511,20 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
             displayField("Shift", detail.shift);
             displayField("Status", detail.status);
           }
-          
+
           currentY += detailsHeight + 3;
         } else {
           // If no details, just add minimal spacing
           currentY += 15;
         }
-        
+
         // Update column positions
         if (currentColumn === 0) {
           leftColumnY = currentY;
         } else {
           rightColumnY = currentY;
         }
-        
+
         // Switch to next column
         currentColumn = 1 - currentColumn;
       });
@@ -481,16 +533,16 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       pdf.setFontSize(7);
       pdf.setFont("helvetica", "normal");
       pdf.setTextColor(colors.black[0], colors.black[1], colors.black[2]);
-        pdf.text(
-          `Generated on ${new Date().toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}`,
-          pageWidth / 2,
+      pdf.text(
+        `Generated on ${new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })}`,
+        pageWidth / 2,
         pageHeight - 8,
-          { align: "center" }
-        );
+        { align: "center" }
+      );
 
       // Save the PDF
       pdf.save(
@@ -509,7 +561,6 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
       setIsGeneratingPDF(false);
     }
   };
-
 
   console.log("Rendering DetailedJobModal with job:", job);
 
@@ -671,10 +722,22 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
                       job.jobPlanningDetails?.purchaseOrderDetails ||
                       job.purchaseOrderDetails;
 
-                    // Handle both array and object formats
-                    const poDetails = Array.isArray(poDetailsArray)
-                      ? poDetailsArray[0]
-                      : poDetailsArray;
+                    // If purchaseOrderId exists, find the matching purchase order
+                    let poDetails: any;
+                    if (job.purchaseOrderId && Array.isArray(poDetailsArray)) {
+                      poDetails = poDetailsArray.find(
+                        (po: any) => po.id === job.purchaseOrderId
+                      );
+                      // If not found, fall back to first item
+                      if (!poDetails) {
+                        poDetails = poDetailsArray[0];
+                      }
+                    } else {
+                      // Existing logic: take first item if array, or the object itself
+                      poDetails = Array.isArray(poDetailsArray)
+                        ? poDetailsArray[0]
+                        : poDetailsArray;
+                    }
 
                     if (!poDetails)
                       return (
@@ -911,13 +974,45 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
               {((job.allSteps && job.allSteps.length > 0) ||
                 (job.steps && job.steps.length > 0)) && (
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
-                    <CheckCircle className="h-5 w-5 mr-2" />
-                    {(job.status || job.finalStatus) === "completed"
-                      ? "Completed Steps"
-                      : "Job Steps"}
-                    ({job.allSteps?.length || job.steps?.length || 0})
-                  </h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-800 flex items-center">
+                      <CheckCircle className="h-5 w-5 mr-2" />
+                      {(job.status || job.finalStatus) === "completed"
+                        ? "Completed Steps"
+                        : "Job Steps"}
+                      ({job.allSteps?.length || job.steps?.length || 0})
+                    </h3>
+                    {(() => {
+                      // Check if any step is on hold
+                      const availableSteps = job.allSteps || job.steps || [];
+                      const hasHoldSteps = availableSteps.some((step: any) => {
+                        return (
+                          step.stepDetails?.data?.status === "major_hold" ||
+                          step.stepDetails?.data?.status === "hold" ||
+                          step.stepDetails?.status === "major_hold" ||
+                          step.stepDetails?.status === "hold"
+                        );
+                      });
+
+                      return (
+                        hasHoldSteps &&
+                        onResumeJob &&
+                        (job.status || job.finalStatus) !== "completed" && (
+                          <button
+                            onClick={() => onResumeJob(job.nrcJobNo)}
+                            disabled={isResumingJob}
+                            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded text-sm font-medium flex items-center space-x-2 transition-colors"
+                            title="Resume all steps on hold for this job"
+                          >
+                            <PlayCircle size={18} />
+                            <span>
+                              {isResumingJob ? "Resuming..." : "Resume Job"}
+                            </span>
+                          </button>
+                        )
+                      );
+                    })()}
+                  </div>
                   {/* Your existing steps content remains unchanged */}
                   <div className="space-y-3 max-h-96 overflow-y-auto">
                     {(() => {
@@ -989,6 +1084,11 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
 
                         const stepDetails = getStepDetails(step.stepName);
 
+                        // Check if step is on major hold
+                        const isMajorHold =
+                          step.stepDetails?.data?.status === "major_hold" ||
+                          step.stepDetails?.status === "major_hold";
+
                         return (
                           <div
                             key={step.id || stepIndex}
@@ -1001,18 +1101,50 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
                                   "$1 $2"
                                 )}
                               </span>
-                              <span
-                                className={`px-2 py-1 rounded text-xs font-medium ${
-                                  step.status === "completed"
-                                    ? "bg-green-100 text-green-800"
+                              <div className="flex items-center space-x-2">
+                                <span
+                                  className={`px-2 py-1 rounded text-xs font-medium ${
+                                    isMajorHold
+                                      ? "bg-red-100 text-red-800"
+                                      : step.status === "completed" ||
+                                        step.status === "stop"
+                                      ? "bg-green-100 text-green-800"
+                                      : step.status === "in-progress" ||
+                                        step.status === "start"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-gray-100 text-gray-800"
+                                  }`}
+                                >
+                                  {isMajorHold
+                                    ? "Major Hold"
+                                    : step.status === "completed"
+                                    ? "Completed"
+                                    : step.status === "stop"
+                                    ? "Completed"
                                     : step.status === "in-progress"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-gray-100 text-gray-800"
-                                }`}
-                              >
-                                {step.status}
-                              </span>
+                                    ? "In Progress"
+                                    : step.status === "start"
+                                    ? "In Progress"
+                                    : step.status || "Planned"}
+                                </span>
+                              </div>
                             </div>
+
+                            {/* Major Hold Remark */}
+                            {isMajorHold &&
+                              stepDetails &&
+                              stepDetails.length > 0 && (
+                                <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded">
+                                  <p className="text-xs font-medium text-red-800 mb-1">
+                                    Major Hold Reason:
+                                  </p>
+                                  <p className="text-xs text-red-700">
+                                    {stepDetails[0]?.majorHoldRemark ||
+                                      stepDetails[0]?.holdRemark ||
+                                      "No reason provided"}
+                                  </p>
+                                </div>
+                              )}
 
                             {/* Step Timeline */}
                             <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 mb-2">
@@ -1059,7 +1191,11 @@ const DetailedJobModal: React.FC<DetailedJobModalProps> = ({
                                         </div>
                                         <div className="flex justify-between">
                                           <span>Machine ID:</span>
-                                          <span>{machine.machineId}</span>
+                                          <span>
+                                            {machine.machineId ||
+                                              machine.id ||
+                                              "N/A"}
+                                          </span>
                                         </div>
                                         <div className="flex justify-between">
                                           <span>Machine Code:</span>
